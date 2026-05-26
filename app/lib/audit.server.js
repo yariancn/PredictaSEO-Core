@@ -23,7 +23,7 @@ export async function loadAuditData(request) {
   const prisma = (await import("../db.server.js")).default;
 
   const COPY_KEYS = [
-    "title", "subtitle", "heroTitle", "heroBody", "scopeNote", "selectionNote", "priorityPlanSummary", "stepOf",
+    "title", "subtitle", "heroTitle", "heroBody", "scopeNote", "selectionNote", "priorityPlanSummary", "priorityScopeSummary", "stepOf",
     "catalogScoreLabel", "foundationScoreLabel", "scoreExplain",
     "scoreBreakdownTitle", "foundationBreakdownTitle", "scoreAfterApply", "scoreGainGeneric", "scoreAlmostComplete", "scoreNow", "scoreImproved", "scoreSeoComplete",
     "factorSeoTitle", "factorSeoDesc", "factorDesc", "factorSchema", "factorSchemaDone",
@@ -39,7 +39,7 @@ export async function loadAuditData(request) {
     "previewSchema", "previewDesc", "schemaEmbedNote", "before", "after", "seoTitle", "apply", "confirmLabel",
     "reasonNoSeoTitle", "reasonNoSeoDesc", "reasonNoDesc", "reasonGiftCard", "reasonNoTags",
     "selectionFromBestSellers", "selectionFromRanking", "selectionFromSales",
-    "applying", "applySuccess", "applySuccessWithSchema", "applySuccessSchemaOnly", "applyError", "noChanges",
+    "applying", "applySuccess", "applySuccessWithSchema", "applySuccessSchemaOnly", "applyError", "noChanges", "noChangesAlreadyApplied",
     "restore", "restoreAll", "restoreAllConfirm", "restoreAllSuccess", "restoreAllSchemaOnly", "restoreAllHint", "restoreSuccess", "restoring",
     "resetTestTitle", "resetTestBody", "resetTestConfirm", "resetTestSuccess", "resetTestLoading",
     "resetTitle", "resetBody", "resetHint",

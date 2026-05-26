@@ -1,4 +1,5 @@
 import prisma from "../db.server.js";
+import { describePreviewChanges } from "./preview.js";
 import { inferProductCategory } from "./forense.server.js";
 import { applySchemaToTheme, rollbackSchemaFromTheme, deactivateSchemaForShop } from "./schema.server.js";
 

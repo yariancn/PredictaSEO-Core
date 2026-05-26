@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { LoadingShell } from "../components/AppShell.jsx";
 import { AppErrorShell, routeErrorHint, routeErrorMessage } from "../components/AppErrorShell.jsx";
 import { formatStepLabel } from "../lib/locale.js";
-import { describePreviewChanges, copyText, getPreviewChangeStats, fillCopy } from "../lib/preview.js";
+import { copyText, getPreviewChangeStats, fillCopy } from "../lib/preview.js";
 import { formatProjectedScoreRange } from "../lib/score.js";
 
 export async function loader({ request }) {
@@ -127,8 +127,9 @@ export async function action({ request }) {
         snapshot.matrix,
         { jsonLd, schemaActive },
       );
-      if (preview.total === 0) {
-        return json({ intent: "apply", applyError: "No changes to apply" });
+      if (preview.productCount === 0 && !preview.schema?.willApply) {
+        const locale = getStoreLocale(data);
+        return json({ intent: "apply", applyError: t(locale, "noChangesAlreadyApplied") });
       }
       const beforeExec = analyzeExecutive(catalogData, locale, {
         previewItems: preview.items,
@@ -675,13 +676,13 @@ export default function Index() {
   );
 
   useEffect(() => {
-    if (applyResult?.applied) {
+    if (applyFetcher.data?.intent === "apply" && applyFetcher.data?.applyResult) {
       setSummaryInvalidated(true);
       setConfirmed(false);
       setStep(4);
       auditFetcher.load("/app/audit-data");
     }
-  }, [applyResult?.applied]);
+  }, [applyFetcher.data]);
 
   useEffect(() => {
     if (restoreResult != null) {
@@ -1094,24 +1095,13 @@ function IndexWizard({
             <p style={{ ...theme.body, marginBottom: "14px", fontSize: "0.82rem", color: "#a5b4fc" }}>
               {priorityPlanLine}
             </p>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.88rem" }}>
-              <thead>
-                <tr style={{ color: "#6b6b78", textAlign: "left" }}>
-                  <th style={{ padding: "6px 4px", fontWeight: 500 }}>{copy.rank}</th>
-                  <th style={{ padding: "6px 4px", fontWeight: 500 }}>{copy.product}</th>
-                  <th style={{ padding: "6px 4px", fontWeight: 500 }}>{copy.score}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {matrix?.slice(0, 5).map((row, i) => (
-                  <tr key={row.product.id} style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-                    <td style={{ padding: "10px 4px", color: "#6b6b78" }}>{i + 1}</td>
-                    <td style={{ padding: "10px 4px", color: "#fff" }}>{row.product.title}</td>
-                    <td style={{ padding: "10px 4px", color: "#a5b4fc", fontWeight: 600 }}>{row.score}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <p style={{ ...theme.body, marginBottom: "0", fontSize: "0.82rem", color: "#8b8b9a" }}>
+              {fillCopy(copyText(copy, "priorityScopeSummary"), {
+                count: snapSummary?.priorityCount ?? 0,
+                high: snapSummary?.highPriority ?? 0,
+                medium: snapSummary?.mediumPriority ?? 0,
+              })}
+            </p>
           </div>
 
           <div style={{ display: "flex", gap: "10px" }}>
@@ -1300,46 +1290,8 @@ function IndexWizard({
                   )}
                 </div>
                 {preview.schema?.willApply && (
-                  <p style={{ ...theme.body, marginBottom: "14px", color: "#a3e635", fontSize: "0.82rem" }}>
+                  <p style={{ ...theme.body, marginBottom: "0", color: "#a3e635", fontSize: "0.82rem" }}>
                     {copy.previewSchema}
-                  </p>
-                )}
-                <p style={{ ...theme.body, marginBottom: "10px", fontSize: "0.82rem", color: "#8b8b9a" }}>
-                  {copyText(copy, "previewTableIntro", "Sample of changes:")}
-                </p>
-                {previewStats.mirrorCount > 0 && (
-                  <p style={{ ...theme.body, marginBottom: "10px", fontSize: "0.78rem", color: "#6b6b78" }}>
-                    {copyText(copy, "previewMirrorLegend", "★ = top seller polish")}
-                  </p>
-                )}
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.78rem" }}>
-                  <thead>
-                    <tr style={{ color: "#6b6b78", textAlign: "left" }}>
-                      <th style={{ padding: "6px 4px" }}>{copy.product}</th>
-                      <th style={{ padding: "6px 4px" }}>{copy.after}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {preview.items?.slice(0, 6).map((item) => (
-                      <tr key={item.id} style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-                        <td style={{ padding: "10px 4px", color: "#fff", verticalAlign: "top" }}>
-                          {item.title}
-                          {item.isMirror && <span style={{ color: "#a5b4fc" }}> ★</span>}
-                        </td>
-                        <td style={{ padding: "10px 4px", color: "#a3e635", verticalAlign: "top" }}>
-                          {describePreviewChanges(item, copy).map((line) => (
-                            <div key={line} style={{ marginBottom: "4px" }}>
-                              {line}
-                            </div>
-                          ))}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {preview.total > 6 && (
-                  <p style={{ ...theme.body, marginTop: "10px", fontSize: "0.78rem", color: "#6b6b78" }}>
-                    {copy.moreProducts.replace("{{count}}", String(preview.total - 6))}
                   </p>
                 )}
               </>

@@ -79,6 +79,8 @@ const MESSAGES = {
       "We picked your top sellers and highest-conversion products first, then ranked them by SEO/GEO gaps. Higher score = more to fix on that product.",
     priorityPlanSummary:
       "Apply will update {{count}} products across {{batches}} categories · {{mirrors}} get individual polish · selected for sales potential + AI search gaps",
+    priorityScopeSummary:
+      "{{count}} products in scope · {{high}} urgent SEO gaps · {{medium}} moderate",
     rank: "#",
     product: "Product",
     score: "Priority",
@@ -150,6 +152,8 @@ const MESSAGES = {
     moreProducts: "+{{count}} more products",
     applyError: "Could not apply changes",
     noChanges: "All products already have SEO metadata",
+    noChangesAlreadyApplied:
+      "These changes were already applied — reload the app to see your updated score, or use Restore / Reset demo store to run the wizard again.",
     restore: "Restore last change",
     restoreAll: "Restore everything to original",
     restoreAllConfirm:
@@ -281,6 +285,8 @@ const MESSAGES = {
       "Elegimos primero tus best sellers y productos con más probabilidad de vender, luego los ordenamos por gaps SEO/GEO. Score más alto = más que corregir en ese producto.",
     priorityPlanSummary:
       "Apply actualizará {{count}} productos en {{batches}} categorías · {{mirrors}} con pulido individual · seleccionados por ventas + gaps AI search",
+    priorityScopeSummary:
+      "{{count}} productos en alcance · {{high}} gaps urgentes · {{medium}} moderados",
     rank: "#",
     product: "Producto",
     score: "Urgencia",
@@ -348,6 +354,8 @@ const MESSAGES = {
     moreProducts: "+{{count}} productos más",
     applyError: "No se pudieron aplicar los cambios",
     noChanges: "Todos los productos ya tienen SEO",
+    noChangesAlreadyApplied:
+      "Estos cambios ya se aplicaron — recarga la app para ver tu score actualizado, o usa Restore / Reset demo store para repetir el wizard.",
     restore: "Restaurar último cambio",
     restoreAll: "Restaurar todo al original",
     restoreAllConfirm:
@@ -470,6 +478,8 @@ const MESSAGES = {
       "Nous choisissons d'abord vos best sellers et produits à fort potentiel de vente, puis les classons par gaps SEO/GEO. Score élevé = plus à corriger sur ce produit.",
     priorityPlanSummary:
       "Apply mettra à jour {{count}} produits dans {{batches}} catégories · {{mirrors}} avec polish individuel · sélectionnés pour ventes + gaps AI search",
+    priorityScopeSummary:
+      "{{count}} produits dans le périmètre · {{high}} gaps urgents · {{medium}} modérés",
     rank: "#",
     product: "Produit",
     score: "Urgence",
@@ -531,6 +541,8 @@ const MESSAGES = {
     moreProducts: "+{{count}} produits de plus",
     applyError: "Impossible d'appliquer les modifications",
     noChanges: "Tous les produits ont déjà un SEO",
+    noChangesAlreadyApplied:
+      "Ces changements sont déjà appliqués — rechargez l'app pour voir le score, ou utilisez Restore / Reset demo store.",
     restore: "Restaurer le dernier changement",
     restoreAll: "Tout restaurer à l'original",
     restoreAllConfirm:
