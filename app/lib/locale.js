@@ -17,11 +17,15 @@ const MESSAGES = {
       "We check your most important products for free and show you what's missing — before you pay anything.",
     scopeNote: "Top {{analyzed}} products selected from {{total}} in catalog",
     scopeNoteFullCatalog: "All {{analyzed}} products in your catalog analyzed ({{total}} total)",
+    scopeNoteFullCatalogExcluded:
+      "{{analyzed}} products optimized · {{total}} in catalog · {{excluded}} gift card excluded (not eligible for SEO)",
     selectionNote: "{{selection}} — ranked by sales potential, then SEO/GEO gaps.",
     selectionFromBestSellers: "From your «{{collection}}» collection",
     selectionFromRanking: "Ranked by active inventory and publish status",
     selectionFromSales: "Ranked by actual sales in the last 90 days",
     selectionFullCatalog: "Full catalog — all {{total}} products included (under {{limit}} limit)",
+    selectionFullCatalogExcluded:
+      "Full catalog — {{total}} products · {{excluded}} gift card excluded from SEO optimization",
     stepOf: "Step {{current}} of {{total}}",
     catalogScoreLabel: "AI readiness score",
     foundationScoreLabel: "Brand visibility to AI",
@@ -221,11 +225,15 @@ const MESSAGES = {
       "Analizamos gratis tus 50 productos prioritarios. Descubre qué impide que las AI te recomienden — preview de cada cambio antes de pagar.",
     scopeNote: "Top {{analyzed}} productos seleccionados de {{total}} en catálogo",
     scopeNoteFullCatalog: "Los {{analyzed}} productos de tu catálogo analizados ({{total}} en total)",
+    scopeNoteFullCatalogExcluded:
+      "{{analyzed}} productos optimizados · {{total}} en catálogo · {{excluded}} gift card excluida (no aplica SEO)",
     selectionNote: "{{selection}} — ordenados por potencial de venta y gaps SEO/GEO.",
     selectionFromBestSellers: "Colección «{{collection}}»",
     selectionFromRanking: "Ordenados por inventario activo y estado publicado",
     selectionFromSales: "Ordenados por ventas reales de los últimos 90 días",
     selectionFullCatalog: "Catálogo completo — los {{total}} productos incluidos (bajo el límite de {{limit}})",
+    selectionFullCatalogExcluded:
+      "Catálogo completo — {{total}} productos · {{excluded}} gift card excluida de la optimización SEO",
     stepOf: "Paso {{current}} de {{total}}",
     catalogScoreLabel: "Score de preparación AI",
     foundationScoreLabel: "Visibilidad de marca",
@@ -425,11 +433,15 @@ const MESSAGES = {
       "Nous analysons gratuitement vos 50 produits prioritaires. Découvrez ce qui bloque les recommandations IA — aperçu de chaque changement avant de payer.",
     scopeNote: "Top {{analyzed}} produits sélectionnés sur {{total}} au catalogue",
     scopeNoteFullCatalog: "Les {{analyzed}} produits de votre catalogue analysés ({{total}} au total)",
+    scopeNoteFullCatalogExcluded:
+      "{{analyzed}} produits optimisés · {{total}} au catalogue · {{excluded}} carte cadeau exclue (SEO non applicable)",
     selectionNote: "{{selection}} — classés par potentiel de vente puis gaps SEO/GEO.",
     selectionFromBestSellers: "Collection « {{collection}} »",
     selectionFromRanking: "Classés par inventaire actif et statut publié",
     selectionFromSales: "Classés par ventes réelles des 90 derniers jours",
     selectionFullCatalog: "Catalogue complet — les {{total}} produits inclus (sous la limite de {{limit}})",
+    selectionFullCatalogExcluded:
+      "Catalogue complet — {{total}} produits · {{excluded}} carte cadeau exclue de l'optimisation SEO",
     stepOf: "Étape {{current}} sur {{total}}",
     catalogScoreLabel: "Score catalogue prioritaire",
     foundationScoreLabel: "Fondation boutique",

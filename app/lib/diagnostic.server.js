@@ -166,16 +166,18 @@ export function selectTopCommercialProducts(rawData, limit = PRIORITY_LIMIT, sal
 
   if (catalogTotal > 0 && catalogTotal <= limit) {
     const products = dedupeProducts(pool.filter(isFullCatalogProduct)).slice(0, limit);
+    const excludedCount = Math.max(0, catalogTotal - products.length);
 
     return {
       products,
       meta: {
         source: "full_catalog",
-        sourceLabelKey: "selectionFullCatalog",
+        sourceLabelKey: excludedCount > 0 ? "selectionFullCatalogExcluded" : "selectionFullCatalog",
         collectionTitle: null,
         poolSize: pool.length,
         selectedCount: products.length,
         catalogTotal,
+        excludedCount,
       },
     };
   }
@@ -526,6 +528,7 @@ export function analyzeSnapshot(data, locale = "en") {
       selectionSource: selection.source,
       selectionLabelKey: selection.sourceLabelKey,
       selectionCollection: selection.collectionTitle,
+      excludedCount: selection.excludedCount ?? 0,
       marketsLabel: markets.map((m) => `${m.name}${m.primary ? " ★" : ""}`).join(", "),
       localesLabel: locales.map((l) => l.name).join(", "),
     },

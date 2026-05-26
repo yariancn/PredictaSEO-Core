@@ -433,10 +433,10 @@ function ApplyResultsCard({
   const priorityTotal = applyResult?.priorityCount ?? priorityCount ?? 0;
 
   let explainKey = "resultsScoreExplainProducts";
-  if (schemaOnlyOutcome || (productsUpdatedCount === 0 && schemaWasApplied)) {
-    explainKey = "resultsScoreExplainSchemaOnly";
-  } else if (applyResult?.schemaApplied && productsUpdatedCount > 0) {
+  if (applyResult?.schemaApplied && productsUpdatedCount > 0) {
     explainKey = "resultsScoreExplainFull";
+  } else if (schemaOnlyOutcome || (productsUpdatedCount === 0 && schemaWasApplied)) {
+    explainKey = "resultsScoreExplainSchemaOnly";
   }
 
   const explain = fillTemplate(copyText(copy, explainKey, ""), {
@@ -867,10 +867,15 @@ function IndexWizard({
   const catalogFactors = (executive.scoreFactors ?? []).filter((f) => f.group === "catalog");
   const foundationFactors = (executive.scoreFactors ?? []).filter((f) => f.group === "foundation");
   const scopeKey =
-    snapSummary?.selectionLabelKey === "selectionFullCatalog" ? "scopeNoteFullCatalog" : "scopeNote";
+    snapSummary?.selectionLabelKey === "selectionFullCatalogExcluded"
+      ? "scopeNoteFullCatalogExcluded"
+      : snapSummary?.selectionLabelKey === "selectionFullCatalog"
+        ? "scopeNoteFullCatalog"
+        : "scopeNote";
   const scopeLabel = fillCopy(copyText(copy, scopeKey), {
     analyzed: snapSummary?.priorityCount ?? 0,
     total: snapSummary?.catalogTotal ?? 0,
+    excluded: snapSummary?.excludedCount ?? 0,
   });
   const selectionSource = fillCopy(
     copyText(copy, snapSummary?.selectionLabelKey ?? "selectionFromRanking"),
@@ -878,6 +883,7 @@ function IndexWizard({
       collection: snapSummary?.selectionCollection ?? "",
       total: snapSummary?.catalogTotal ?? snapSummary?.priorityCount ?? 0,
       limit: snapSummary?.priorityLimit ?? 50,
+      excluded: snapSummary?.excludedCount ?? 0,
     },
   );
   const selectionNote = fillCopy(copyText(copy, "selectionNote"), { selection: selectionSource });
@@ -893,9 +899,9 @@ function IndexWizard({
   const productsUpdatedCount =
     applyResult?.productCount ?? applyResult?.applied ?? displayAppliedItems.length ?? 0;
   const schemaWasApplied = Boolean(applyResult?.schemaApplied || (setupComplete && executive.foundationScore >= 100));
-  const schemaOnlyOutcome =
-    Boolean(applyResult?.schemaApplied && productsUpdatedCount === 0) ||
-    (setupComplete && preview.productCount === 0 && executive.foundationScore >= 100);
+  const schemaOnlyOutcome = applyResult
+    ? Boolean(applyResult.schemaApplied && productsUpdatedCount === 0)
+    : Boolean(setupComplete && preview.productCount === 0 && executive.foundationScore >= 100);
   const whyUsItems = [copy.whyUs1, copy.whyUs2, copy.whyUs3, copy.whyUs4];
 
   return (
