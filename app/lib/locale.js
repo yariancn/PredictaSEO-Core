@@ -139,14 +139,27 @@ const MESSAGES = {
     restore: "Restore last change",
     restoreAll: "Restore everything to original",
     restoreAllConfirm:
-      "This will undo ALL optimizations and return every product to how it was before PredictaCore. Continue?",
+      "This will undo ALL PredictaCore backups — products we changed and brand identity. Continue?",
     restoring: "Restoring…",
-    restoreSuccess: "Restored {{count}} products to original SEO",
-    restoreAllSuccess: "Done — {{count}} products restored across {{batches}} changes. Your store is back to original.",
+    restoreSuccess: "Restored {{products}} products from the last backup.",
+    restoreAllSuccess:
+      "Restored {{products}} products and {{schema}} brand identity from {{batches}} backup(s).",
+    restoreAllSchemaOnly:
+      "Brand identity restored. No product SEO was in the backup — only schema was applied last time.",
+    restoreAllHint:
+      "Restore only reverts PredictaCore backups. To clear product SEO for a full demo rerun, use Reset demo store (pilot).",
+    resetTestTitle: "Reset demo store (pilot)",
+    resetTestBody:
+      "Clears search SEO on your priority products, removes brand identity, and deletes all PredictaCore backups — so you can run the full wizard from scratch.",
+    resetTestConfirm:
+      "Reset your test store? This clears SEO titles/descriptions on priority products and removes brand identity. Continue?",
+    resetTestSuccess:
+      "Demo reset complete — {{count}} products cleared, brand identity removed. Start again from step 1.",
+    resetTestLoading: "Resetting demo store…",
     resetTitle: "Store fully optimized",
     resetBody:
       "You're at 100/100 — gaps, recommendations, and the change preview are hidden because there's nothing left to fix. To walk through the full flow again, restore your store to how it was before PredictaCore.",
-    resetHint: "After restore, your score will drop and pending changes will reappear in steps 2–4.",
+    resetHint: "After restore, your score will drop and pending changes will reappear in steps 2–4. For a full demo with empty product SEO, use Reset demo store.",
     aiUnavailable: "Our AI is temporarily unavailable. Try again later.",
     aiError: "Our AI could not complete the analysis.",
     aiTimeout: "Our AI did not respond in time. Try again.",
@@ -305,14 +318,27 @@ const MESSAGES = {
     restore: "Restaurar último cambio",
     restoreAll: "Restaurar todo al original",
     restoreAllConfirm:
-      "Esto deshace TODAS las optimizaciones y devuelve cada producto a como estaba antes. ¿Continuar?",
+      "Esto deshace TODOS los backups de PredictaCore — productos que cambiamos e identidad de marca. ¿Continuar?",
     restoring: "Restaurando…",
-    restoreSuccess: "Restaurados {{count}} productos al SEO original",
-    restoreAllSuccess: "Listo — {{count}} productos restaurados en {{batches}} cambios. Tu tienda volvió al original.",
+    restoreSuccess: "Restaurados {{products}} productos del último backup.",
+    restoreAllSuccess:
+      "Restaurados {{products}} productos e identidad de marca ({{schema}}) de {{batches}} backup(s).",
+    restoreAllSchemaOnly:
+      "Identidad de marca restaurada. No había SEO de productos en el backup — solo se aplicó schema la última vez.",
+    restoreAllHint:
+      "Restore solo revierte backups de PredictaCore. Para limpiar SEO y correr el demo completo, usa Reset demo store (piloto).",
+    resetTestTitle: "Reset demo store (piloto)",
+    resetTestBody:
+      "Limpia el SEO de búsqueda en productos prioritarios, quita la identidad de marca y borra todos los backups — para correr el wizard desde cero.",
+    resetTestConfirm:
+      "¿Resetear la tienda de prueba? Limpia títulos/descripciones SEO en productos prioritarios y quita la identidad de marca. ¿Continuar?",
+    resetTestSuccess:
+      "Reset demo listo — {{count}} productos limpiados, identidad de marca removida. Empieza de nuevo en el paso 1.",
+    resetTestLoading: "Reseteando demo store…",
     resetTitle: "Tienda totalmente optimizada",
     resetBody:
       "Estás en 100/100 — los gaps, recomendaciones y la vista previa no aparecen porque no queda nada por corregir. Para volver a ver el flujo completo, restaura la tienda a como estaba antes de PredictaCore.",
-    resetHint: "Tras restaurar, el score bajará y verás de nuevo los cambios pendientes en los pasos 2–4.",
+    resetHint: "Tras restaurar, el score bajará y verás de nuevo los cambios pendientes en pasos 2–4. Para demo completo con SEO vacío, usa Reset demo store.",
     aiUnavailable: "Nuestra AI no está disponible. Intenta de nuevo más tarde.",
     aiError: "Nuestra AI no pudo completar el análisis.",
     aiTimeout: "Nuestra AI no respondió a tiempo. Intenta de nuevo.",

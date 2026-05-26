@@ -1,6 +1,6 @@
 import prisma from "../db.server.js";
 import { inferProductCategory } from "./forense.server.js";
-import { applySchemaToTheme, rollbackSchemaFromTheme } from "./schema.server.js";
+import { applySchemaToTheme, rollbackSchemaFromTheme, deactivateSchemaForShop } from "./schema.server.js";
 
 const PRODUCT_UPDATE = `#graphql
   mutation PredictaCoreProductUpdate($input: ProductInput!) {
@@ -270,15 +270,17 @@ async function rollbackProductSnapshots(admin, snapshots) {
     byProduct.get(snap.resourceId)[snap.field] = snap.originalValue ?? "";
   }
 
+  let productsRestored = 0;
   for (const [resourceId, fields] of byProduct) {
     const input = { id: resourceId };
     if ("seo.title" in fields || "seo.description" in fields) {
-      input.seo = {};
-      if ("seo.title" in fields) input.seo.title = fields["seo.title"];
-      if ("seo.description" in fields) input.seo.description = fields["seo.description"];
+      input.seo = {
+        title: fields["seo.title"] ?? "",
+        description: fields["seo.description"] ?? "",
+      };
     }
     if ("descriptionHtml" in fields) {
-      input.descriptionHtml = fields["descriptionHtml"];
+      input.descriptionHtml = fields["descriptionHtml"] ?? "";
     }
 
     const response = await admin.graphql(PRODUCT_UPDATE, { variables: { input } });
@@ -286,7 +288,23 @@ async function rollbackProductSnapshots(admin, snapshots) {
     if (errors?.length) throw new Error(errors.map((e) => e.message).join("; "));
     const userErrors = data?.productUpdate?.userErrors ?? [];
     if (userErrors.length) throw new Error(userErrors.map((e) => e.message).join("; "));
+    productsRestored += 1;
   }
+  return productsRestored;
+}
+
+function summarizeRollback(snapshots) {
+  const productIds = new Set(
+    snapshots.filter((s) => s.resourceType === "product").map((s) => s.resourceId),
+  );
+  const schemaRestored = snapshots.some(
+    (s) => s.resourceType === "shop" || s.resourceType === "theme",
+  );
+  return {
+    snapshotCount: snapshots.length,
+    productCount: productIds.size,
+    schemaRestored,
+  };
 }
 
 export async function rollbackBatch(admin, shop, batchId) {
@@ -294,20 +312,29 @@ export async function rollbackBatch(admin, shop, batchId) {
     where: { shop, batchId },
     orderBy: { createdAt: "desc" },
   });
-  if (snapshots.length === 0) return { restored: 0, batchId };
+  if (snapshots.length === 0) {
+    return { restored: 0, batchId, snapshotCount: 0, productCount: 0, schemaRestored: false };
+  }
 
   const schemaSnaps = snapshots.filter(
     (s) => s.resourceType === "theme" || s.resourceType === "shop",
   );
   const productSnaps = snapshots.filter((s) => s.resourceType === "product");
+  const summary = summarizeRollback(snapshots);
 
   if (schemaSnaps.length) {
     await rollbackSchemaFromTheme(admin, shop, schemaSnaps);
   }
-  await rollbackProductSnapshots(admin, productSnaps);
+  const productsRestored = await rollbackProductSnapshots(admin, productSnaps);
   await prisma.optimizationSnapshot.deleteMany({ where: { shop, batchId } });
 
-  return { restored: snapshots.length, batchId };
+  return {
+    restored: snapshots.length,
+    batchId,
+    snapshotCount: summary.snapshotCount,
+    productCount: productsRestored,
+    schemaRestored: summary.schemaRestored,
+  };
 }
 
 export async function rollbackLatestBatch(admin, shop) {
@@ -316,7 +343,9 @@ export async function rollbackLatestBatch(admin, shop) {
     orderBy: { appliedAt: "desc" },
     select: { batchId: true },
   });
-  if (!latest?.batchId) return { restored: 0 };
+  if (!latest?.batchId) {
+    return { restored: 0, snapshotCount: 0, productCount: 0, schemaRestored: false };
+  }
   return rollbackBatch(admin, shop, latest.batchId);
 }
 
@@ -327,12 +356,51 @@ export async function rollbackAllBatches(admin, shop) {
     select: { batchId: true },
     orderBy: { appliedAt: "desc" },
   });
-  let total = 0;
+  let snapshotCount = 0;
+  let productCount = 0;
+  let schemaRestored = false;
   for (const { batchId } of batches) {
     const result = await rollbackBatch(admin, shop, batchId);
-    total += result.restored;
+    snapshotCount += result.snapshotCount ?? result.restored ?? 0;
+    productCount += result.productCount ?? 0;
+    schemaRestored = schemaRestored || Boolean(result.schemaRestored);
   }
-  return { restored: total, batches: batches.length };
+  return {
+    restored: snapshotCount,
+    snapshotCount,
+    productCount,
+    schemaRestored,
+    batches: batches.length,
+  };
+}
+
+/** Pilot only — clears PredictaCore backups, brand identity, and SEO on priority products for a full demo rerun. */
+export async function resetTestStoreForDemo(admin, shop, priorityProducts) {
+  const rollback = await rollbackAllBatches(admin, shop);
+  await deactivateSchemaForShop(admin, shop);
+
+  let productsCleared = 0;
+  for (const product of priorityProducts) {
+    const response = await admin.graphql(PRODUCT_UPDATE, {
+      variables: {
+        input: {
+          id: product.id,
+          seo: { title: "", description: "" },
+        },
+      },
+    });
+    const { data, errors } = await response.json();
+    if (errors?.length) throw new Error(errors.map((e) => e.message).join("; "));
+    const userErrors = data?.productUpdate?.userErrors ?? [];
+    if (userErrors.length) throw new Error(userErrors.map((e) => e.message).join("; "));
+    productsCleared += 1;
+  }
+
+  return {
+    ...rollback,
+    productsCleared,
+    schemaCleared: true,
+  };
 }
 
 export function buildAppliedItemsFromPreview(items = []) {

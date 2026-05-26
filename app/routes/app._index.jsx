@@ -25,7 +25,7 @@ export async function action({ request }) {
     groupProductsByCategory,
     saveEntityProfile,
   } = await import("../lib/forense.server.js");
-  const { buildPreviewPlan, applyPreviewPlan, rollbackLatestBatch, rollbackAllBatches, buildAppliedItemsFromPreview } = await import(
+  const { buildPreviewPlan, applyPreviewPlan, rollbackLatestBatch, rollbackAllBatches, resetTestStoreForDemo, buildAppliedItemsFromPreview } = await import(
     "../lib/apply.server.js"
   );
   const { getSchemaStatus } = await import("../lib/schema.server.js");
@@ -65,6 +65,25 @@ export async function action({ request }) {
       return json({ intent: "restore-all", restoreResult: result });
     } catch (err) {
       return json({ intent: "restore-all", restoreError: err.message ?? "Restore failed" });
+    }
+  }
+
+  if (intent === "reset-test-store") {
+    if (!isBillingBypassed()) {
+      return json({ intent: "reset-test-store", resetTestError: "Not available in production billing mode" });
+    }
+    try {
+      const response = await admin.graphql(CATALOG_QUERY);
+      const { data, errors } = await response.json();
+      if (errors?.length) {
+        return json({ intent: "reset-test-store", resetTestError: errors.map((e) => e.message).join("; ") });
+      }
+      const snapshot = analyzeSnapshot(data);
+      const priorityProducts = getPriorityProducts(data.products?.nodes ?? [], snapshot.matrix);
+      const result = await resetTestStoreForDemo(admin, session.shop, priorityProducts);
+      return json({ intent: "reset-test-store", resetTestResult: result });
+    } catch (err) {
+      return json({ intent: "reset-test-store", resetTestError: err.message ?? "Reset failed" });
     }
   }
 
@@ -348,6 +367,23 @@ function fillTemplate(text, vars = {}) {
   return out;
 }
 
+function formatRestoreMessage(copy, intent, result) {
+  if (!result) return "";
+  const products = String(result.productCount ?? 0);
+  const batches = String(result.batches ?? 1);
+  const schema = result.schemaRestored
+    ? copyText(copy, "resultsAppliedBrand", "brand identity")
+    : copyText(copy, "previewSchemaRow", "brand identity");
+
+  if (intent === "restore-all" && result.productCount === 0 && result.schemaRestored) {
+    return copyText(copy, "restoreAllSchemaOnly", "Brand identity restored. No product SEO was in the backup.");
+  }
+  if (intent === "restore-all") {
+    return fillTemplate(copyText(copy, "restoreAllSuccess", ""), { products, batches, schema });
+  }
+  return fillTemplate(copyText(copy, "restoreSuccess", ""), { products });
+}
+
 function ScoreBreakdownRow({ label, before, after }) {
   const changed = before !== after;
   return (
@@ -621,7 +657,13 @@ export default function Index() {
   const restoreLoading =
     applyFetcher.state !== "idle" &&
     (applyFetcher.formData?.get("intent") === "restore" ||
-      applyFetcher.formData?.get("intent") === "restore-all");
+      applyFetcher.formData?.get("intent") === "restore-all" ||
+      applyFetcher.formData?.get("intent") === "reset-test-store");
+
+  const resetTestResult =
+    applyFetcher.data?.intent === "reset-test-store" ? applyFetcher.data.resetTestResult : null;
+  const resetTestError =
+    applyFetcher.data?.intent === "reset-test-store" ? applyFetcher.data.resetTestError : null;
 
   const backupAvailable = hasBackup || applyFetcher.data?.hasBackup;
   const setupComplete = Boolean(
@@ -629,14 +671,31 @@ export default function Index() {
   );
 
   useEffect(() => {
-    if (applyResult?.applied || restoreResult?.restored) {
+    if (applyResult?.applied) {
       setSummaryInvalidated(true);
       setConfirmed(false);
-      if (applyResult?.applied) setStep(4);
-      if (restoreResult?.restored) setStep(1);
+      setStep(4);
       auditFetcher.load("/app/audit-data");
     }
-  }, [applyResult?.applied, restoreResult?.restored]);
+  }, [applyResult?.applied]);
+
+  useEffect(() => {
+    if (restoreResult != null) {
+      setSummaryInvalidated(true);
+      setConfirmed(false);
+      setStep(1);
+      auditFetcher.load("/app/audit-data");
+    }
+  }, [restoreResult]);
+
+  useEffect(() => {
+    if (resetTestResult) {
+      setSummaryInvalidated(true);
+      setConfirmed(false);
+      setStep(1);
+      auditFetcher.load("/app/audit-data");
+    }
+  }, [resetTestResult]);
 
   useEffect(() => {
     if (setupComplete && step !== 1 && step !== 4) {
@@ -716,6 +775,8 @@ export default function Index() {
         restoreResult={restoreResult}
         restoreError={restoreError}
         restoreLoading={restoreLoading}
+        resetTestResult={resetTestResult}
+        resetTestError={resetTestError}
         backupAvailable={backupAvailable}
       />
     </>
@@ -775,8 +836,11 @@ function IndexWizard({
   restoreResult,
   restoreError,
   restoreLoading,
+  resetTestResult,
+  resetTestError,
   backupAvailable,
 }) {
+  const pilotMode = Boolean(billing?.pilotMode);
   const { matrix, summary: snapSummary } = snapshot;
   const stepLabel = formatStepLabel(copyText(copy, "stepOf", "Step {{current}} of {{total}}"), step, totalSteps);
   const applyGain = executive.scoreAfterApply - executive.score;
@@ -921,6 +985,49 @@ function IndexWizard({
               </p>
             ))}
           </div>
+
+          {pilotMode && (
+            <div style={{ ...theme.card, borderColor: "rgba(251,191,36,0.45)", background: "rgba(251,191,36,0.08)" }}>
+              <h2 style={{ ...theme.h2, color: "#fbbf24" }}>{copyText(copy, "resetTestTitle", "Reset demo store")}</h2>
+              <p style={{ ...theme.body, marginBottom: "12px", fontSize: "0.88rem" }}>
+                {copyText(copy, "resetTestBody", "Clear product SEO and brand identity for a full demo rerun.")}
+              </p>
+              {resetTestResult && (
+                <p style={{ ...theme.body, color: "#a3e635", marginBottom: "12px" }}>
+                  {fillTemplate(copyText(copy, "resetTestSuccess", "Demo reset complete."), {
+                    count: resetTestResult.productsCleared ?? 0,
+                  })}
+                </p>
+              )}
+              {resetTestError && (
+                <p style={{ ...theme.body, color: "#f87171", marginBottom: "12px" }}>{resetTestError}</p>
+              )}
+              {restoreResult && (
+                <p style={{ ...theme.body, color: "#a3e635", marginBottom: "8px" }}>
+                  {formatRestoreMessage(copy, applyFetcher.data?.intent, restoreResult)}
+                </p>
+              )}
+              {restoreResult?.productCount === 0 && restoreResult?.schemaRestored && (
+                <p style={{ ...theme.body, fontSize: "0.82rem", color: "#8b8b9a", marginBottom: "12px" }}>
+                  {copyText(copy, "restoreAllHint", "Restore only reverts backups.")}
+                </p>
+              )}
+              <button
+                type="button"
+                style={{ ...theme.btnGhost, width: "100%", borderColor: "rgba(251,191,36,0.5)", color: "#fbbf24" }}
+                disabled={restoreLoading}
+                onClick={() => {
+                  if (window.confirm(copyText(copy, "resetTestConfirm", "Reset test store?"))) {
+                    applyFetcher.submit({ intent: "reset-test-store" }, { method: "post" });
+                  }
+                }}
+              >
+                {restoreLoading
+                  ? copyText(copy, "resetTestLoading", "Resetting…")
+                  : copyText(copy, "resetTestTitle", "Reset demo store")}
+              </button>
+            </div>
+          )}
 
           {!setupComplete && (
             <>
@@ -1210,12 +1317,29 @@ function IndexWizard({
           {restoreResult && (
             <div style={theme.card}>
               <p style={{ ...theme.body, color: "#a3e635" }}>
-                {applyFetcher.data?.intent === "restore-all"
-                  ? copy.restoreAllSuccess
-                      .replace("{{count}}", String(restoreResult.restored))
-                      .replace("{{batches}}", String(restoreResult.batches ?? backupBatchCount))
-                  : copy.restoreSuccess.replace("{{count}}", String(restoreResult.restored))}
+                {formatRestoreMessage(copy, applyFetcher.data?.intent, restoreResult)}
               </p>
+              {applyFetcher.data?.intent === "restore-all" &&
+                restoreResult.productCount === 0 &&
+                restoreResult.schemaRestored && (
+                  <p style={{ ...theme.body, fontSize: "0.82rem", color: "#8b8b9a", marginTop: "8px" }}>
+                    {copyText(copy, "restoreAllHint", "Restore only reverts backups.")}
+                  </p>
+                )}
+            </div>
+          )}
+          {resetTestResult && (
+            <div style={theme.card}>
+              <p style={{ ...theme.body, color: "#a3e635" }}>
+                {fillTemplate(copyText(copy, "resetTestSuccess", "Demo reset complete."), {
+                  count: resetTestResult.productsCleared ?? 0,
+                })}
+              </p>
+            </div>
+          )}
+          {resetTestError && (
+            <div style={theme.card}>
+              <p style={{ ...theme.body, color: "#f87171" }}>{resetTestError}</p>
             </div>
           )}
           {restoreError && (
@@ -1309,6 +1433,23 @@ function IndexWizard({
                 </button>
               )}
             </>
+          )}
+
+          {pilotMode && (
+            <button
+              type="button"
+              style={{ ...theme.btnGhost, width: "100%", marginTop: "10px", borderColor: "rgba(251,191,36,0.5)", color: "#fbbf24" }}
+              disabled={restoreLoading}
+              onClick={() => {
+                if (window.confirm(copyText(copy, "resetTestConfirm", "Reset test store?"))) {
+                  applyFetcher.submit({ intent: "reset-test-store" }, { method: "post" });
+                }
+              }}
+            >
+              {restoreLoading
+                ? copyText(copy, "resetTestLoading", "Resetting…")
+                : copyText(copy, "resetTestTitle", "Reset demo store")}
+            </button>
           )}
 
           <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.2)" }}>

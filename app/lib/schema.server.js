@@ -160,6 +160,19 @@ export async function applySchemaToTheme(admin, shop, jsonLd) {
   };
 }
 
+export async function deactivateSchemaForShop(admin, shop) {
+  const prisma = (await import("../db.server.js")).default;
+  try {
+    await deleteSchemaMetafield(admin);
+  } catch {
+    // Metafield may already be absent
+  }
+  await prisma.entityProfile.updateMany({
+    where: { shop },
+    data: { schemaActive: false, schemaThemeId: null },
+  });
+}
+
 export async function rollbackSchemaFromTheme(admin, shop, snapshots) {
   const prisma = (await import("../db.server.js")).default;
   const schemaSnaps = snapshots.filter(

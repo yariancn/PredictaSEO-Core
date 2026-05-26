@@ -37,7 +37,8 @@ export async function loadAuditData(request) {
     "priorityTitle", "priorityExplain", "rank", "product", "score", "targetScore", "loading", "loadingHint", "error", "impactIntro",
     "previewTitle", "previewSummary", "previewSchema", "previewDesc", "schemaEmbedNote", "before", "after", "seoTitle", "apply", "confirmLabel",
     "applying", "applySuccess", "applySuccessWithSchema", "applySuccessSchemaOnly", "applyError", "noChanges",
-    "restore", "restoreAll", "restoreAllConfirm", "restoreAllSuccess", "restoring", "restoreSuccess",
+    "restore", "restoreAll", "restoreAllConfirm", "restoreAllSuccess", "restoreAllSchemaOnly", "restoreAllHint", "restoreSuccess", "restoring",
+    "resetTestTitle", "resetTestBody", "resetTestConfirm", "resetTestSuccess", "resetTestLoading",
     "resetTitle", "resetBody", "resetHint",
     "scoreMaxNote",
     "resultsTitle", "resultsScoreExplainSchemaOnly", "resultsScoreExplainFull", "resultsScoreExplainProducts",
@@ -115,6 +116,7 @@ export async function loadAuditData(request) {
     canApply: isBillingBypassed(),
     setupPaid: isBillingBypassed(),
     subscriptionActive: isBillingBypassed(),
+    pilotMode: isBillingBypassed(),
   };
 
   if (!isBillingBypassed()) {
@@ -134,6 +136,7 @@ export async function loadAuditData(request) {
             canApply: setupCheck.hasActivePayment,
             setupPaid: setupCheck.hasActivePayment,
             subscriptionActive: subCheck.hasActivePayment,
+            pilotMode: false,
           };
         } catch {
           const record = await prisma.shopBilling.findUnique({ where: { shop: session.shop } });
@@ -141,11 +144,12 @@ export async function loadAuditData(request) {
             canApply: record?.setupPaid ?? false,
             setupPaid: record?.setupPaid ?? false,
             subscriptionActive: record?.subscriptionActive ?? false,
+            pilotMode: false,
           };
         }
       })(),
       BILLING_TIMEOUT_MS,
-      { canApply: false, setupPaid: false, subscriptionActive: false },
+      { canApply: false, setupPaid: false, subscriptionActive: false, pilotMode: false },
     );
   }
 
