@@ -1,3 +1,4 @@
+import { t as translate } from "./locale.js";
 import { enrichCatalogWithSalesProducts, fetchSalesRanking } from "./sales-ranking.server.js";
 
 export const PRIORITY_LIMIT = 50;
