@@ -81,13 +81,19 @@ export const CATALOG_QUERY = `#graphql
   }
 `;
 
-export function isCommerciallySellable(product) {
+export function isOptimizableProduct(product) {
   if (!product || product.isGiftCard || product.status !== "ACTIVE" || !product.publishedAt) {
     return false;
   }
 
   const title = (product?.title ?? "").toLowerCase();
   if (title.includes("gift card") || title.includes("giftcard")) return false;
+
+  return true;
+}
+
+export function isCommerciallySellable(product) {
+  if (!isOptimizableProduct(product)) return false;
 
   const inventory = product?.totalInventory ?? 0;
   if (inventory <= 0 && product.hasOutOfStockVariants === true) return false;
@@ -134,6 +140,7 @@ function dedupeProducts(products) {
 }
 
 export function selectTopCommercialProducts(rawData, limit = PRIORITY_LIMIT, salesRanking = null) {
+  const catalogTotal = rawData?.productsCount?.count ?? 0;
   const collectionsWithProducts = rawData?.bestSellerCollections?.nodes ?? [];
   const bestCollection = findBestSellersCollection(collectionsWithProducts);
   const pool = rawData?.catalogPool?.nodes ?? [];
@@ -147,6 +154,22 @@ export function selectTopCommercialProducts(rawData, limit = PRIORITY_LIMIT, sal
   }
 
   candidates = dedupeProducts([...candidates, ...pool]);
+
+  if (catalogTotal > 0 && catalogTotal <= limit) {
+    const products = dedupeProducts(candidates.filter(isOptimizableProduct)).slice(0, limit);
+
+    return {
+      products,
+      meta: {
+        source: "full_catalog",
+        sourceLabelKey: "selectionFullCatalog",
+        collectionTitle: null,
+        poolSize: pool.length,
+        selectedCount: products.length,
+        catalogTotal,
+      },
+    };
+  }
 
   const activeCandidates = candidates.filter(isCommerciallySellable);
 
@@ -217,10 +240,21 @@ export function selectTopCommercialProducts(rawData, limit = PRIORITY_LIMIT, sal
 }
 
 export async function prepareCatalogData(admin, rawData) {
-  const salesRanking = admin ? await fetchSalesRanking(admin) : null;
-  const enrichedData = admin
-    ? await enrichCatalogWithSalesProducts(admin, rawData, salesRanking)
-    : rawData;
+  const catalogTotal = rawData?.productsCount?.count ?? 0;
+  let salesRanking = null;
+  let enrichedData = rawData;
+
+  if (catalogTotal > PRIORITY_LIMIT && admin) {
+    salesRanking = await fetchSalesRanking(admin);
+    enrichedData = await enrichCatalogWithSalesProducts(admin, rawData, salesRanking);
+  } else if (catalogTotal > 0 && catalogTotal <= PRIORITY_LIMIT && admin) {
+    const { fetchAllActiveProducts } = await import("./sales-ranking.server.js");
+    const fullProducts = await fetchAllActiveProducts(admin, catalogTotal);
+    if (fullProducts.length > 0) {
+      enrichedData = { ...rawData, catalogPool: { nodes: fullProducts } };
+    }
+  }
+
   const selection = selectTopCommercialProducts(enrichedData, PRIORITY_LIMIT, salesRanking);
   return {
     ...enrichedData,

@@ -38,7 +38,7 @@ export async function loadAuditData(request) {
     "previewRowMirror", "previewRowBatch", "previewRowBrand", "previewMirrorLegend", "previewTableIntro",
     "previewSchema", "previewDesc", "schemaEmbedNote", "before", "after", "seoTitle", "apply", "confirmLabel",
     "reasonNoSeoTitle", "reasonNoSeoDesc", "reasonNoDesc", "reasonGiftCard", "reasonNoTags",
-    "selectionFromBestSellers", "selectionFromRanking", "selectionFromSales",
+    "selectionFromBestSellers", "selectionFromRanking", "selectionFromSales", "selectionFullCatalog",
     "applying", "applySuccess", "applySuccessWithSchema", "applySuccessSchemaOnly", "applyError", "noChanges", "noChangesAlreadyApplied",
     "restore", "restoreAll", "restoreAllConfirm", "restoreAllSuccess", "restoreAllSchemaOnly", "restoreAllHint", "restoreSuccess", "restoring",
     "resetTestTitle", "resetTestBody", "resetTestConfirm", "resetTestSuccess", "resetTestLoading",

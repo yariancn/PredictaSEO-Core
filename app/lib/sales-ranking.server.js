@@ -53,6 +53,44 @@ function parseSalesRows(tableData) {
   return { byId, orderedIds, count: orderedIds.length };
 }
 
+export async function fetchAllActiveProducts(admin, maxCount) {
+  if (!admin?.graphql || maxCount <= 0) return [];
+
+  const products = [];
+  let cursor = null;
+  const filter = "status:ACTIVE published_status:published";
+
+  while (products.length < maxCount) {
+    const first = Math.min(50, maxCount - products.length);
+    try {
+      const response = await admin.graphql(
+        `#graphql
+        query PredictaCoreAllProducts($first: Int!, $after: String, $query: String!) {
+          products(first: $first, after: $after, sortKey: PUBLISHED_AT, reverse: true, query: $query) {
+            nodes { ${PRODUCT_FIELDS} }
+            pageInfo { hasNextPage endCursor }
+          }
+        }`,
+        { variables: { first, after: cursor, query: filter } },
+      );
+      const { data, errors } = await response.json();
+      if (errors?.length) break;
+
+      for (const node of data?.products?.nodes ?? []) {
+        if (node?.id) products.push(node);
+      }
+
+      const pageInfo = data?.products?.pageInfo;
+      if (!pageInfo?.hasNextPage) break;
+      cursor = pageInfo.endCursor;
+    } catch {
+      break;
+    }
+  }
+
+  return products;
+}
+
 export async function fetchSalesRanking(admin) {
   if (!admin?.graphql) return null;
 

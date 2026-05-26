@@ -871,7 +871,11 @@ function IndexWizard({
     .replace("{{total}}", String(snapSummary?.catalogTotal ?? 0));
   const selectionSource = fillCopy(
     copyText(copy, snapSummary?.selectionLabelKey ?? "selectionFromRanking"),
-    { collection: snapSummary?.selectionCollection ?? "" },
+    {
+      collection: snapSummary?.selectionCollection ?? "",
+      total: snapSummary?.catalogTotal ?? snapSummary?.priorityCount ?? 0,
+      limit: snapSummary?.priorityLimit ?? 50,
+    },
   );
   const selectionNote = fillCopy(copyText(copy, "selectionNote"), { selection: selectionSource });
   const priorityPlanLine = fillCopy(copyText(copy, "priorityPlanSummary"), {
