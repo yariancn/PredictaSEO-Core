@@ -15,6 +15,7 @@ RUN apk add --no-cache openssl libc6-compat
 WORKDIR /app
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
+ENV PRISMA_USER_CONSENT=true
 
 COPY package.json package-lock.json* ./
 RUN npm ci --omit=dev && npm cache clean --force
