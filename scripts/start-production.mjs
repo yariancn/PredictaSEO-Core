@@ -3,6 +3,16 @@ import { spawn } from "node:child_process";
 const port = process.env.PORT || "3000";
 const host = process.env.HOST || "0.0.0.0";
 
+if (!process.env.SHOPIFY_APP_URL?.trim()) {
+  if (process.env.RAILWAY_PUBLIC_DOMAIN?.trim()) {
+    process.env.SHOPIFY_APP_URL = `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`;
+  } else if (process.env.NODE_ENV === "production") {
+    process.env.SHOPIFY_APP_URL =
+      "https://predictaseo-core-production.up.railway.app";
+  }
+}
+
+console.log(`[PredictaCore] SHOPIFY_APP_URL=${process.env.SHOPIFY_APP_URL || "missing"}`);
 console.log(`[PredictaCore] Starting server on ${host}:${port}`);
 
 const child = spawn(
