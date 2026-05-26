@@ -1,7 +1,26 @@
-import { t as translate } from "./locale.js";
-import { inferProductCategory } from "./forense.server.js";
+import { enrichCatalogWithSalesProducts, fetchSalesRanking } from "./sales-ranking.server.js";
 
 export const PRIORITY_LIMIT = 50;
+
+const BEST_SELLER_PATTERN =
+  /best\s*sell|bestsell|top\s*sell|m[aá]s\s*vendid|mejores\s*ventas|plus\s*vend/i;
+
+const PRODUCT_FIELDS = `
+  id
+  title
+  handle
+  description
+  descriptionHtml
+  productType
+  vendor
+  tags
+  status
+  publishedAt
+  totalInventory
+  hasOutOfStockVariants
+  isGiftCard
+  seo { title description }
+`;
 
 export const CATALOG_QUERY = `#graphql
   query PredictaCoreCatalog {
@@ -15,18 +34,24 @@ export const CATALOG_QUERY = `#graphql
       plan { displayName }
     }
     productsCount { count }
-    products(first: 50, sortKey: UPDATED_AT, reverse: true) {
+    bestSellerCollections: collections(first: 20, sortKey: UPDATED_AT, reverse: true) {
       nodes {
         id
-        title
         handle
-        description
-        descriptionHtml
-        productType
-        vendor
-        tags
-        seo { title description }
+        title
+        productsCount { count }
+        products(first: ${PRIORITY_LIMIT}) {
+          nodes { ${PRODUCT_FIELDS} }
+        }
       }
+    }
+    catalogPool: products(
+      first: 150
+      sortKey: PUBLISHED_AT
+      reverse: true
+      query: "status:ACTIVE published_status:published"
+    ) {
+      nodes { ${PRODUCT_FIELDS} }
     }
     markets(first: 10) {
       nodes { name enabled primary }
@@ -55,6 +80,154 @@ export const CATALOG_QUERY = `#graphql
   }
 `;
 
+export function isCommerciallySellable(product) {
+  if (!product || product.isGiftCard || product.status !== "ACTIVE" || !product.publishedAt) {
+    return false;
+  }
+
+  const title = (product?.title ?? "").toLowerCase();
+  if (title.includes("gift card") || title.includes("giftcard")) return false;
+
+  const inventory = product?.totalInventory ?? 0;
+  if (inventory <= 0 && product.hasOutOfStockVariants === true) return false;
+
+  return true;
+}
+
+export function scoreCommercial(product) {
+  if (!isCommerciallySellable(product)) return -100;
+
+  let score = 0;
+  score += 35;
+  score += 15;
+
+  const inventory = product?.totalInventory ?? 0;
+  if (inventory > 20) score += 30;
+  else if (inventory > 0) score += 20;
+  else if (product?.hasOutOfStockVariants === false) score += 15;
+
+  return score;
+}
+
+function findBestSellersCollection(collections = []) {
+  const matches = collections.filter(
+    (c) =>
+      BEST_SELLER_PATTERN.test(c.title ?? "") ||
+      BEST_SELLER_PATTERN.test(c.handle ?? ""),
+  );
+  if (matches.length === 0) return null;
+  return matches.sort(
+    (a, b) => (b.productsCount?.count ?? 0) - (a.productsCount?.count ?? 0),
+  )[0];
+}
+
+function dedupeProducts(products) {
+  const seen = new Set();
+  const out = [];
+  for (const product of products) {
+    if (!product?.id || seen.has(product.id)) continue;
+    seen.add(product.id);
+    out.push(product);
+  }
+  return out;
+}
+
+export function selectTopCommercialProducts(rawData, limit = PRIORITY_LIMIT, salesRanking = null) {
+  const collectionsWithProducts = rawData?.bestSellerCollections?.nodes ?? [];
+  const bestCollection = findBestSellersCollection(collectionsWithProducts);
+  const pool = rawData?.catalogPool?.nodes ?? [];
+
+  let source = "commercial_ranking";
+  let sourceLabelKey = "selectionFromRanking";
+  let candidates = [];
+
+  if (bestCollection?.products?.nodes?.length) {
+    candidates = dedupeProducts(bestCollection.products.nodes);
+  }
+
+  candidates = dedupeProducts([...candidates, ...pool]);
+
+  const activeCandidates = candidates.filter(isCommerciallySellable);
+
+  if (salesRanking?.byId?.size >= 5) {
+    const ranked = activeCandidates
+      .map((product) => ({
+        product,
+        sales: salesRanking.byId.get(product.id) ?? null,
+        commercialScore: scoreCommercial(product),
+      }))
+      .sort((a, b) => {
+        const aOrders = a.sales?.orders ?? 0;
+        const bOrders = b.sales?.orders ?? 0;
+        if (bOrders !== aOrders) return bOrders - aOrders;
+
+        const aSales = a.sales?.totalSales ?? 0;
+        const bSales = b.sales?.totalSales ?? 0;
+        if (bSales !== aSales) return bSales - aSales;
+
+        return b.commercialScore - a.commercialScore;
+      })
+      .slice(0, limit)
+      .map((row) => row.product);
+
+    if (ranked.length > 0) {
+      return {
+        products: ranked,
+        meta: {
+          source: "sales_analytics",
+          sourceLabelKey: "selectionFromSales",
+          collectionTitle: bestCollection?.title ?? null,
+          poolSize: pool.length,
+          selectedCount: ranked.length,
+          salesCount: salesRanking.count,
+          salesLookbackDays: 90,
+        },
+      };
+    }
+  }
+
+  if (bestCollection?.products?.nodes?.length && candidates.length >= Math.min(10, limit)) {
+    source = "best_sellers_collection";
+    sourceLabelKey = "selectionFromBestSellers";
+  }
+
+  const ranked = activeCandidates
+    .map((product) => ({ product, commercialScore: scoreCommercial(product) }))
+    .filter((row) => row.commercialScore > 0)
+    .sort((a, b) => b.commercialScore - a.commercialScore)
+    .slice(0, limit)
+    .map((row) => row.product);
+
+  const products =
+    ranked.length > 0
+      ? ranked
+      : dedupeProducts(pool.filter(isCommerciallySellable)).slice(0, limit);
+
+  return {
+    products,
+    meta: {
+      source,
+      sourceLabelKey,
+      collectionTitle: bestCollection?.title ?? null,
+      poolSize: pool.length,
+      selectedCount: products.length,
+    },
+  };
+}
+
+export async function prepareCatalogData(admin, rawData) {
+  const salesRanking = admin ? await fetchSalesRanking(admin) : null;
+  const enrichedData = admin
+    ? await enrichCatalogWithSalesProducts(admin, rawData, salesRanking)
+    : rawData;
+  const selection = selectTopCommercialProducts(enrichedData, PRIORITY_LIMIT, salesRanking);
+  return {
+    ...enrichedData,
+    products: { nodes: selection.products },
+    catalogSelection: selection.meta,
+  };
+}
+
 function stripHtml(html) {
   return (html ?? "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
@@ -80,43 +253,40 @@ function hasBodyDesc(p) {
   return stripHtml(p.descriptionHtml ?? p.description).length >= 40;
 }
 
-export function scoreProduct(product) {
+export function scoreProduct(product, locale = "en") {
+  const tr = (key) => translate(locale, key);
   let score = 0;
   const reasons = [];
   const title = (product.title || "").toLowerCase();
 
   if (!hasSeoTitle(product)) {
     score += 30;
-    reasons.push("Sin SEO title");
+    reasons.push(tr("reasonNoSeoTitle"));
   }
   if (!hasSeoDesc(product)) {
     score += 25;
-    reasons.push("Sin SEO description");
+    reasons.push(tr("reasonNoSeoDesc"));
   }
   if (!hasBodyDesc(product)) {
     score += 20;
-    reasons.push("Sin descripción");
-  }
-  if (title.includes("snowboard") && !title.includes("gift")) {
-    score += 15;
-    reasons.push("Catálogo core — snowboard");
+    reasons.push(tr("reasonNoDesc"));
   }
   if (title.includes("gift")) {
     score -= 10;
-    reasons.push("Prioridad baja — gift card");
+    reasons.push(tr("reasonGiftCard"));
   }
   if ((product.tags || []).length === 0) {
     score += 5;
-    reasons.push("Sin tags semánticos");
+    reasons.push(tr("reasonNoTags"));
   }
 
   const viability = score >= 60 ? "ALTA" : score >= 35 ? "MEDIA" : "BAJA";
   return { score, reasons, viability };
 }
 
-export function buildProductMatrix(products) {
+export function buildProductMatrix(products, locale = "en") {
   return products
-    .map((p) => ({ product: p, ...scoreProduct(p) }))
+    .map((p) => ({ product: p, ...scoreProduct(p, locale) }))
     .sort((a, b) => b.score - a.score);
 }
 
@@ -190,7 +360,7 @@ export function analyzeExecutive(data, locale = "en", options = {}) {
   const markets = data?.markets?.nodes ?? [];
   const locations = data?.locations?.nodes ?? [];
   const pages = data?.pages?.nodes ?? [];
-  const matrix = buildProductMatrix(allProducts);
+  const matrix = buildProductMatrix(allProducts, locale);
   const priorityProducts = getPriorityProducts(allProducts, matrix);
   const catalogTotal = data?.productsCount?.count ?? allProducts.length;
   const enabledMarkets = markets.filter((m) => m.enabled).length;
@@ -286,15 +456,16 @@ export function analyzeExecutive(data, locale = "en", options = {}) {
   };
 }
 
-export function analyzeSnapshot(data) {
+export function analyzeSnapshot(data, locale = "en") {
   const products = data?.products?.nodes ?? [];
   const markets = (data?.markets?.nodes ?? []).filter((m) => m.enabled);
   const locales = (data?.shopLocales ?? []).filter((l) => l.published);
   const catalogTotal = data?.productsCount?.count ?? products.length;
-  const matrix = buildProductMatrix(products);
+  const matrix = buildProductMatrix(products, locale);
   const priorityProducts = getPriorityProducts(products, matrix);
   const highPriority = matrix.filter((r) => r.viability === "ALTA").length;
   const mediumPriority = matrix.filter((r) => r.viability === "MEDIA").length;
+  const selection = data?.catalogSelection ?? {};
 
   return {
     shop: data.shop,
@@ -308,6 +479,9 @@ export function analyzeSnapshot(data) {
       priorityLimit: PRIORITY_LIMIT,
       highPriority,
       mediumPriority,
+      selectionSource: selection.source,
+      selectionLabelKey: selection.sourceLabelKey,
+      selectionCollection: selection.collectionTitle,
       marketsLabel: markets.map((m) => `${m.name}${m.primary ? " ★" : ""}`).join(", "),
       localesLabel: locales.map((l) => l.name).join(", "),
     },

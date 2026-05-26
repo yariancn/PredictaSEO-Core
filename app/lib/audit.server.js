@@ -9,9 +9,8 @@ function withTimeout(promise, ms, fallback) {
 
 export async function loadAuditData(request) {
   const { authenticate, SETUP_PLAN, MAINTENANCE_PLAN } = await import("../shopify.server");
-  const { CATALOG_QUERY, analyzeExecutive, analyzeSnapshot, getPriorityProducts } = await import(
-    "./diagnostic.server.js"
-  );
+  const { CATALOG_QUERY, analyzeExecutive, analyzeSnapshot, getPriorityProducts, prepareCatalogData } =
+    await import("./diagnostic.server.js");
   const { buildForenseReport, buildOrganizationJsonLd, groupProductsByCategory } = await import(
     "./forense.server.js"
   );
@@ -24,7 +23,7 @@ export async function loadAuditData(request) {
   const prisma = (await import("../db.server.js")).default;
 
   const COPY_KEYS = [
-    "title", "subtitle", "heroTitle", "heroBody", "scopeNote", "stepOf",
+    "title", "subtitle", "heroTitle", "heroBody", "scopeNote", "selectionNote", "priorityPlanSummary", "stepOf",
     "catalogScoreLabel", "foundationScoreLabel", "scoreExplain",
     "scoreBreakdownTitle", "foundationBreakdownTitle", "scoreAfterApply", "scoreGainGeneric", "scoreAlmostComplete", "scoreNow", "scoreImproved", "scoreSeoComplete",
     "factorSeoTitle", "factorSeoDesc", "factorDesc", "factorSchema", "factorSchemaDone",
@@ -35,7 +34,11 @@ export async function loadAuditData(request) {
     "products", "markets", "continue", "back",
     "stateTitle", "impactTitle", "planTitle", "rollbackNote",
     "priorityTitle", "priorityExplain", "rank", "product", "score", "targetScore", "loading", "loadingHint", "error", "impactIntro",
-    "previewTitle", "previewSummary", "previewSchema", "previewDesc", "schemaEmbedNote", "before", "after", "seoTitle", "apply", "confirmLabel",
+    "previewTitle", "previewApplyIntro", "previewRowTitles", "previewRowDescs", "previewRowBodies",
+    "previewRowMirror", "previewRowBatch", "previewRowBrand", "previewMirrorLegend", "previewTableIntro",
+    "previewSchema", "previewDesc", "schemaEmbedNote", "before", "after", "seoTitle", "apply", "confirmLabel",
+    "reasonNoSeoTitle", "reasonNoSeoDesc", "reasonNoDesc", "reasonGiftCard", "reasonNoTags",
+    "selectionFromBestSellers", "selectionFromRanking", "selectionFromSales",
     "applying", "applySuccess", "applySuccessWithSchema", "applySuccessSchemaOnly", "applyError", "noChanges",
     "restore", "restoreAll", "restoreAllConfirm", "restoreAllSuccess", "restoreAllSchemaOnly", "restoreAllHint", "restoreSuccess", "restoring",
     "resetTestTitle", "resetTestBody", "resetTestConfirm", "resetTestSuccess", "resetTestLoading",
@@ -70,20 +73,21 @@ export async function loadAuditData(request) {
   }
 
   const locale = getStoreLocale(data);
-  const snapshot = analyzeSnapshot(data);
-  const categories = groupProductsByCategory(data.products?.nodes ?? [], snapshot.matrix);
+  const catalogData = await prepareCatalogData(admin, data);
+  const snapshot = analyzeSnapshot(catalogData, locale);
+  const categories = groupProductsByCategory(catalogData.products?.nodes ?? [], snapshot.matrix);
   const jsonLd = buildOrganizationJsonLd(
     data.shop,
     snapshot.markets,
     data.locations?.nodes ?? [],
   );
   const { active: schemaActive } = await getSchemaStatus(session.shop);
-  const priorityProducts = getPriorityProducts(data.products?.nodes ?? [], snapshot.matrix);
+  const priorityProducts = getPriorityProducts(catalogData.products?.nodes ?? [], snapshot.matrix);
   const preview = buildPreviewPlan(priorityProducts, data.shop.name, snapshot.matrix, {
     jsonLd,
     schemaActive,
   });
-  const executive = analyzeExecutive(data, locale, {
+  const executive = analyzeExecutive(catalogData, locale, {
     previewItems: preview.items,
     schemaActive,
     schemaPending: preview.schema?.willApply,
@@ -92,7 +96,7 @@ export async function loadAuditData(request) {
 
   const appliedCatalog = await getAppliedCatalogSummary(
     session.shop,
-    data.products?.nodes ?? [],
+    catalogData.products?.nodes ?? [],
     (key) => t(locale, key),
   );
 

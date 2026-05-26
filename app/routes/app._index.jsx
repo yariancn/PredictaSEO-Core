@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { LoadingShell } from "../components/AppShell.jsx";
 import { AppErrorShell, routeErrorHint, routeErrorMessage } from "../components/AppErrorShell.jsx";
 import { formatStepLabel } from "../lib/locale.js";
-import { describePreviewChanges, copyText } from "../lib/preview.js";
+import { describePreviewChanges, copyText, getPreviewChangeStats, fillCopy } from "../lib/preview.js";
 import { formatProjectedScoreRange } from "../lib/score.js";
 
 export async function loader({ request }) {
@@ -15,9 +15,8 @@ export async function loader({ request }) {
 
 export async function action({ request }) {
   const { authenticate, SETUP_PLAN, MAINTENANCE_PLAN } = await import("../shopify.server");
-  const { CATALOG_QUERY, analyzeExecutive, analyzeSnapshot, getPriorityProducts } = await import(
-    "../lib/diagnostic.server.js"
-  );
+  const { CATALOG_QUERY, analyzeExecutive, analyzeSnapshot, getPriorityProducts, prepareCatalogData } =
+    await import("../lib/diagnostic.server.js");
   const {
     buildForenseReport,
     buildOrganizationJsonLd,
@@ -78,8 +77,10 @@ export async function action({ request }) {
       if (errors?.length) {
         return json({ intent: "reset-test-store", resetTestError: errors.map((e) => e.message).join("; ") });
       }
-      const snapshot = analyzeSnapshot(data);
-      const priorityProducts = getPriorityProducts(data.products?.nodes ?? [], snapshot.matrix);
+      const locale = getStoreLocale(data);
+      const catalogData = await prepareCatalogData(admin, data);
+      const snapshot = analyzeSnapshot(catalogData, locale);
+      const priorityProducts = getPriorityProducts(catalogData.products?.nodes ?? [], snapshot.matrix);
       const result = await resetTestStoreForDemo(admin, session.shop, priorityProducts);
       return json({ intent: "reset-test-store", resetTestResult: result });
     } catch (err) {
@@ -110,14 +111,16 @@ export async function action({ request }) {
       if (errors?.length) {
         return json({ intent: "apply", applyError: errors.map((e) => e.message).join("; ") });
       }
-      const snapshot = analyzeSnapshot(data);
+      const locale = getStoreLocale(data);
+      const catalogData = await prepareCatalogData(admin, data);
+      const snapshot = analyzeSnapshot(catalogData, locale);
       const jsonLd = buildOrganizationJsonLd(
         data.shop,
         snapshot.markets,
         data.locations?.nodes ?? [],
       );
       const { active: schemaActive } = await getSchemaStatus(session.shop);
-      const priorityProducts = getPriorityProducts(data.products?.nodes ?? [], snapshot.matrix);
+      const priorityProducts = getPriorityProducts(catalogData.products?.nodes ?? [], snapshot.matrix);
       const preview = buildPreviewPlan(
         priorityProducts,
         data.shop.name,
@@ -127,8 +130,7 @@ export async function action({ request }) {
       if (preview.total === 0) {
         return json({ intent: "apply", applyError: "No changes to apply" });
       }
-      const locale = getStoreLocale(data);
-      const beforeExec = analyzeExecutive(data, locale, {
+      const beforeExec = analyzeExecutive(catalogData, locale, {
         previewItems: preview.items,
         schemaActive,
         schemaPending: preview.schema?.willApply,
@@ -140,7 +142,8 @@ export async function action({ request }) {
       const { data: dataAfter, errors: errorsAfter } = await responseAfter.json();
       let afterExec = beforeExec;
       if (!errorsAfter?.length && dataAfter) {
-        afterExec = analyzeExecutive(dataAfter, locale, {
+        const catalogAfter = await prepareCatalogData(admin, dataAfter);
+        afterExec = analyzeExecutive(catalogAfter, locale, {
           previewItems: [],
           schemaActive: result.schemaApplied || schemaActive,
         });
@@ -188,22 +191,23 @@ export async function action({ request }) {
     }
 
     const locale = getStoreLocale(data);
-    const snapshot = analyzeSnapshot(data);
-    const categories = groupProductsByCategory(data.products?.nodes ?? [], snapshot.matrix);
+    const catalogData = await prepareCatalogData(admin, data);
+    const snapshot = analyzeSnapshot(catalogData, locale);
+    const categories = groupProductsByCategory(catalogData.products?.nodes ?? [], snapshot.matrix);
     const jsonLd = buildOrganizationJsonLd(
       data.shop,
       snapshot.markets,
       data.locations?.nodes ?? [],
     );
     const { active: schemaActive } = await getSchemaStatus(session.shop);
-    const priorityProducts = getPriorityProducts(data.products?.nodes ?? [], snapshot.matrix);
+    const priorityProducts = getPriorityProducts(catalogData.products?.nodes ?? [], snapshot.matrix);
     const preview = buildPreviewPlan(
       priorityProducts,
       data.shop.name,
       snapshot.matrix,
       { jsonLd, schemaActive },
     );
-    const executive = analyzeExecutive(data, locale, {
+    const executive = analyzeExecutive(catalogData, locale, {
       previewItems: preview.items,
       schemaActive,
       schemaPending: preview.schema?.willApply,
@@ -864,6 +868,17 @@ function IndexWizard({
   const scopeLabel = copyText(copy, "scopeNote", "Analyzed {{analyzed}} products · Catalog {{total}}")
     .replace("{{analyzed}}", String(snapSummary?.priorityCount ?? 0))
     .replace("{{total}}", String(snapSummary?.catalogTotal ?? 0));
+  const selectionSource = fillCopy(
+    copyText(copy, snapSummary?.selectionLabelKey ?? "selectionFromRanking"),
+    { collection: snapSummary?.selectionCollection ?? "" },
+  );
+  const selectionNote = fillCopy(copyText(copy, "selectionNote"), { selection: selectionSource });
+  const priorityPlanLine = fillCopy(copyText(copy, "priorityPlanSummary"), {
+    count: preview.productCount,
+    batches: preview.batchCount,
+    mirrors: preview.mirrorCount,
+  });
+  const previewStats = getPreviewChangeStats(preview);
   const canApply = billing?.canApply ?? false;
   const analysisInProgress = summaryLoading || (!summary && !summaryError);
   const canContinueFromAnalysis = Boolean(summary) || Boolean(summaryError);
@@ -1065,13 +1080,19 @@ function IndexWizard({
 
       {step === 2 && (
         <>
-          <p style={{ ...theme.body, marginBottom: "14px", fontSize: "0.82rem", color: "#a5b4fc", textAlign: "center" }}>
+          <p style={{ ...theme.body, marginBottom: "8px", fontSize: "0.82rem", color: "#a5b4fc", textAlign: "center" }}>
             {scopeLabel}
+          </p>
+          <p style={{ ...theme.body, marginBottom: "14px", fontSize: "0.78rem", color: "#8b8b9a", textAlign: "center" }}>
+            {selectionNote}
           </p>
           <div style={theme.card}>
             <h2 style={theme.h2}>{copy.priorityTitle}</h2>
-            <p style={{ ...theme.body, marginBottom: "14px", fontSize: "0.82rem", color: "#8b8b9a" }}>
+            <p style={{ ...theme.body, marginBottom: "10px", fontSize: "0.82rem", color: "#8b8b9a" }}>
               {copy.priorityExplain}
+            </p>
+            <p style={{ ...theme.body, marginBottom: "14px", fontSize: "0.82rem", color: "#a5b4fc" }}>
+              {priorityPlanLine}
             </p>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.88rem" }}>
               <thead>
@@ -1235,15 +1256,60 @@ function IndexWizard({
               </>
             ) : (
               <>
-                <p style={{ ...theme.body, marginBottom: "14px", color: "#a5b4fc" }}>
-                  {copy.previewSummary
-                    .replace("{{count}}", String(preview.productCount))
-                    .replace("{{batches}}", String(preview.batchCount))
-                    .replace("{{mirrors}}", String(preview.mirrorCount))}
-                </p>
+                <div
+                  style={{
+                    marginBottom: "14px",
+                    padding: "14px 16px",
+                    borderRadius: "10px",
+                    background: "rgba(99,102,241,0.12)",
+                    border: "1px solid rgba(99,102,241,0.25)",
+                  }}
+                >
+                  <p style={{ ...theme.body, fontWeight: 600, color: "#e8e8ff", marginBottom: "10px" }}>
+                    {copyText(copy, "previewApplyIntro", "What we'll update on your store")}
+                  </p>
+                  {previewStats.searchTitles > 0 && (
+                    <p style={theme.bullet("#a5b4fc")}>
+                      {fillCopy(copyText(copy, "previewRowTitles"), { count: previewStats.searchTitles })}
+                    </p>
+                  )}
+                  {previewStats.searchDescs > 0 && (
+                    <p style={theme.bullet("#a5b4fc")}>
+                      {fillCopy(copyText(copy, "previewRowDescs"), { count: previewStats.searchDescs })}
+                    </p>
+                  )}
+                  {previewStats.productDescs > 0 && (
+                    <p style={theme.bullet("#a5b4fc")}>
+                      {fillCopy(copyText(copy, "previewRowBodies"), { count: previewStats.productDescs })}
+                    </p>
+                  )}
+                  {previewStats.mirrorCount > 0 && (
+                    <p style={theme.bullet("#a5b4fc")}>
+                      {fillCopy(copyText(copy, "previewRowMirror"), { count: previewStats.mirrorCount })}
+                    </p>
+                  )}
+                  {previewStats.batchCount > 0 && (
+                    <p style={theme.bullet("#8b8b9a")}>
+                      {fillCopy(copyText(copy, "previewRowBatch"), { count: previewStats.batchCount })}
+                    </p>
+                  )}
+                  {previewStats.schemaWillApply && (
+                    <p style={theme.bullet("#a3e635")}>
+                      {copyText(copy, "previewRowBrand", "Brand identity for AI search")}
+                    </p>
+                  )}
+                </div>
                 {preview.schema?.willApply && (
-                  <p style={{ ...theme.body, marginBottom: "14px", color: "#a3e635" }}>
+                  <p style={{ ...theme.body, marginBottom: "14px", color: "#a3e635", fontSize: "0.82rem" }}>
                     {copy.previewSchema}
+                  </p>
+                )}
+                <p style={{ ...theme.body, marginBottom: "10px", fontSize: "0.82rem", color: "#8b8b9a" }}>
+                  {copyText(copy, "previewTableIntro", "Sample of changes:")}
+                </p>
+                {previewStats.mirrorCount > 0 && (
+                  <p style={{ ...theme.body, marginBottom: "10px", fontSize: "0.78rem", color: "#6b6b78" }}>
+                    {copyText(copy, "previewMirrorLegend", "★ = top seller polish")}
                   </p>
                 )}
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.78rem" }}>
@@ -1261,7 +1327,7 @@ function IndexWizard({
                           {item.isMirror && <span style={{ color: "#a5b4fc" }}> ★</span>}
                         </td>
                         <td style={{ padding: "10px 4px", color: "#a3e635", verticalAlign: "top" }}>
-                          {describePreviewChanges(item).map((line) => (
+                          {describePreviewChanges(item, copy).map((line) => (
                             <div key={line} style={{ marginBottom: "4px" }}>
                               {line}
                             </div>
