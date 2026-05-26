@@ -1,17 +1,20 @@
 import { useState } from "react";
 import { json } from "@remix-run/node";
 import { Form, useActionData, useLoaderData } from "@remix-run/react";
+import { loginErrorMessage } from "./error.server";
 
 export const loader = async ({ request }) => {
-  const errors = new URL(request.url).searchParams.get("errors");
-  return json({ hasErrors: Boolean(errors) });
+  const { login } = await import("../../shopify.server");
+  const result = await login(request);
+  if (result instanceof Response) return result;
+  return json(loginErrorMessage(result));
 };
 
 export const action = async ({ request }) => {
   const { login } = await import("../../shopify.server");
-  const formData = await request.formData();
-  const shop = formData.get("shop");
-  return login(shop);
+  const result = await login(request);
+  if (result instanceof Response) return result;
+  return json(loginErrorMessage(result));
 };
 
 const shellStyle = {
@@ -23,10 +26,10 @@ const shellStyle = {
 };
 
 export default function Login() {
-  const { hasErrors } = useLoaderData();
+  const loaderData = useLoaderData();
   const actionData = useActionData();
   const [shop, setShop] = useState("");
-  const showError = hasErrors || actionData?.errors;
+  const hasErrors = actionData?.hasErrors || loaderData?.hasErrors;
 
   return (
     <div style={shellStyle}>
@@ -65,14 +68,14 @@ export default function Login() {
                 boxSizing: "border-box",
                 padding: "12px 14px",
                 borderRadius: "8px",
-                border: showError ? "1px solid #ef4444" : "1px solid rgba(255,255,255,0.12)",
+                border: hasErrors ? "1px solid #ef4444" : "1px solid rgba(255,255,255,0.12)",
                 background: "#0a0a10",
                 color: "#fff",
                 fontSize: "0.95rem",
-                marginBottom: showError ? "8px" : "16px",
+                marginBottom: hasErrors ? "8px" : "16px",
               }}
             />
-            {showError ? (
+            {hasErrors ? (
               <p style={{ margin: "0 0 16px 0", color: "#fca5a5", fontSize: "0.85rem" }}>
                 Dominio no válido. Usa el formato tu-tienda.myshopify.com
               </p>
