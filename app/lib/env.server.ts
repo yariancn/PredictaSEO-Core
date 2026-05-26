@@ -15,6 +15,14 @@ export function getShopifyApiKey() {
   );
 }
 
+export function getShopifyApiSecret() {
+  return (
+    process.env.SHOPIFY_API_SECRET?.trim() ||
+    process.env.SHOPIFY_CLIENT_SECRET?.trim() ||
+    ""
+  );
+}
+
 export function getShopifyAppUrl() {
   const explicit = process.env.SHOPIFY_APP_URL?.trim();
   if (explicit) return explicit.replace(/\/$/, "");

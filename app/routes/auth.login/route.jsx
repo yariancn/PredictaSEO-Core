@@ -3,25 +3,42 @@ import { json } from "@remix-run/node";
 import { Form, useActionData, useLoaderData } from "@remix-run/react";
 import { loginErrorMessage } from "./error.server";
 
-async function handleLogin(request) {
-  const { login } = await import("../../shopify.server");
+async function loadShopifyLogin() {
   try {
-    const result = await login(request);
-    if (result instanceof Response) return result;
-    return json(loginErrorMessage(result));
+    const { login } = await import("../../shopify.server");
+    return login;
   } catch (error) {
-    if (error instanceof Response) return error;
-    console.error("[PredictaCore] login failed:", error);
-    throw error;
+    console.error("[PredictaCore] Shopify init failed:", error?.message ?? error);
+    return null;
   }
 }
 
 export const loader = async ({ request }) => {
-  const errors = new URL(request.url).searchParams.get("errors");
-  return json({ hasErrors: Boolean(errors) });
+  const login = await loadShopifyLogin();
+  if (!login) {
+    return json({
+      hasErrors: false,
+      configError:
+        "Server misconfigured — missing SHOPIFY_CLIENT_SECRET on Railway. Add it in Variables and redeploy.",
+    });
+  }
+  return json(loginErrorMessage(await login(request)));
 };
 
-export const action = handleLogin;
+export const action = async ({ request }) => {
+  const login = await loadShopifyLogin();
+  if (!login) {
+    return json(
+      {
+        hasErrors: false,
+        configError:
+          "Server misconfigured — missing SHOPIFY_CLIENT_SECRET on Railway. Add it in Variables and redeploy.",
+      },
+      { status: 503 },
+    );
+  }
+  return json(loginErrorMessage(await login(request)));
+};
 
 const shellStyle = {
   fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
@@ -36,6 +53,7 @@ export default function Login() {
   const actionData = useActionData();
   const [shop, setShop] = useState("");
   const hasErrors = actionData?.hasErrors || loaderData?.hasErrors;
+  const configError = actionData?.configError || loaderData?.configError;
 
   return (
     <div style={shellStyle}>
@@ -49,6 +67,23 @@ export default function Login() {
         <p style={{ margin: "0 0 24px 0", fontSize: "0.9rem", color: "#8b8b9a", lineHeight: 1.5 }}>
           Entra con tu tienda Shopify para abrir el panel de análisis premium.
         </p>
+
+        {configError && (
+          <div
+            style={{
+              marginBottom: "16px",
+              padding: "14px 16px",
+              borderRadius: "10px",
+              background: "rgba(239,68,68,0.12)",
+              border: "1px solid rgba(239,68,68,0.35)",
+              color: "#fca5a5",
+              fontSize: "0.88rem",
+              lineHeight: 1.5,
+            }}
+          >
+            {configError}
+          </div>
+        )}
 
         <div
           style={{
@@ -69,6 +104,7 @@ export default function Login() {
               onChange={(event) => setShop(event.target.value)}
               placeholder="tu-tienda.myshopify.com"
               autoComplete="off"
+              disabled={Boolean(configError)}
               style={{
                 width: "100%",
                 boxSizing: "border-box",
@@ -92,16 +128,19 @@ export default function Login() {
             )}
             <button
               type="submit"
+              disabled={Boolean(configError)}
               style={{
                 width: "100%",
                 padding: "12px 16px",
                 borderRadius: "8px",
                 border: "none",
-                background: "linear-gradient(90deg, #6366f1, #818cf8)",
+                background: configError
+                  ? "rgba(255,255,255,0.12)"
+                  : "linear-gradient(90deg, #6366f1, #818cf8)",
                 color: "#fff",
                 fontWeight: 600,
                 fontSize: "0.95rem",
-                cursor: "pointer",
+                cursor: configError ? "not-allowed" : "pointer",
               }}
             >
               Continuar con Shopify

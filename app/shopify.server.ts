@@ -7,15 +7,14 @@ import {
 } from "@shopify/shopify-app-remix/server";
 import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
 import prisma from "./db.server";
-import { getShopifyApiKey, getShopifyAppUrl, getShopifyScopes } from "./lib/env.server";
+import { getShopifyApiKey, getShopifyAppUrl, getShopifyApiSecret, getShopifyScopes } from "./lib/env.server";
 
 export const SETUP_PLAN = "SETUP";
 export const MAINTENANCE_PLAN = "MAINTENANCE";
 
 const shopify = shopifyApp({
   apiKey: getShopifyApiKey(),
-  apiSecretKey:
-    process.env.SHOPIFY_API_SECRET || process.env.SHOPIFY_CLIENT_SECRET || "",
+  apiSecretKey: getShopifyApiSecret(),
   apiVersion: ApiVersion.April26,
   scopes: getShopifyScopes(),
   appUrl: getShopifyAppUrl(),

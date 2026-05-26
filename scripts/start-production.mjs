@@ -13,6 +13,19 @@ if (!process.env.SHOPIFY_APP_URL?.trim()) {
 }
 
 console.log(`[PredictaCore] SHOPIFY_APP_URL=${process.env.SHOPIFY_APP_URL || "missing"}`);
+
+const hasClientSecret = Boolean(
+  process.env.SHOPIFY_CLIENT_SECRET?.trim() || process.env.SHOPIFY_API_SECRET?.trim(),
+);
+console.log(`[PredictaCore] SHOPIFY_CLIENT_SECRET=${hasClientSecret ? "set" : "MISSING"}`);
+
+if (process.env.NODE_ENV === "production" && !hasClientSecret) {
+  console.error(
+    "[PredictaCore] FATAL: Set SHOPIFY_CLIENT_SECRET (or SHOPIFY_API_SECRET) in Railway Variables.",
+  );
+  process.exit(1);
+}
+
 console.log(`[PredictaCore] Starting server on ${host}:${port}`);
 
 const child = spawn(
