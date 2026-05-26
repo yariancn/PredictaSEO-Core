@@ -28,7 +28,7 @@ const MESSAGES = {
     scoreAlmostComplete:
       "{{count}} products still need fixes — go to step 4 and Apply to reach ~{{score}}/100",
     scoreNow: "Your score: {{score}}/100",
-    scoreImproved: "Updated — you went from {{before}} to {{after}}.",
+    scoreImproved: "AI readiness score: {{before}} → {{after}}",
     scoreSeoComplete: "Your store is fully optimized for AI search",
     factorSeoTitle: "{{missing}} of {{total}} products need a search title",
     factorSeoTitleDone: "All products have search titles",
@@ -106,13 +106,22 @@ const MESSAGES = {
     applying: "Applying…",
     applySuccess: "Done — {{count}} products updated. Backup saved.",
     applySuccessWithSchema: "Done — {{count}} products updated and brand identity saved. Backup saved.",
-    applySuccessSchemaOnly:
-      "Done — products were already optimized. Brand identity saved. Backup saved.",
+    applySuccessSchemaOnly: "Done — brand identity activated. Backup saved.",
     resultsTitle: "What changed",
-    resultsSummary: "{{count}} products updated across {{categories}} categories.",
-    resultsSummaryProductsDone:
-      "0 products updated — SEO was already complete on your priority catalog.",
-    resultsSummarySchema: "Brand identity is now active on your store.",
+    resultsScoreExplainSchemaOnly:
+      "{{before}} → {{after}}: we activated brand identity for AI search (+{{gain}} pts). Your {{count}} priority products already had complete SEO — no product edits were needed.",
+    resultsScoreExplainFull:
+      "{{before}} → {{after}}: {{productCount}} products updated and brand identity saved (+{{gain}} pts total).",
+    resultsScoreExplainProducts:
+      "{{before}} → {{after}}: {{productCount}} products updated across {{categories}} categories.",
+    resultsAppliedTitle: "What we applied",
+    resultsAppliedBrand: "Brand identity (Schema.org JSON-LD) — saved for AI search in your markets",
+    resultsAppliedProductsUpdated: "{{count}} products — search titles and/or descriptions updated",
+    resultsAppliedProductsVerified: "{{count}} priority products — SEO verified complete (no changes needed)",
+    resultsScoreBreakdownTitle: "Why your score changed",
+    resultsScoreRowCatalog: "Product SEO · {{count}} priority products",
+    resultsScoreRowBrand: "Brand identity for AI search",
+    resultsBackupNote: "Backup saved before any change.",
     resultsTimeline:
       "When to expect results: usually 2–4 weeks for AI to re-read your store. Mentions in AI assistants often improve in 4–8 weeks.",
     resultsProductsTitle: "Every product we updated",
@@ -151,7 +160,8 @@ const MESSAGES = {
     expectationsNot1: "Instant mentions in AI search today — crawlers need time to re-read your store.",
     expectationsNot2: "A guaranteed #1 ranking — AI search results change constantly.",
     expectationsDoneTitle: "What we applied to your store",
-    expectationsDone1: "Search titles and descriptions on priority products",
+    expectationsDone1Updated: "{{count}} products — search titles and descriptions updated",
+    expectationsDone1Verified: "{{count}} priority products reviewed — SEO already complete",
     expectationsDone2: "Product descriptions where they were missing",
     expectationsDone3: "Brand identity for AI search (enable embed in Theme Settings if you haven't)",
     expectationsDone4: "Full backup — restore anytime from step 4",
@@ -184,7 +194,7 @@ const MESSAGES = {
     scoreAlmostComplete:
       "Quedan {{count}} productos por corregir — ve al paso 4 y aplica para llegar a ~{{score}}/100",
     scoreNow: "Tu score: {{score}}/100",
-    scoreImproved: "Actualizado — pasaste de {{before}} a {{after}}.",
+    scoreImproved: "Score de preparación AI: {{before}} → {{after}}",
     scoreSeoComplete: "Tu tienda está optimizada para búsqueda AI",
     factorSeoTitle: "{{missing}} de {{total}} productos necesitan título de búsqueda",
     factorSeoTitleDone: "Todos tienen título de búsqueda",
@@ -262,13 +272,22 @@ const MESSAGES = {
     applying: "Aplicando…",
     applySuccess: "Listo — {{count}} productos actualizados. Backup guardado.",
     applySuccessWithSchema: "Listo — {{count}} productos actualizados e identidad de marca guardada. Backup guardado.",
-    applySuccessSchemaOnly:
-      "Listo — los productos ya estaban optimizados. Identidad de marca guardada. Backup guardado.",
+    applySuccessSchemaOnly: "Listo — identidad de marca activada. Backup guardado.",
     resultsTitle: "Qué cambió",
-    resultsSummary: "{{count}} productos actualizados en {{categories}} categorías.",
-    resultsSummaryProductsDone:
-      "0 productos actualizados — el SEO del catálogo prioritario ya estaba completo.",
-    resultsSummarySchema: "La identidad de marca ya está activa en tu tienda.",
+    resultsScoreExplainSchemaOnly:
+      "{{before}} → {{after}}: activamos la identidad de marca para AI search (+{{gain}} pts). Tus {{count}} productos prioritarios ya tenían SEO completo — no se editaron productos.",
+    resultsScoreExplainFull:
+      "{{before}} → {{after}}: {{productCount}} productos actualizados e identidad de marca guardada (+{{gain}} pts en total).",
+    resultsScoreExplainProducts:
+      "{{before}} → {{after}}: {{productCount}} productos actualizados en {{categories}} categorías.",
+    resultsAppliedTitle: "Qué aplicamos",
+    resultsAppliedBrand: "Identidad de marca (Schema.org JSON-LD) — guardada para AI search en tus mercados",
+    resultsAppliedProductsUpdated: "{{count}} productos — títulos y/o descripciones de búsqueda actualizados",
+    resultsAppliedProductsVerified: "{{count}} productos prioritarios — SEO verificado completo (sin cambios)",
+    resultsScoreBreakdownTitle: "Por qué cambió tu score",
+    resultsScoreRowCatalog: "SEO de productos · {{count}} prioritarios",
+    resultsScoreRowBrand: "Identidad de marca para AI search",
+    resultsBackupNote: "Backup guardado antes de cualquier cambio.",
     resultsTimeline:
       "Cuándo ver resultados: los crawlers AI suelen reindexar en 2–4 semanas. Citas en asistentes y Google AI Overviews suelen mejorar en 4–8 semanas.",
     resultsProductsTitle: "Cada producto que actualizamos",
@@ -307,7 +326,8 @@ const MESSAGES = {
     expectationsNot1: "Menciones instantáneas en AI search hoy — los crawlers necesitan tiempo para re-leer tu tienda.",
     expectationsNot2: "Garantía de posición #1 — los resultados de AI search cambian constantemente.",
     expectationsDoneTitle: "Qué aplicamos en tu tienda",
-    expectationsDone1: "Títulos y descripciones de búsqueda en productos prioritarios",
+    expectationsDone1Updated: "{{count}} productos — títulos y descripciones de búsqueda actualizados",
+    expectationsDone1Verified: "{{count}} productos prioritarios revisados — SEO ya completo",
     expectationsDone2: "Descripciones de producto donde faltaban",
     expectationsDone3: "Identidad de marca para AI search (activa el embed en Theme Settings si no lo hiciste)",
     expectationsDone4: "Backup completo — restaura cuando quieras desde el paso 4",

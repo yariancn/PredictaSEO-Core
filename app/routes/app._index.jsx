@@ -119,12 +119,12 @@ export async function action({ request }) {
 
       const responseAfter = await admin.graphql(CATALOG_QUERY);
       const { data: dataAfter, errors: errorsAfter } = await responseAfter.json();
-      let scoreAfter = beforeExec.scoreAfterApply;
+      let afterExec = beforeExec;
       if (!errorsAfter?.length && dataAfter) {
-        scoreAfter = analyzeExecutive(dataAfter, locale, {
+        afterExec = analyzeExecutive(dataAfter, locale, {
           previewItems: [],
           schemaActive: result.schemaApplied || schemaActive,
-        }).score;
+        });
       }
 
       return json({
@@ -135,7 +135,12 @@ export async function action({ request }) {
           batchCount: preview.batchCount,
           appliedItems: buildAppliedItemsFromPreview(preview.items),
           scoreBefore: beforeExec.score,
-          scoreAfter,
+          scoreAfter: afterExec.score,
+          catalogScoreBefore: beforeExec.catalogScore,
+          foundationScoreBefore: beforeExec.foundationScore,
+          catalogScoreAfter: afterExec.catalogScore,
+          foundationScoreAfter: afterExec.foundationScore,
+          priorityCount: beforeExec.priorityCount,
         },
         hasBackup: true,
       });
@@ -335,7 +340,164 @@ function Progress({ step, total }) {
   );
 }
 
-function ExpectationsPanel({ copy, priorityCount, schemaOnlyOutcome = false, billing, billingFetcher, showMaintenance = true }) {
+function fillTemplate(text, vars = {}) {
+  let out = text;
+  for (const [key, value] of Object.entries(vars)) {
+    out = out.replaceAll(`{{${key}}}`, String(value));
+  }
+  return out;
+}
+
+function ScoreBreakdownRow({ label, before, after }) {
+  const changed = before !== after;
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        gap: "12px",
+        padding: "8px 0",
+        borderTop: "1px solid rgba(255,255,255,0.06)",
+        fontSize: "0.82rem",
+      }}
+    >
+      <span style={{ color: "#c8c8d0" }}>{label}</span>
+      <span style={{ color: changed ? "#a3e635" : "#8b8b9a", fontWeight: changed ? 600 : 400, whiteSpace: "nowrap" }}>
+        {before}/100 → {after}/100
+      </span>
+    </div>
+  );
+}
+
+function ApplyResultsCard({
+  copy,
+  applyResult,
+  executive,
+  setupComplete,
+  preview,
+  displayAppliedItems,
+  productsUpdatedCount,
+  schemaWasApplied,
+  schemaOnlyOutcome,
+  priorityCount,
+  onViewDashboard,
+}) {
+  const scoreBefore = applyResult?.scoreBefore ?? executive?.score;
+  const scoreAfter = applyResult?.scoreAfter ?? executive?.score;
+  const gain = Math.max(0, (scoreAfter ?? 0) - (scoreBefore ?? 0));
+  const catalogBefore = applyResult?.catalogScoreBefore ?? executive?.catalogScore ?? 0;
+  const catalogAfter = applyResult?.catalogScoreAfter ?? executive?.catalogScore ?? 0;
+  const foundationBefore = applyResult?.foundationScoreBefore ?? executive?.foundationScore ?? 0;
+  const foundationAfter = applyResult?.foundationScoreAfter ?? executive?.foundationScore ?? 0;
+  const priorityTotal = applyResult?.priorityCount ?? priorityCount ?? 0;
+
+  let explainKey = "resultsScoreExplainProducts";
+  if (schemaOnlyOutcome || (productsUpdatedCount === 0 && schemaWasApplied)) {
+    explainKey = "resultsScoreExplainSchemaOnly";
+  } else if (applyResult?.schemaApplied && productsUpdatedCount > 0) {
+    explainKey = "resultsScoreExplainFull";
+  }
+
+  const explain = fillTemplate(copyText(copy, explainKey, ""), {
+    before: scoreBefore,
+    after: scoreAfter,
+    gain,
+    count: priorityTotal,
+    productCount: productsUpdatedCount,
+    categories: applyResult?.batchCount ?? preview?.batchCount ?? 0,
+  });
+
+  return (
+    <div style={{ ...theme.card, borderColor: "rgba(163,230,53,0.3)" }}>
+      <h2 style={{ ...theme.h2, color: "#a3e635" }}>{copy.resultsTitle}</h2>
+
+      {applyResult?.scoreBefore != null && applyResult?.scoreAfter != null && (
+        <p style={{ ...theme.body, color: "#fff", marginBottom: "8px", fontWeight: 700, fontSize: "1.05rem" }}>
+          {fillTemplate(copy.scoreImproved, { before: scoreBefore, after: scoreAfter })}
+        </p>
+      )}
+      {!applyResult && setupComplete && (
+        <p style={{ ...theme.body, color: "#fff", marginBottom: "8px", fontWeight: 700, fontSize: "1.05rem" }}>
+          {copy.scoreNow.replace("{{score}}", String(executive.score))}
+        </p>
+      )}
+
+      {explain && applyResult && (
+        <p style={{ ...theme.body, marginBottom: "14px", color: "#e8e8ef", lineHeight: 1.55 }}>{explain}</p>
+      )}
+      {!applyResult && setupComplete && (
+        <p style={{ ...theme.body, marginBottom: "14px", color: "#e8e8ef", lineHeight: 1.55 }}>
+          {copy.scoreSeoComplete}
+        </p>
+      )}
+
+      <p style={{ ...theme.h2, marginBottom: "4px" }}>
+        {copyText(copy, "resultsScoreBreakdownTitle", "Why your score changed")}
+      </p>
+      <ScoreBreakdownRow
+        label={fillTemplate(copyText(copy, "resultsScoreRowCatalog", "Product SEO"), { count: priorityTotal })}
+        before={catalogBefore}
+        after={catalogAfter}
+      />
+      <ScoreBreakdownRow
+        label={copyText(copy, "resultsScoreRowBrand", "Brand identity for AI search")}
+        before={foundationBefore}
+        after={foundationAfter}
+      />
+
+      <p style={{ ...theme.h2, marginTop: "16px", marginBottom: "4px" }}>
+        {copyText(copy, "resultsAppliedTitle", "What we applied")}
+      </p>
+      {schemaWasApplied && (
+        <p style={theme.bullet("#a3e635")}>{copyText(copy, "resultsAppliedBrand", "Brand identity saved")}</p>
+      )}
+      {productsUpdatedCount > 0 ? (
+        <p style={theme.bullet("#a3e635")}>
+          {fillTemplate(copyText(copy, "resultsAppliedProductsUpdated", ""), { count: productsUpdatedCount })}
+        </p>
+      ) : (
+        <p style={theme.bullet("#a5b4fc")}>
+          {fillTemplate(copyText(copy, "resultsAppliedProductsVerified", ""), { count: priorityTotal })}
+        </p>
+      )}
+
+      {applyResult && (
+        <p style={{ ...theme.body, fontSize: "0.82rem", color: "#8b8b9a", marginTop: "12px" }}>
+          {copyText(copy, "resultsBackupNote", "Backup saved.")}
+        </p>
+      )}
+
+      <AppliedProductsList items={displayAppliedItems} copy={copy} />
+
+      {schemaWasApplied && (
+        <p style={{ ...theme.body, fontSize: "0.82rem", color: "#8b8b9a", marginTop: "10px" }}>
+          {copy.schemaEmbedNote}
+        </p>
+      )}
+      {applyResult?.schemaError && (
+        <p style={{ ...theme.body, color: "#fbbf24", fontSize: "0.82rem", marginTop: "10px" }}>
+          {applyResult.schemaError}
+        </p>
+      )}
+      {applyResult?.errors?.length > 0 && (
+        <p style={{ ...theme.body, color: "#f87171", fontSize: "0.82rem", marginTop: "10px" }}>
+          {applyResult.errors.slice(0, 2).join("; ")}
+        </p>
+      )}
+      {setupComplete && onViewDashboard && (
+        <button
+          type="button"
+          style={{ ...theme.btnGhost, marginTop: "12px", width: "100%" }}
+          onClick={onViewDashboard}
+        >
+          {copy.viewScoreDashboard}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function ExpectationsPanel({ copy, priorityCount, productsUpdatedCount = 0, schemaOnlyOutcome = false, schemaWasApplied = false, billing, billingFetcher, showMaintenance = true }) {
   const count = String(priorityCount);
   const fill = (text) => text.replace("{{count}}", count);
 
@@ -356,9 +518,21 @@ function ExpectationsPanel({ copy, priorityCount, schemaOnlyOutcome = false, bil
       <p style={theme.bullet("#fbbf24")}>{copy.expectationsNot2}</p>
 
       <p style={{ ...theme.h2, marginTop: "16px" }}>{copy.expectationsDoneTitle}</p>
-      <p style={theme.bullet("#a5b4fc")}>{copy.expectationsDone1}</p>
-      <p style={theme.bullet("#a5b4fc")}>{copy.expectationsDone2}</p>
-      <p style={theme.bullet("#a5b4fc")}>{copy.expectationsDone3}</p>
+      <p style={theme.bullet("#a5b4fc")}>
+        {productsUpdatedCount > 0
+          ? fillTemplate(copyText(copy, "expectationsDone1Updated", copy.expectationsDone2), {
+              count: productsUpdatedCount,
+            })
+          : fillTemplate(copyText(copy, "expectationsDone1Verified", copy.expectationsDone2), {
+              count: priorityCount,
+            })}
+      </p>
+      {productsUpdatedCount > 0 && (
+        <p style={theme.bullet("#a5b4fc")}>{copy.expectationsDone2}</p>
+      )}
+      {schemaWasApplied && (
+        <p style={theme.bullet("#a5b4fc")}>{copy.expectationsDone3}</p>
+      )}
       <p style={theme.bullet("#a5b4fc")}>{copy.expectationsDone4}</p>
 
       <p style={{ ...theme.h2, marginTop: "16px" }}>{copy.expectationsTimelineTitle}</p>
@@ -1001,78 +1175,28 @@ function IndexWizard({
           )}
 
           {(applyResult || setupComplete) && (
-            <div style={{ ...theme.card, borderColor: "rgba(163,230,53,0.3)" }}>
-              <h2 style={{ ...theme.h2, color: "#a3e635" }}>{copy.resultsTitle}</h2>
-              {applyResult?.scoreBefore != null && applyResult?.scoreAfter != null && (
-                <p style={{ ...theme.body, color: "#a3e635", marginBottom: "10px", fontWeight: 600 }}>
-                  {copy.scoreImproved
-                    .replace("{{before}}", String(applyResult.scoreBefore))
-                    .replace("{{after}}", String(applyResult.scoreAfter))}
-                </p>
-              )}
-              {!applyResult && setupComplete && (
-                <p style={{ ...theme.body, color: "#a3e635", marginBottom: "10px", fontWeight: 600 }}>
-                  {copy.scoreNow.replace("{{score}}", String(executive.score))}
-                </p>
-              )}
-              {applyResult && (
-                <p style={{ ...theme.body, color: "#a3e635", marginBottom: "10px" }}>
-                  {productsUpdatedCount === 0 && applyResult.schemaApplied
-                    ? copyText(copy, "applySuccessSchemaOnly", "Done — brand identity saved. Backup saved.")
-                    : copyText(
-                        copy,
-                        applyResult.schemaApplied ? "applySuccessWithSchema" : "applySuccess",
-                        "Done — {{count}} products updated. Backup saved.",
-                      ).replace("{{count}}", String(productsUpdatedCount))}
-                </p>
-              )}
-              <p style={{ ...theme.body, marginBottom: "4px" }}>
-                {productsUpdatedCount === 0 && schemaWasApplied
-                  ? copyText(
-                      copy,
-                      "resultsSummaryProductsDone",
-                      "0 products updated — SEO was already complete on your priority catalog.",
-                    )
-                  : copyText(copy, "resultsSummary", "{{count}} products updated across {{categories}} categories.")
-                      .replace("{{count}}", String(productsUpdatedCount))
-                      .replace("{{categories}}", String(applyResult?.batchCount ?? preview.batchCount ?? 0))}
-                {schemaWasApplied
-                  ? ` ${copyText(copy, "resultsSummarySchema", "Brand identity is now active on your store.")}`
-                  : ""}
-              </p>
-              <AppliedProductsList items={displayAppliedItems} copy={copy} />
-              {(applyResult?.schemaApplied || executive.foundationScore >= 100) && (
-                <p style={{ ...theme.body, fontSize: "0.82rem", color: "#8b8b9a", marginTop: "10px" }}>
-                  {copy.schemaEmbedNote}
-                </p>
-              )}
-              {applyResult?.schemaError && (
-                <p style={{ ...theme.body, color: "#fbbf24", fontSize: "0.82rem", marginTop: "10px" }}>
-                  {applyResult.schemaError}
-                </p>
-              )}
-              {applyResult?.errors?.length > 0 && (
-                <p style={{ ...theme.body, color: "#f87171", fontSize: "0.82rem", marginTop: "10px" }}>
-                  {applyResult.errors.slice(0, 2).join("; ")}
-                </p>
-              )}
-              {setupComplete && (
-                <button
-                  type="button"
-                  style={{ ...theme.btnGhost, marginTop: "12px", width: "100%" }}
-                  onClick={() => setStep(1)}
-                >
-                  {copy.viewScoreDashboard}
-                </button>
-              )}
-            </div>
+            <ApplyResultsCard
+              copy={copy}
+              applyResult={applyResult}
+              executive={executive}
+              setupComplete={setupComplete}
+              preview={preview}
+              displayAppliedItems={displayAppliedItems}
+              productsUpdatedCount={productsUpdatedCount}
+              schemaWasApplied={schemaWasApplied}
+              schemaOnlyOutcome={schemaOnlyOutcome}
+              priorityCount={snapSummary.priorityCount}
+              onViewDashboard={() => setStep(1)}
+            />
           )}
 
           {(applyResult || setupComplete) && (
             <ExpectationsPanel
               copy={copy}
               priorityCount={snapSummary.priorityCount}
+              productsUpdatedCount={productsUpdatedCount}
               schemaOnlyOutcome={schemaOnlyOutcome}
+              schemaWasApplied={schemaWasApplied}
               billing={billing}
               billingFetcher={billingFetcher}
             />
