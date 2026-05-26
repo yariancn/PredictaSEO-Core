@@ -53,25 +53,24 @@ function parseSalesRows(tableData) {
   return { byId, orderedIds, count: orderedIds.length };
 }
 
-export async function fetchAllActiveProducts(admin, maxCount) {
+export async function fetchAllCatalogProducts(admin, maxCount) {
   if (!admin?.graphql || maxCount <= 0) return [];
 
   const products = [];
   let cursor = null;
-  const filter = "status:ACTIVE published_status:published";
 
   while (products.length < maxCount) {
     const first = Math.min(50, maxCount - products.length);
     try {
       const response = await admin.graphql(
         `#graphql
-        query PredictaCoreAllProducts($first: Int!, $after: String, $query: String!) {
-          products(first: $first, after: $after, sortKey: PUBLISHED_AT, reverse: true, query: $query) {
+        query PredictaCoreAllProducts($first: Int!, $after: String) {
+          products(first: $first, after: $after, sortKey: UPDATED_AT, reverse: true) {
             nodes { ${PRODUCT_FIELDS} }
             pageInfo { hasNextPage endCursor }
           }
         }`,
-        { variables: { first, after: cursor, query: filter } },
+        { variables: { first, after: cursor } },
       );
       const { data, errors } = await response.json();
       if (errors?.length) break;

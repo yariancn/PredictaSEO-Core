@@ -866,9 +866,12 @@ function IndexWizard({
       : null;
   const catalogFactors = (executive.scoreFactors ?? []).filter((f) => f.group === "catalog");
   const foundationFactors = (executive.scoreFactors ?? []).filter((f) => f.group === "foundation");
-  const scopeLabel = copyText(copy, "scopeNote", "Analyzed {{analyzed}} products · Catalog {{total}}")
-    .replace("{{analyzed}}", String(snapSummary?.priorityCount ?? 0))
-    .replace("{{total}}", String(snapSummary?.catalogTotal ?? 0));
+  const scopeKey =
+    snapSummary?.selectionLabelKey === "selectionFullCatalog" ? "scopeNoteFullCatalog" : "scopeNote";
+  const scopeLabel = fillCopy(copyText(copy, scopeKey), {
+    analyzed: snapSummary?.priorityCount ?? 0,
+    total: snapSummary?.catalogTotal ?? 0,
+  });
   const selectionSource = fillCopy(
     copyText(copy, snapSummary?.selectionLabelKey ?? "selectionFromRanking"),
     {

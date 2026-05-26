@@ -81,6 +81,15 @@ export const CATALOG_QUERY = `#graphql
   }
 `;
 
+export function isFullCatalogProduct(product) {
+  if (!product?.id || product.isGiftCard) return false;
+
+  const title = (product?.title ?? "").toLowerCase();
+  if (title.includes("gift card") || title.includes("giftcard")) return false;
+
+  return true;
+}
+
 export function isOptimizableProduct(product) {
   if (!product || product.isGiftCard || product.status !== "ACTIVE" || !product.publishedAt) {
     return false;
@@ -156,7 +165,7 @@ export function selectTopCommercialProducts(rawData, limit = PRIORITY_LIMIT, sal
   candidates = dedupeProducts([...candidates, ...pool]);
 
   if (catalogTotal > 0 && catalogTotal <= limit) {
-    const products = dedupeProducts(candidates.filter(isOptimizableProduct)).slice(0, limit);
+    const products = dedupeProducts(pool.filter(isFullCatalogProduct)).slice(0, limit);
 
     return {
       products,
@@ -248,8 +257,8 @@ export async function prepareCatalogData(admin, rawData) {
     salesRanking = await fetchSalesRanking(admin);
     enrichedData = await enrichCatalogWithSalesProducts(admin, rawData, salesRanking);
   } else if (catalogTotal > 0 && catalogTotal <= PRIORITY_LIMIT && admin) {
-    const { fetchAllActiveProducts } = await import("./sales-ranking.server.js");
-    const fullProducts = await fetchAllActiveProducts(admin, catalogTotal);
+    const { fetchAllCatalogProducts } = await import("./sales-ranking.server.js");
+    const fullProducts = await fetchAllCatalogProducts(admin, catalogTotal);
     if (fullProducts.length > 0) {
       enrichedData = { ...rawData, catalogPool: { nodes: fullProducts } };
     }
