@@ -1,0 +1,15 @@
+import { RemixBrowser } from "@remix-run/react";
+import { startTransition } from "react";
+import { hydrateRoot } from "react-dom/client";
+
+startTransition(() => {
+  hydrateRoot(
+    document,
+    <RemixBrowser />,
+    {
+      onRecoverableError(error) {
+        console.error("[PredictaCore] Hydration recoverable error:", error);
+      },
+    },
+  );
+});

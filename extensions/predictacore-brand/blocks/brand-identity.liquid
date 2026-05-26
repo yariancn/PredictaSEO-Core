@@ -1,0 +1,14 @@
+{%- assign brand_ld = shop.metafields.predictacore.organization_json_ld -%}
+{%- if brand_ld != blank -%}
+<script type="application/ld+json">
+{{- brand_ld.value | json -}}
+</script>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "PredictaCore Brand",
+  "target": "head",
+  "settings": []
+}
+{% endschema %}

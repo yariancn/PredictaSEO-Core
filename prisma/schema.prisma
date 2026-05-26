@@ -1,0 +1,81 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Session {
+  id            String    @id
+  shop          String
+  state         String
+  isOnline      Boolean   @default(false)
+  scope         String?
+  expires       DateTime?
+  accessToken   String
+  userId        BigInt?
+  firstName     String?
+  lastName      String?
+  email         String?
+  accountOwner  Boolean   @default(false)
+  locale        String?
+  collaborator  Boolean?  @default(false)
+  emailVerified Boolean?  @default(false)
+  refreshToken        String?
+  refreshTokenExpires DateTime?
+}
+
+// Modelo para la inteligencia de PredictaCore
+model ShopSettings {
+  id                Int      @id @default(autoincrement())
+  shop              String   @unique
+  specialization    String?
+  manufacturing     String?
+  customization     String?
+  lastAiAnalysis    DateTime @default(now())
+}
+
+// Perfil de entidad — Capa 1 (Bloque Forense)
+model EntityProfile {
+  id              Int      @id @default(autoincrement())
+  shop            String   @unique
+  entityName      String?
+  specialization  String?
+  areaServed      String?
+  entityHook      String?
+  jsonLdDraft     String?
+  aiVerdict       String?
+  schemaActive    Boolean  @default(false)
+  schemaThemeId   String?
+  lastGenerated   DateTime @default(now())
+}
+
+// Snapshots para rollback con confirmación — Capa 4 prep
+model OptimizationSnapshot {
+  id            Int       @id @default(autoincrement())
+  shop          String
+  resourceType  String
+  resourceId    String
+  field         String
+  originalValue String?
+  optimizedValue String?
+  batchId       String?
+  appliedAt     DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([shop, batchId])
+  @@index([shop, resourceType, resourceId])
+}
+
+model ShopBilling {
+  shop               String    @id
+  setupPaid          Boolean   @default(false)
+  setupPaidAt        DateTime?
+  subscriptionActive Boolean   @default(false)
+  updatedAt          DateTime  @updatedAt
+}

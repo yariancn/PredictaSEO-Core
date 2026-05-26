@@ -1,0 +1,7 @@
+api_version = "2026-04"
+
+[[extensions]]
+name = "PredictaCore Brand"
+handle = "predictacore-brand-identity"
+type = "theme"
+uid = "predictacore-brand-identity-001"
