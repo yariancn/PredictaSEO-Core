@@ -335,7 +335,7 @@ function Progress({ step, total }) {
   );
 }
 
-function ExpectationsPanel({ copy, priorityCount, billing, billingFetcher, showMaintenance = true }) {
+function ExpectationsPanel({ copy, priorityCount, schemaOnlyOutcome = false, billing, billingFetcher, showMaintenance = true }) {
   const count = String(priorityCount);
   const fill = (text) => text.replace("{{count}}", count);
 
@@ -345,7 +345,11 @@ function ExpectationsPanel({ copy, priorityCount, billing, billingFetcher, showM
 
       <p style={{ ...theme.h2, marginTop: "16px" }}>{copy.expectationsMeansTitle}</p>
       <p style={theme.bullet("#a3e635")}>{copy.expectationsMeans1}</p>
-      <p style={theme.bullet("#a3e635")}>{fill(copy.expectationsMeans2)}</p>
+      <p style={theme.bullet("#a3e635")}>
+        {schemaOnlyOutcome
+          ? copyText(copy, "expectationsMeans2ProductsDone", copy.expectationsMeans2)
+          : fill(copy.expectationsMeans2)}
+      </p>
 
       <p style={{ ...theme.h2, marginTop: "16px" }}>{copy.expectationsNotTitle}</p>
       <p style={theme.bullet("#fbbf24")}>{copy.expectationsNot1}</p>
@@ -603,6 +607,7 @@ function IndexWizard({
   const stepLabel = formatStepLabel(copyText(copy, "stepOf", "Step {{current}} of {{total}}"), step, totalSteps);
   const applyGain = executive.scoreAfterApply - executive.score;
   const allComplete = preview.total === 0;
+  const schemaOnlyPreview = preview.productCount === 0 && preview.schema?.willApply;
   const catalogGaps = (executive.scoreFactors ?? []).filter((f) => f.group === "catalog" && !f.ok).length;
   const gapsRemain = preview.total > 0 || catalogGaps > 0;
   const pendingOptimization = applyGain > 0 && gapsRemain;
@@ -622,10 +627,23 @@ function IndexWizard({
     .replace("{{analyzed}}", String(snapSummary?.priorityCount ?? 0))
     .replace("{{total}}", String(snapSummary?.catalogTotal ?? 0));
   const canApply = billing?.canApply ?? false;
+  const analysisInProgress = summaryLoading || (!summary && !summaryError);
+  const canContinueFromAnalysis = Boolean(summary) || Boolean(summaryError);
+  const productsUpdatedCount =
+    applyResult?.productCount ?? applyResult?.applied ?? displayAppliedItems.length ?? 0;
+  const schemaWasApplied = Boolean(applyResult?.schemaApplied || (setupComplete && executive.foundationScore >= 100));
+  const schemaOnlyOutcome =
+    Boolean(applyResult?.schemaApplied && productsUpdatedCount === 0) ||
+    (setupComplete && preview.productCount === 0 && executive.foundationScore >= 100);
   const whyUsItems = [copy.whyUs1, copy.whyUs2, copy.whyUs3, copy.whyUs4];
 
   return (
     <div style={theme.page}>
+      <style>{`
+        @keyframes pc-spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
       <header style={{ marginBottom: "20px" }}>
         <p style={{ margin: 0, fontSize: "0.75rem", color: "#6366f1", fontWeight: 600, letterSpacing: "0.06em" }}>
           {copy.subtitle}
@@ -812,19 +830,45 @@ function IndexWizard({
             ))}
           </div>
 
-          {summaryLoading && (
-            <div style={theme.card}>
-              <p style={{ ...theme.body, color: "#8b8b9a" }}>{copy.loading}</p>
+          {(analysisInProgress || summary) && (
+            <div
+              style={{
+                ...theme.card,
+                borderColor: analysisInProgress ? "rgba(99,102,241,0.55)" : "rgba(255,255,255,0.08)",
+                background: analysisInProgress ? "rgba(99,102,241,0.12)" : undefined,
+              }}
+            >
+              {analysisInProgress && (
+                <>
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "10px" }}>
+                    <div
+                      style={{
+                        width: "18px",
+                        height: "18px",
+                        borderRadius: "50%",
+                        border: "2px solid rgba(165,180,252,0.35)",
+                        borderTopColor: "#a5b4fc",
+                        animation: "pc-spin 0.8s linear infinite",
+                        flexShrink: 0,
+                      }}
+                    />
+                    <p style={{ ...theme.body, color: "#e8e8ff", fontWeight: 600, margin: 0 }}>
+                      {copy.loading}
+                    </p>
+                  </div>
+                  <p style={{ ...theme.body, fontSize: "0.82rem", color: "#c4c4ff", margin: 0 }}>
+                    {copyText(copy, "loadingHint", "Please wait before continuing.")}
+                  </p>
+                </>
+              )}
+              {summary && !summaryLoading && (
+                <p style={{ ...theme.body, whiteSpace: "pre-wrap", color: "#e8e8ef" }}>{summary}</p>
+              )}
             </div>
           )}
           {summaryError && (
             <div style={theme.card}>
               <p style={{ ...theme.body, color: "#f87171" }}>{summaryError}</p>
-            </div>
-          )}
-          {summary && !summaryLoading && (
-            <div style={theme.card}>
-              <p style={{ ...theme.body, whiteSpace: "pre-wrap" }}>{summary}</p>
             </div>
           )}
 
@@ -833,8 +877,15 @@ function IndexWizard({
           </div>
 
           <div style={{ display: "flex", gap: "10px" }}>
-            <button type="button" style={theme.btnGhost} onClick={() => setStep(2)}>{copy.back}</button>
-            <button type="button" style={{ ...theme.btnPrimary, flex: 2 }} onClick={() => setStep(4)}>
+            <button type="button" style={theme.btnGhost} onClick={() => setStep(2)} disabled={summaryLoading}>
+              {copy.back}
+            </button>
+            <button
+              type="button"
+              style={canContinueFromAnalysis && !summaryLoading ? { ...theme.btnPrimary, flex: 2 } : { ...theme.btnDisabled, flex: 2 }}
+              disabled={!canContinueFromAnalysis || summaryLoading}
+              onClick={() => setStep(4)}
+            >
               {copy.continue}
             </button>
           </div>
@@ -870,6 +921,37 @@ function IndexWizard({
             <h2 style={theme.h2}>{copy.previewTitle}</h2>
             {preview.total === 0 ? (
               <p style={{ ...theme.body, color: "#a3e635" }}>{copy.previewAllDone}</p>
+            ) : schemaOnlyPreview ? (
+              <>
+                <p style={{ ...theme.body, marginBottom: "12px", color: "#fbbf24" }}>
+                  {copyText(copy, "previewProductsDone", "Product SEO is already complete.")}
+                </p>
+                <p style={{ ...theme.body, marginBottom: "14px", color: "#e8e8ef" }}>
+                  {copyText(copy, "previewSchemaOnlyExplain", "Brand identity will be saved.")
+                    .replace("{{shop}}", shopName || shop || "your store")}
+                </p>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.78rem" }}>
+                  <thead>
+                    <tr style={{ color: "#6b6b78", textAlign: "left" }}>
+                      <th style={{ padding: "6px 4px" }}>{copy.product}</th>
+                      <th style={{ padding: "6px 4px" }}>{copy.after}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                      <td style={{ padding: "10px 4px", color: "#fff", verticalAlign: "top" }}>
+                        {copyText(copy, "previewSchemaRow", "Brand identity (Schema.org)")}
+                      </td>
+                      <td style={{ padding: "10px 4px", color: "#a3e635", verticalAlign: "top" }}>
+                        {copyText(copy, "previewSchemaRowDetail", "Organization JSON-LD metafield")}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+                <p style={{ ...theme.body, marginTop: "14px", color: "#a3e635", fontSize: "0.82rem" }}>
+                  {copy.previewSchema}
+                </p>
+              </>
             ) : (
               <>
                 <p style={{ ...theme.body, marginBottom: "14px", color: "#a5b4fc" }}>
@@ -935,18 +1017,26 @@ function IndexWizard({
               )}
               {applyResult && (
                 <p style={{ ...theme.body, color: "#a3e635", marginBottom: "10px" }}>
-                  {copyText(
-                    copy,
-                    applyResult.schemaApplied ? "applySuccessWithSchema" : "applySuccess",
-                    "Done — {{count}} products updated. Backup saved.",
-                  ).replace("{{count}}", String(applyResult.productCount ?? applyResult.applied))}
+                  {productsUpdatedCount === 0 && applyResult.schemaApplied
+                    ? copyText(copy, "applySuccessSchemaOnly", "Done — brand identity saved. Backup saved.")
+                    : copyText(
+                        copy,
+                        applyResult.schemaApplied ? "applySuccessWithSchema" : "applySuccess",
+                        "Done — {{count}} products updated. Backup saved.",
+                      ).replace("{{count}}", String(productsUpdatedCount))}
                 </p>
               )}
               <p style={{ ...theme.body, marginBottom: "4px" }}>
-                {copyText(copy, "resultsSummary", "{{count}} products updated across {{categories}} categories.")
-                  .replace("{{count}}", String(applyResult?.productCount ?? displayAppliedItems.length ?? 0))
-                  .replace("{{categories}}", String(applyResult?.batchCount ?? preview.batchCount ?? 0))}
-                {(applyResult?.schemaApplied || executive.foundationScore >= 100)
+                {productsUpdatedCount === 0 && schemaWasApplied
+                  ? copyText(
+                      copy,
+                      "resultsSummaryProductsDone",
+                      "0 products updated — SEO was already complete on your priority catalog.",
+                    )
+                  : copyText(copy, "resultsSummary", "{{count}} products updated across {{categories}} categories.")
+                      .replace("{{count}}", String(productsUpdatedCount))
+                      .replace("{{categories}}", String(applyResult?.batchCount ?? preview.batchCount ?? 0))}
+                {schemaWasApplied
                   ? ` ${copyText(copy, "resultsSummarySchema", "Brand identity is now active on your store.")}`
                   : ""}
               </p>
@@ -982,6 +1072,7 @@ function IndexWizard({
             <ExpectationsPanel
               copy={copy}
               priorityCount={snapSummary.priorityCount}
+              schemaOnlyOutcome={schemaOnlyOutcome}
               billing={billing}
               billingFetcher={billingFetcher}
             />

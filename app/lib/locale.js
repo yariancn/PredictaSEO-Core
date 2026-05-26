@@ -40,6 +40,11 @@ const MESSAGES = {
     factorSchemaDone: "Your brand is visible to AI",
     fixSeoDone: "Products — already complete ✓",
     previewAllDone: "Everything is already optimized. Nothing left to apply.",
+    previewProductsDone: "Product SEO is already complete — no title or description changes needed.",
+    previewSchemaOnlyExplain:
+      "We will save your brand identity (Schema.org JSON-LD) so AI search can recognize {{shop}} in US & Canada. Enable the theme embed after applying.",
+    previewSchemaRow: "Brand identity (Schema.org)",
+    previewSchemaRowDetail: "Organization JSON-LD metafield + theme embed instructions",
     seeUpdatedScore: "See updated score",
     whyUsTitle: "Why PredictaCore",
     whyUs1: "Full audit + preview free — pay only when you're convinced",
@@ -72,7 +77,8 @@ const MESSAGES = {
     product: "Product",
     score: "Priority",
     targetScore: "Target",
-    loading: "Analyzing…",
+    loading: "Analyzing your store with AI…",
+    loadingHint: "This usually takes 10–20 seconds. Please wait before continuing.",
     error: "Something went wrong",
     impactIntro:
       "AI search uses your product titles and descriptions when surfacing stores. Missing info makes you harder to find and recommend.",
@@ -100,8 +106,12 @@ const MESSAGES = {
     applying: "Applying…",
     applySuccess: "Done — {{count}} products updated. Backup saved.",
     applySuccessWithSchema: "Done — {{count}} products updated and brand identity saved. Backup saved.",
+    applySuccessSchemaOnly:
+      "Done — products were already optimized. Brand identity saved. Backup saved.",
     resultsTitle: "What changed",
     resultsSummary: "{{count}} products updated across {{categories}} categories.",
+    resultsSummaryProductsDone:
+      "0 products updated — SEO was already complete on your priority catalog.",
     resultsSummarySchema: "Brand identity is now active on your store.",
     resultsTimeline:
       "When to expect results: usually 2–4 weeks for AI to re-read your store. Mentions in AI assistants often improve in 4–8 weeks.",
@@ -135,6 +145,8 @@ const MESSAGES = {
     expectationsMeansTitle: "What your score means",
     expectationsMeans1: "Your store is ready to be read by AI search — titles, descriptions, and brand identity are in place.",
     expectationsMeans2: "We optimized your top {{count}} priority products (where AI impact matters most).",
+    expectationsMeans2ProductsDone:
+      "Your priority products already had complete SEO — we saved brand identity so AI search knows who you are.",
     expectationsNotTitle: "What it does NOT mean",
     expectationsNot1: "Instant mentions in AI search today — crawlers need time to re-read your store.",
     expectationsNot2: "A guaranteed #1 ranking — AI search results change constantly.",
@@ -184,6 +196,11 @@ const MESSAGES = {
     factorSchemaDone: "Tu marca es visible para las AI",
     fixSeoDone: "Productos — ya completos ✓",
     previewAllDone: "Todo optimizado. No hay cambios pendientes.",
+    previewProductsDone: "El SEO de productos ya está completo — no hay cambios de títulos ni descripciones.",
+    previewSchemaOnlyExplain:
+      "Guardaremos la identidad de marca (Schema.org JSON-LD) para que las AI reconozcan {{shop}} en US & Canada. Activa el embed del tema después de aplicar.",
+    previewSchemaRow: "Identidad de marca (Schema.org)",
+    previewSchemaRowDetail: "Metafield JSON-LD de organización + instrucciones del theme embed",
     previewSchema: "+ Identidad de marca preparada — activar en Theme Settings → App embeds",
     schemaEmbedNote:
       "Para mostrar tu marca en AI search: Online Store → Themes → Customize → App embeds → activar PredictaCore Brand.",
@@ -220,7 +237,8 @@ const MESSAGES = {
     product: "Producto",
     score: "Urgencia",
     targetScore: "Objetivo",
-    loading: "Analizando…",
+    loading: "Analizando tu tienda con IA…",
+    loadingHint: "Suele tardar 10–20 segundos. Espera antes de continuar.",
     error: "Algo salió mal",
     impactIntro:
       "La búsqueda AI usa títulos y descripciones de producto para mostrar tiendas. Si falta info, cuesta más que te encuentren.",
@@ -244,8 +262,12 @@ const MESSAGES = {
     applying: "Aplicando…",
     applySuccess: "Listo — {{count}} productos actualizados. Backup guardado.",
     applySuccessWithSchema: "Listo — {{count}} productos actualizados e identidad de marca guardada. Backup guardado.",
+    applySuccessSchemaOnly:
+      "Listo — los productos ya estaban optimizados. Identidad de marca guardada. Backup guardado.",
     resultsTitle: "Qué cambió",
     resultsSummary: "{{count}} productos actualizados en {{categories}} categorías.",
+    resultsSummaryProductsDone:
+      "0 productos actualizados — el SEO del catálogo prioritario ya estaba completo.",
     resultsSummarySchema: "La identidad de marca ya está activa en tu tienda.",
     resultsTimeline:
       "Cuándo ver resultados: los crawlers AI suelen reindexar en 2–4 semanas. Citas en asistentes y Google AI Overviews suelen mejorar en 4–8 semanas.",
@@ -279,6 +301,8 @@ const MESSAGES = {
     expectationsMeansTitle: "Qué significa tu score",
     expectationsMeans1: "Tu tienda está lista para AI search — títulos, descripciones e identidad de marca en su lugar.",
     expectationsMeans2: "Optimizamos tus {{count}} productos prioritarios (donde más impacta la visibilidad AI).",
+    expectationsMeans2ProductsDone:
+      "Tus productos prioritarios ya tenían SEO completo — guardamos la identidad de marca para que las AI sepan quién eres.",
     expectationsNotTitle: "Qué NO significa",
     expectationsNot1: "Menciones instantáneas en AI search hoy — los crawlers necesitan tiempo para re-leer tu tienda.",
     expectationsNot2: "Garantía de posición #1 — los resultados de AI search cambian constantemente.",
@@ -323,6 +347,11 @@ const MESSAGES = {
     factorSchemaDone: "Identité boutique — Schema.org actif",
     fixSeoDone: "Métadonnées SEO — déjà complètes ✓",
     previewAllDone: "Tous les produits ont déjà un SEO. Rien à appliquer.",
+    previewProductsDone: "Le SEO produit est déjà complet — aucun changement de titre ou description.",
+    previewSchemaOnlyExplain:
+      "Nous enregistrerons l'identité de marque (Schema.org JSON-LD) pour que l'IA reconnaisse {{shop}} aux US & Canada. Activez l'embed du thème après application.",
+    previewSchemaRow: "Identité de marque (Schema.org)",
+    previewSchemaRowDetail: "Metafield JSON-LD Organization + instructions theme embed",
     seeUpdatedScore: "Voir le score mis à jour",
     whyUsTitle: "Pourquoi PredictaCore",
     whyUs1: "Audit + aperçu gratuits — payez seulement quand vous êtes convaincu",
@@ -355,7 +384,8 @@ const MESSAGES = {
     product: "Produit",
     score: "Urgence",
     targetScore: "Objectif",
-    loading: "Analyse…",
+    loading: "Analyse de votre boutique avec l'IA…",
+    loadingHint: "Comptez 10–20 secondes. Patientez avant de continuer.",
     error: "Une erreur est survenue",
     impactIntro:
       "Notre IA a besoin de métadonnées produit structurées pour recommander votre boutique.",
@@ -379,12 +409,16 @@ const MESSAGES = {
     applying: "Application…",
     applySuccess: "{{count}} produits mis à jour. Sauvegarde enregistrée.",
     applySuccessWithSchema: "{{count}} produits mis à jour et identité de marque enregistrée. Sauvegarde enregistrée.",
+    applySuccessSchemaOnly:
+      "Terminé — produits déjà optimisés. Identité de marque enregistrée. Sauvegarde enregistrée.",
     resultsSummarySchema: "L'identité de marque est active sur votre boutique.",
     scoreAlmostComplete:
       "{{count}} produits restent à corriger — allez à l'étape 4 pour atteindre ~{{score}}/100",
     resultsTitle: "Ce qui a changé",
     resultsSummary:
       "{{count}} produits ont maintenant un titre SEO optimisé IA dans {{categories}} catégories ({{mirrors}} produits prioritaires affinés).",
+    resultsSummaryProductsDone:
+      "0 produit mis à jour — le SEO du catalogue prioritaire était déjà complet.",
     resultsTimeline:
       "Quand voir des résultats : les crawlers IA réindexent en 2–4 semaines. Les citations dans les assistants s'améliorent souvent en 4–8 semaines.",
     resultsProductsTitle: "Chaque produit mis à jour",

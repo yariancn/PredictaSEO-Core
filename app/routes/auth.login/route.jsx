@@ -3,19 +3,25 @@ import { json } from "@remix-run/node";
 import { Form, useActionData, useLoaderData } from "@remix-run/react";
 import { loginErrorMessage } from "./error.server";
 
-export const loader = async ({ request }) => {
+async function handleLogin(request) {
   const { login } = await import("../../shopify.server");
-  const result = await login(request);
-  if (result instanceof Response) return result;
-  return json(loginErrorMessage(result));
+  try {
+    const result = await login(request);
+    if (result instanceof Response) return result;
+    return json(loginErrorMessage(result));
+  } catch (error) {
+    if (error instanceof Response) return error;
+    console.error("[PredictaCore] login failed:", error);
+    throw error;
+  }
+}
+
+export const loader = async ({ request }) => {
+  const errors = new URL(request.url).searchParams.get("errors");
+  return json({ hasErrors: Boolean(errors) });
 };
 
-export const action = async ({ request }) => {
-  const { login } = await import("../../shopify.server");
-  const result = await login(request);
-  if (result instanceof Response) return result;
-  return json(loginErrorMessage(result));
-};
+export const action = handleLogin;
 
 const shellStyle = {
   fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
