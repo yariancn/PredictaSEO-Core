@@ -6,11 +6,13 @@ import { AppErrorShell, routeErrorHint, routeErrorMessage } from "../components/
 
 export const links = () => [{ rel: "stylesheet", href: polarisStyles }];
 
+import { getShopifyApiKey } from "../lib/env.server";
+
 export async function loader({ request }) {
   const { authenticate } = await import("../shopify.server");
   await authenticate.admin(request);
   return json({
-    apiKey: process.env.SHOPIFY_API_KEY || process.env.SHOPIFY_CLIENT_ID || "",
+    apiKey: getShopifyApiKey(),
   });
 }
 

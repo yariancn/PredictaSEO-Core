@@ -1,18 +1,14 @@
 import { useState } from "react";
 import { json } from "@remix-run/node";
 import { Form, useActionData, useLoaderData } from "@remix-run/react";
-import { Button, Card, FormLayout, Page, Text, TextField } from "@shopify/polaris";
-import polarisStyles from "@shopify/polaris/build/esm/styles.css?url";
-import { login } from "../../shopify.server";
-
-export const links = () => [{ rel: "stylesheet", href: polarisStyles }];
 
 export const loader = async ({ request }) => {
   const errors = new URL(request.url).searchParams.get("errors");
-  return json({ errors });
+  return json({ hasErrors: Boolean(errors) });
 };
 
 export const action = async ({ request }) => {
+  const { login } = await import("../../shopify.server");
   const formData = await request.formData();
   const shop = formData.get("shop");
   return login(shop);
@@ -27,9 +23,10 @@ const shellStyle = {
 };
 
 export default function Login() {
-  const { errors } = useLoaderData();
+  const { hasErrors } = useLoaderData();
   const actionData = useActionData();
   const [shop, setShop] = useState("");
+  const showError = hasErrors || actionData?.errors;
 
   return (
     <div style={shellStyle}>
@@ -41,29 +38,67 @@ export default function Login() {
           PredictaCore
         </h1>
         <p style={{ margin: "0 0 24px 0", fontSize: "0.9rem", color: "#8b8b9a", lineHeight: 1.5 }}>
-          Entra con tu tienda Shopify para abrir el panel de análisis. El wizard premium vive dentro del admin de Shopify, no en esta URL pública.
+          Entra con tu tienda Shopify para abrir el panel de análisis premium.
         </p>
-        <Page narrowWidth>
-          <Card>
-            <Form method="post">
-              <FormLayout>
-                <TextField
-                  label="Dominio de la tienda"
-                  name="shop"
-                  value={shop}
-                  onChange={setShop}
-                  placeholder="tu-tienda.myshopify.com"
-                  autoComplete="off"
-                  helpText="Ejemplo: ai-entity-test-yarian-daelj76i.myshopify.com"
-                  error={errors || actionData?.errors ? "Dominio no válido" : undefined}
-                />
-                <Button submit variant="primary">
-                  Continuar con Shopify
-                </Button>
-              </FormLayout>
-            </Form>
-          </Card>
-        </Page>
+
+        <div
+          style={{
+            background: "rgba(255,255,255,0.04)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            borderRadius: "12px",
+            padding: "20px",
+          }}
+        >
+          <Form method="post">
+            <label htmlFor="shop" style={{ display: "block", fontSize: "0.85rem", marginBottom: "8px", color: "#c4c4d0" }}>
+              Dominio de la tienda
+            </label>
+            <input
+              id="shop"
+              name="shop"
+              value={shop}
+              onChange={(event) => setShop(event.target.value)}
+              placeholder="tu-tienda.myshopify.com"
+              autoComplete="off"
+              style={{
+                width: "100%",
+                boxSizing: "border-box",
+                padding: "12px 14px",
+                borderRadius: "8px",
+                border: showError ? "1px solid #ef4444" : "1px solid rgba(255,255,255,0.12)",
+                background: "#0a0a10",
+                color: "#fff",
+                fontSize: "0.95rem",
+                marginBottom: showError ? "8px" : "16px",
+              }}
+            />
+            {showError ? (
+              <p style={{ margin: "0 0 16px 0", color: "#fca5a5", fontSize: "0.85rem" }}>
+                Dominio no válido. Usa el formato tu-tienda.myshopify.com
+              </p>
+            ) : (
+              <p style={{ margin: "0 0 16px 0", color: "#6b6b7a", fontSize: "0.8rem" }}>
+                Ejemplo: ai-entity-test-yarian-daelj76i.myshopify.com
+              </p>
+            )}
+            <button
+              type="submit"
+              style={{
+                width: "100%",
+                padding: "12px 16px",
+                borderRadius: "8px",
+                border: "none",
+                background: "linear-gradient(90deg, #6366f1, #818cf8)",
+                color: "#fff",
+                fontWeight: 600,
+                fontSize: "0.95rem",
+                cursor: "pointer",
+              }}
+            >
+              Continuar con Shopify
+            </button>
+          </Form>
+        </div>
       </div>
     </div>
   );

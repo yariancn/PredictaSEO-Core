@@ -4,6 +4,17 @@ const DEFAULT_SCOPES =
 const PRODUCTION_APP_URL =
   "https://predictaseo-core-production.up.railway.app";
 
+// Public client id from shopify.app.toml — safe to ship as fallback
+const DEFAULT_API_KEY = "08747e1aee44008f3206d0e0d4c1b130";
+
+export function getShopifyApiKey() {
+  return (
+    process.env.SHOPIFY_API_KEY?.trim() ||
+    process.env.SHOPIFY_CLIENT_ID?.trim() ||
+    DEFAULT_API_KEY
+  );
+}
+
 export function getShopifyAppUrl() {
   const explicit = process.env.SHOPIFY_APP_URL?.trim();
   if (explicit) return explicit.replace(/\/$/, "");
