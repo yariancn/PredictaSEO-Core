@@ -1,5 +1,5 @@
 import { json } from "@remix-run/node";
-import { useFetcher, useLoaderData, useRouteError, isRouteErrorResponse } from "@remix-run/react";
+import { Form, useFetcher, useLoaderData, useRouteError, isRouteErrorResponse } from "@remix-run/react";
 import { useEffect, useState } from "react";
 import { LoadingShell } from "../components/AppShell.jsx";
 import { AppErrorShell, routeErrorHint, routeErrorMessage } from "../components/AppErrorShell.jsx";
@@ -30,15 +30,18 @@ export async function action({ request }) {
   const { getSchemaStatus } = await import("../lib/schema.server.js");
   const { getStoreLocale, t } = await import("../lib/locale.js");
   const { isBillingBypassed, isBillingTest } = await import("../lib/billing.server.js");
+  const { getShopifyAppUrl } = await import("../lib/env.server.ts");
 
   const { admin, session, billing } = await authenticate.admin(request);
   const form = await request.formData();
   const intent = form.get("intent");
+  const returnUrl = `${getShopifyAppUrl()}/app`;
 
   if (intent === "billing-setup") {
     return billing.request({
       plan: SETUP_PLAN,
       isTest: isBillingTest(),
+      returnUrl,
     });
   }
 
@@ -46,6 +49,7 @@ export async function action({ request }) {
     return billing.request({
       plan: MAINTENANCE_PLAN,
       isTest: isBillingTest(),
+      returnUrl,
     });
   }
 
@@ -538,7 +542,18 @@ function ApplyResultsCard({
   );
 }
 
-function ExpectationsPanel({ copy, priorityCount, productsUpdatedCount = 0, schemaOnlyOutcome = false, schemaWasApplied = false, billing, billingFetcher, showMaintenance = true }) {
+function BillingSubmitButton({ intent, children, style }) {
+  return (
+    <Form method="post" style={{ margin: 0 }}>
+      <input type="hidden" name="intent" value={intent} />
+      <button type="submit" style={style}>
+        {children}
+      </button>
+    </Form>
+  );
+}
+
+function ExpectationsPanel({ copy, priorityCount, productsUpdatedCount = 0, schemaOnlyOutcome = false, schemaWasApplied = false, billing, showMaintenance = true }) {
   const count = String(priorityCount);
   const fill = (text) => text.replace("{{count}}", count);
 
@@ -590,14 +605,13 @@ function ExpectationsPanel({ copy, priorityCount, productsUpdatedCount = 0, sche
           <p style={{ ...theme.body, fontSize: "0.82rem", color: "#8b8b9a", marginTop: "10px" }}>
             {copy.maintenancePlanNote}
           </p>
-          {!billing?.subscriptionActive && billingFetcher && (
-            <button
-              type="button"
+          {!billing?.subscriptionActive && (
+            <BillingSubmitButton
+              intent="billing-subscribe"
               style={{ ...theme.btnGhost, width: "100%", marginTop: "12px" }}
-              onClick={() => billingFetcher.submit({ intent: "billing-subscribe" }, { method: "post" })}
             >
               {copy.subscribeMaintenance}
-            </button>
+            </BillingSubmitButton>
           )}
         </>
       )}
@@ -610,7 +624,6 @@ export default function Index() {
   const auditFetcher = useFetcher();
   const aiFetcher = useFetcher();
   const applyFetcher = useFetcher();
-  const billingFetcher = useFetcher();
   const [step, setStep] = useState(1);
   const [confirmed, setConfirmed] = useState(false);
   const [summaryInvalidated, setSummaryInvalidated] = useState(false);
@@ -770,7 +783,6 @@ export default function Index() {
         totalSteps={totalSteps}
         aiFetcher={aiFetcher}
         applyFetcher={applyFetcher}
-        billingFetcher={billingFetcher}
         summary={summary}
         summaryError={summaryError}
         summaryLoading={summaryLoading}
@@ -831,7 +843,6 @@ function IndexWizard({
   totalSteps,
   aiFetcher,
   applyFetcher,
-  billingFetcher,
   summary,
   summaryError,
   summaryLoading,
@@ -1336,7 +1347,6 @@ function IndexWizard({
               schemaOnlyOutcome={schemaOnlyOutcome}
               schemaWasApplied={schemaWasApplied}
               billing={billing}
-              billingFetcher={billingFetcher}
             />
           )}
 
@@ -1386,13 +1396,9 @@ function IndexWizard({
               <p style={{ ...theme.body, fontSize: "0.82rem", color: "#8b8b9a", marginBottom: "14px" }}>
                 {copy.pricingSetup}
               </p>
-              <button
-                type="button"
-                style={theme.btnPrimary}
-                onClick={() => billingFetcher.submit({ intent: "billing-setup" }, { method: "post" })}
-              >
+              <BillingSubmitButton intent="billing-setup" style={theme.btnPrimary}>
                 {copy.unlockApply}
-              </button>
+              </BillingSubmitButton>
             </div>
           )}
 
@@ -1425,13 +1431,9 @@ function IndexWizard({
               <p style={{ ...theme.body, marginBottom: "12px", fontSize: "0.82rem", color: "#8b8b9a" }}>
                 {copy.pricingMaintenance}
               </p>
-              <button
-                type="button"
-                style={theme.btnGhost}
-                onClick={() => billingFetcher.submit({ intent: "billing-subscribe" }, { method: "post" })}
-              >
+              <BillingSubmitButton intent="billing-subscribe" style={theme.btnGhost}>
                 {copy.subscribeMaintenance}
-              </button>
+              </BillingSubmitButton>
             </div>
           )}
 
