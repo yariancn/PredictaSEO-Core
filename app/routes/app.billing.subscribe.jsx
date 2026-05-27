@@ -1,24 +1,31 @@
-import { json } from "@remix-run/node";
-import { authenticate, MAINTENANCE_PLAN } from "../shopify.server";
+import { redirect } from "@remix-run/node";
+import { authenticate, SETUP_PLAN, MAINTENANCE_PLAN } from "../shopify.server";
+import { getBillingReturnUrls, MAINTENANCE_TRIAL_DAYS } from "../lib/billing-flow.server.js";
 
 export async function loader({ request }) {
-  try {
-    const { isBillingTest } = await import("../lib/billing.server.js");
-    const { billing, session } = await authenticate.admin(request);
-    const shopSlug = session.shop.replace(".myshopify.com", "");
+  const { isBillingTest, syncBillingFromShopify } = await import("../lib/billing.server.js");
+  const { billing, session } = await authenticate.admin(request);
+  const isTest = isBillingTest();
+  const urls = getBillingReturnUrls(session.shop);
 
+  const setupCheck = await billing.check({ plans: [SETUP_PLAN], isTest });
+  const subCheck = await billing.check({ plans: [MAINTENANCE_PLAN], isTest });
+  await syncBillingFromShopify(session.shop, setupCheck, subCheck);
+
+  if (!setupCheck.hasActivePayment) {
+    throw redirect("/app/billing/setup");
+  }
+
+  if (!subCheck.hasActivePayment) {
     return billing.request({
       plan: MAINTENANCE_PLAN,
-      isTest: isBillingTest(),
-      returnUrl: `https://admin.shopify.com/store/${shopSlug}/apps/predictacore-app`,
+      isTest,
+      trialDays: MAINTENANCE_TRIAL_DAYS,
+      returnUrl: urls.adminReady,
     });
-  } catch (error) {
-    if (error instanceof Response) throw error;
-    console.error("[PredictaCore] billing subscribe failed:", error);
-    const message =
-      error instanceof Error && error.message ? error.message : "Billing subscribe failed";
-    throw json({ message }, { status: 500 });
   }
+
+  throw redirect(urls.adminReady);
 }
 
 export default function BillingSubscribeRoute() {

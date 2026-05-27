@@ -29,7 +29,7 @@ export async function loadAuditData(request) {
     "factorSeoTitle", "factorSeoDesc", "factorDesc", "factorSchema", "factorSchemaDone",
     "fixSeoDone", "previewAllDone", "previewProductsDone", "previewSchemaOnlyExplain", "previewSchemaRow", "previewSchemaRowDetail", "seeUpdatedScore",
     "whyUsTitle", "whyUs1", "whyUs2", "whyUs3", "whyUs4",
-    "pricingTitle", "pricingFree", "pricingSetup", "pricingMaintenance",
+    "pricingTitle", "pricingFree", "pricingSetup", "pricingMaintenance", "pricingUnlockBundle", "pricingMaintenanceIncluded",
     "unlockApply", "subscribeMaintenance", "billingRequired", "restoreWarning",
     "products", "markets", "continue", "back",
     "stateTitle", "impactTitle", "planTitle", "rollbackNote",

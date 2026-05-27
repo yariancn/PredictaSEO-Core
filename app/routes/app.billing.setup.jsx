@@ -1,16 +1,19 @@
 import { json } from "@remix-run/node";
-import { authenticate, SETUP_PLAN } from "../shopify.server";
+import { authenticate, SETUP_PLAN, MAINTENANCE_PLAN } from "../shopify.server";
+import { runBillingSetupFlow } from "../lib/billing-flow.server.js";
 
 export async function loader({ request }) {
   try {
-    const { isBillingTest } = await import("../lib/billing.server.js");
+    const { isBillingTest, syncBillingFromShopify } = await import("../lib/billing.server.js");
     const { billing, session } = await authenticate.admin(request);
-    const shopSlug = session.shop.replace(".myshopify.com", "");
 
-    return billing.request({
-      plan: SETUP_PLAN,
+    return runBillingSetupFlow({
+      billing,
+      session,
       isTest: isBillingTest(),
-      returnUrl: `https://admin.shopify.com/store/${shopSlug}/apps/predictacore-app`,
+      SETUP_PLAN,
+      MAINTENANCE_PLAN,
+      syncBillingFromShopify,
     });
   } catch (error) {
     if (error instanceof Response) throw error;

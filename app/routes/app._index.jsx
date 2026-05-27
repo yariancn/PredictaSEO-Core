@@ -527,7 +527,18 @@ function ApplyResultsCard({
 function BillingLink({ to, children, style }) {
   const { search } = useLocation();
   return (
-    <Link to={`${to}${search}`} reloadDocument style={{ ...style, textDecoration: "none", display: "inline-block", textAlign: "center" }}>
+    <Link
+      to={`${to}${search}`}
+      reloadDocument
+      onClick={() => {
+        try {
+          sessionStorage.setItem("predictacore-return-step", "4");
+        } catch {
+          /* ignore */
+        }
+      }}
+      style={{ ...style, textDecoration: "none", display: "inline-block", textAlign: "center" }}
+    >
       {children}
     </Link>
   );
@@ -664,6 +675,25 @@ export default function Index() {
   const setupComplete = Boolean(
     preview && executive && preview.total === 0 && executive.score >= 85 && backupAvailable,
   );
+
+  useEffect(() => {
+    if (!billing?.canApply) return;
+    let shouldOpenStep4 = false;
+    try {
+      if (typeof window !== "undefined") {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get("billing") === "ready") shouldOpenStep4 = true;
+        if (sessionStorage.getItem("predictacore-return-step") === "4") shouldOpenStep4 = true;
+        if (shouldOpenStep4) sessionStorage.removeItem("predictacore-return-step");
+      }
+    } catch {
+      /* ignore */
+    }
+    if (shouldOpenStep4) {
+      setStep(4);
+      auditFetcher.load("/app/audit-data");
+    }
+  }, [billing?.canApply]);
 
   useEffect(() => {
     if (applyFetcher.data?.intent === "apply" && applyFetcher.data?.applyResult) {
@@ -1060,6 +1090,9 @@ function IndexWizard({
                 <p style={theme.bullet("#a3e635")}>{copy.pricingFree}</p>
                 <p style={theme.bullet("#a5b4fc")}>{copy.pricingSetup}</p>
                 <p style={theme.bullet("#8b8b9a")}>{copy.pricingMaintenance}</p>
+                <p style={{ ...theme.body, fontSize: "0.82rem", color: "#a5b4fc", marginTop: "10px", marginBottom: 0 }}>
+                  {copy.pricingMaintenanceIncluded}
+                </p>
               </div>
 
               <button type="button" style={theme.btnPrimary} onClick={() => setStep(2)}>
@@ -1370,8 +1403,11 @@ function IndexWizard({
             <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.35)" }}>
               <h2 style={theme.h2}>{copy.pricingTitle}</h2>
               <p style={{ ...theme.body, marginBottom: "12px" }}>{copy.billingRequired}</p>
-              <p style={{ ...theme.body, fontSize: "0.82rem", color: "#8b8b9a", marginBottom: "14px" }}>
+              <p style={{ ...theme.body, fontSize: "0.88rem", color: "#e8e8ef", marginBottom: "8px" }}>
                 {copy.pricingSetup}
+              </p>
+              <p style={{ ...theme.body, fontSize: "0.82rem", color: "#a5b4fc", marginBottom: "14px", lineHeight: 1.55 }}>
+                {copy.pricingUnlockBundle}
               </p>
               <BillingLink to="/app/billing/setup" style={theme.btnPrimary}>
                 {copy.unlockApply}
@@ -1401,6 +1437,14 @@ function IndexWizard({
                 {applyLoading ? copy.applying : copy.apply}
               </button>
             </>
+          )}
+
+          {applyResult && billing?.subscriptionActive && (
+            <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.2)" }}>
+              <p style={{ ...theme.body, fontSize: "0.82rem", color: "#a5b4fc", margin: 0 }}>
+                {copy.pricingMaintenanceIncluded}
+              </p>
+            </div>
           )}
 
           {applyResult && !billing?.subscriptionActive && (

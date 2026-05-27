@@ -28,6 +28,7 @@ const shopify = shopifyApp({
       interval: BillingInterval.OneTime,
     },
     [MAINTENANCE_PLAN]: {
+      trialDays: 30,
       lineItems: [
         {
           amount: 15,

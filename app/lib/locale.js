@@ -64,7 +64,11 @@ const MESSAGES = {
     pricingTitle: "Pricing",
     pricingFree: "Free — full audit, AI plan & preview",
     pricingSetup: "$35 one-time — full optimization (SEO, descriptions, brand identity)",
-    pricingMaintenance: "$15/month — re-scan, new products & monitoring",
+    pricingMaintenance: "$15/month — re-scan, new products & monitoring (starts next month)",
+    pricingUnlockBundle:
+      "$35 today to apply all changes. $15/mo maintenance enrolls automatically — first charge in 30 days, no extra cost today.",
+    pricingMaintenanceIncluded:
+      "Includes $15/mo maintenance · first charge next month · cancel anytime in Shopify billing",
     unlockApply: "Unlock optimization — $35",
     subscribeMaintenance: "Subscribe for maintenance — $15/mo",
     billingRequired: "Complete payment to apply changes to your store",
@@ -210,7 +214,8 @@ const MESSAGES = {
     maintenancePlan1: "Monthly re-scan of your top 50 products",
     maintenancePlan2: "Alerts when new products or gaps lower your score",
     maintenancePlan3: "Optimization for new catalog items as you grow",
-    maintenancePlanNote: "Subscribe when you're ready — your current optimization stays active without it.",
+    maintenancePlanNote:
+      "Maintenance is included when you unlock — $15/mo starts after a 30-day trial. Cancel anytime in Shopify billing.",
     reasonNoSeoTitle: "Missing search title",
     reasonNoSeoDesc: "Missing search description",
     reasonNoDesc: "Missing product description",
@@ -276,7 +281,11 @@ const MESSAGES = {
     pricingTitle: "Precios",
     pricingFree: "Gratis — auditoría completa, plan AI y preview",
     pricingSetup: "$35 único — optimización completa (SEO, descripciones, identidad de marca)",
-    pricingMaintenance: "$15/mes — re-scan, productos nuevos y monitoreo",
+    pricingMaintenance: "$15/mes — re-scan, productos nuevos y monitoreo (empieza el próximo mes)",
+    pricingUnlockBundle:
+      "$35 hoy para aplicar todos los cambios. Mantenimiento $15/mes se activa solo — primer cargo en 30 días, sin costo extra hoy.",
+    pricingMaintenanceIncluded:
+      "Incluye mantenimiento $15/mes · primer cargo el próximo mes · cancela cuando quieras en billing de Shopify",
     unlockApply: "Desbloquear optimización — $35",
     subscribeMaintenance: "Suscripción mantenimiento — $15/mes",
     billingRequired: "Completa el pago para aplicar cambios en tu tienda",
@@ -418,7 +427,8 @@ const MESSAGES = {
     maintenancePlan1: "Re-scan mensual de tus top 50 productos",
     maintenancePlan2: "Alertas si productos nuevos o gaps bajan tu score",
     maintenancePlan3: "Optimización de productos nuevos conforme creces",
-    maintenancePlanNote: "Suscríbete cuando quieras — tu optimización actual sigue activa sin ello.",
+    maintenancePlanNote:
+      "El mantenimiento se incluye al desbloquear — $15/mes empieza tras 30 días de prueba. Cancela cuando quieras en billing de Shopify.",
     reasonNoSeoTitle: "Sin título de búsqueda",
     reasonNoSeoDesc: "Sin descripción de búsqueda",
     reasonNoDesc: "Sin descripción de producto",
@@ -474,8 +484,12 @@ const MESSAGES = {
     whyUs4: "Conçu pour le GEO — visibilité IA, pas seulement Google",
     pricingTitle: "Tarifs",
     pricingFree: "Gratuit — audit complet, plan IA et aperçu",
-    pricingSetup: "$35 unique — appliquer l'optimisation aux 50 produits prioritaires",
-    pricingMaintenance: "$15/mois — re-scan, nouveaux produits et suivi",
+    pricingSetup: "$35 unique — optimisation complète (SEO, descriptions, identité de marque)",
+    pricingMaintenance: "$15/mois — re-scan, nouveaux produits et suivi (dès le mois prochain)",
+    pricingUnlockBundle:
+      "$35 aujourd'hui pour appliquer. Maintenance $15/mois incluse automatiquement — premier prélèvement dans 30 jours.",
+    pricingMaintenanceIncluded:
+      "Maintenance $15/mois incluse · premier prélèvement le mois prochain · annulable dans Shopify billing",
     unlockApply: "Débloquer l'optimisation — $35",
     subscribeMaintenance: "Abonnement maintenance — $15/mois",
     billingRequired: "Finalisez le paiement pour appliquer les changements",
