@@ -1,5 +1,5 @@
 import { json } from "@remix-run/node";
-import { Form, useFetcher, useLoaderData, useRouteError, isRouteErrorResponse } from "@remix-run/react";
+import { Link, useFetcher, useLoaderData, useLocation, useRouteError, isRouteErrorResponse } from "@remix-run/react";
 import { useEffect, useState } from "react";
 import { LoadingShell } from "../components/AppShell.jsx";
 import { AppErrorShell, routeErrorHint, routeErrorMessage } from "../components/AppErrorShell.jsx";
@@ -30,28 +30,10 @@ export async function action({ request }) {
   const { getSchemaStatus } = await import("../lib/schema.server.js");
   const { getStoreLocale, t } = await import("../lib/locale.js");
   const { isBillingBypassed, isBillingTest } = await import("../lib/billing.server.js");
-  const { getShopifyAppUrl } = await import("../lib/env.server.ts");
 
   const { admin, session, billing } = await authenticate.admin(request);
   const form = await request.formData();
   const intent = form.get("intent");
-  const returnUrl = `${getShopifyAppUrl()}/app`;
-
-  if (intent === "billing-setup") {
-    return billing.request({
-      plan: SETUP_PLAN,
-      isTest: isBillingTest(),
-      returnUrl,
-    });
-  }
-
-  if (intent === "billing-subscribe") {
-    return billing.request({
-      plan: MAINTENANCE_PLAN,
-      isTest: isBillingTest(),
-      returnUrl,
-    });
-  }
 
   if (intent === "restore") {
     try {
@@ -542,14 +524,12 @@ function ApplyResultsCard({
   );
 }
 
-function BillingSubmitButton({ intent, children, style }) {
+function BillingLink({ to, children, style }) {
+  const { search } = useLocation();
   return (
-    <Form method="post" style={{ margin: 0 }}>
-      <input type="hidden" name="intent" value={intent} />
-      <button type="submit" style={style}>
-        {children}
-      </button>
-    </Form>
+    <Link to={`${to}${search}`} reloadDocument style={{ ...style, textDecoration: "none", display: "inline-block", textAlign: "center" }}>
+      {children}
+    </Link>
   );
 }
 
@@ -606,12 +586,9 @@ function ExpectationsPanel({ copy, priorityCount, productsUpdatedCount = 0, sche
             {copy.maintenancePlanNote}
           </p>
           {!billing?.subscriptionActive && (
-            <BillingSubmitButton
-              intent="billing-subscribe"
-              style={{ ...theme.btnGhost, width: "100%", marginTop: "12px" }}
-            >
+            <BillingLink to="/app/billing/subscribe" style={{ ...theme.btnGhost, width: "100%", marginTop: "12px" }}>
               {copy.subscribeMaintenance}
-            </BillingSubmitButton>
+            </BillingLink>
           )}
         </>
       )}
@@ -1396,9 +1373,9 @@ function IndexWizard({
               <p style={{ ...theme.body, fontSize: "0.82rem", color: "#8b8b9a", marginBottom: "14px" }}>
                 {copy.pricingSetup}
               </p>
-              <BillingSubmitButton intent="billing-setup" style={theme.btnPrimary}>
+              <BillingLink to="/app/billing/setup" style={theme.btnPrimary}>
                 {copy.unlockApply}
-              </BillingSubmitButton>
+              </BillingLink>
             </div>
           )}
 
@@ -1431,9 +1408,9 @@ function IndexWizard({
               <p style={{ ...theme.body, marginBottom: "12px", fontSize: "0.82rem", color: "#8b8b9a" }}>
                 {copy.pricingMaintenance}
               </p>
-              <BillingSubmitButton intent="billing-subscribe" style={theme.btnGhost}>
+              <BillingLink to="/app/billing/subscribe" style={theme.btnGhost}>
                 {copy.subscribeMaintenance}
-              </BillingSubmitButton>
+              </BillingLink>
             </div>
           )}
 
