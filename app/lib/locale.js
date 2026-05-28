@@ -35,6 +35,8 @@ const MESSAGES = {
       "Uses AI to write a short, plain-language summary of your gaps and priorities — useful if you want a narrative before the preview. Takes about 10–20 seconds.",
     skipAiPlanBody:
       "Go straight to step 4. Your fix list from the audit is already complete — skipping does not reduce optimization quality.",
+    skipAiWhileLoading: "Continue without AI summary",
+    retryAiPlan: "Try AI summary again",
     previewNotAppliedYet: "Nothing has been changed on your store yet — this is a preview only.",
     step4FlowIntro: "When you're ready, pay $35 to unlock Apply. We only write to your store after payment and your confirmation.",
     scopeNote: "Top {{analyzed}} products selected from {{total}} in catalog",
@@ -402,6 +404,8 @@ const MESSAGES = {
       "La IA escribe un resumen breve en lenguaje claro de tus gaps y prioridades — útil si quieres leer un plan narrativo antes del preview. Tarda unos 10–20 segundos.",
     skipAiPlanBody:
       "Ve directo al paso 4. La lista de correcciones del audit ya está lista — omitir no reduce la calidad de la optimización.",
+    skipAiWhileLoading: "Continuar sin resumen IA",
+    retryAiPlan: "Reintentar resumen IA",
     previewNotAppliedYet: "Aún no hemos cambiado nada en tu tienda — esto es solo una vista previa.",
     step4PaidIntro: "Pago confirmado — confirma abajo para publicar los cambios en tu tienda.",
     alreadyOptimizedTitle: "Ya optimizado",
@@ -608,6 +612,8 @@ const MESSAGES = {
       "L'IA rédige un court résumé clair de vos lacunes et priorités — utile si vous voulez un plan narratif avant l'aperçu. Comptez 10–20 secondes.",
     skipAiPlanBody:
       "Passez directement à l'étape 4. La liste de corrections de l'audit est déjà complète — ignorer ne réduit pas la qualité de l'optimisation.",
+    skipAiWhileLoading: "Continuer sans résumé IA",
+    retryAiPlan: "Réessayer le résumé IA",
     previewNotAppliedYet: "Rien n'a encore été modifié — ceci est un aperçu uniquement.",
     step4FlowIntro:
       "Quand vous êtes prêt, payez $35 pour débloquer Apply. Nous n'écrivons sur votre boutique qu'après paiement et confirmation.",

@@ -253,6 +253,11 @@ export async function action({ request }) {
     return json({ error: "Invalid action" });
   }
 
+  if (!process.env.GEMINI_API_KEY) {
+    const { t } = await import("../lib/locale.js");
+    return json({ intent: "summary", summaryError: t("en", "aiUnavailable") });
+  }
+
   let data = null;
   try {
     const response = await admin.graphql(CATALOG_QUERY);
@@ -260,12 +265,10 @@ export async function action({ request }) {
     data = parsed.data;
     const { errors } = parsed;
     if (errors?.length) {
-      return json({ summaryError: errors.map((e) => e.message).join("; ") });
-    }
-    if (!process.env.GEMINI_API_KEY) {
-      const locale = getStoreLocale(data);
-      const { t } = await import("../lib/locale.js");
-      return json({ intent: "summary", summaryError: t(locale, "aiUnavailable") });
+      return json({
+        intent: "summary",
+        summaryError: errors.map((e) => e.message).join("; "),
+      });
     }
 
     const locale = getStoreLocale(data);
@@ -752,7 +755,9 @@ export default function Index() {
   const billingFetcher = useFetcher();
   const billingChainStarted = useRef(false);
   const extraApplyConfirmStarted = useRef(false);
+  const summarySubmitStarted = useRef(false);
   const [step, setStep] = useState(1);
+  const [summaryTimedOut, setSummaryTimedOut] = useState(false);
   const [auditStarted, setAuditStarted] = useState(false);
   const [aiRequested, setAiRequested] = useState(false);
   const [aiSkipped, setAiSkipped] = useState(false);
@@ -889,8 +894,24 @@ export default function Index() {
   useEffect(() => {
     if (step !== 3 || !aiRequested || summary || summaryError || aiFetcher.state !== "idle") return;
     if (setupComplete) return;
+    if (summarySubmitStarted.current) return;
+    summarySubmitStarted.current = true;
+    setSummaryTimedOut(false);
     aiFetcher.submit({ intent: "summary" }, { method: "post" });
   }, [step, aiRequested, summary, summaryError, aiFetcher.state, setupComplete]);
+
+  useEffect(() => {
+    if (!summaryLoading) return;
+    const timer = window.setTimeout(() => setSummaryTimedOut(true), 55000);
+    return () => window.clearTimeout(timer);
+  }, [summaryLoading]);
+
+  const retryAiSummary = () => {
+    summarySubmitStarted.current = false;
+    setSummaryTimedOut(false);
+    setAiSkipped(false);
+    setAiRequested(true);
+  };
 
   if (!auditStarted) {
     return (
@@ -922,7 +943,7 @@ export default function Index() {
 
   return (
     <>
-      {(applyLoading || summaryLoading) && (
+      {applyLoading && (
         <div
           style={{
             position: "fixed",
@@ -935,9 +956,7 @@ export default function Index() {
             padding: "24px",
           }}
         >
-          <LoadingShell
-            message={applyLoading ? copy?.applying ?? "Applying…" : copy?.loading ?? "Analyzing your store with AI…"}
-          />
+          <LoadingShell message={copy?.applying ?? "Applying…"} />
         </div>
       )}
       <IndexWizard
@@ -967,7 +986,10 @@ export default function Index() {
         setAiSkipped={setAiSkipped}
         summary={summary}
         summaryError={summaryError}
+        summaryTimedOut={summaryTimedOut}
         summaryLoading={summaryLoading}
+        onSkipAiWhileLoading={() => setAiSkipped(true)}
+        onRetryAiSummary={retryAiSummary}
         applyResult={applyResult}
         applyError={applyError}
         applyLoading={applyLoading}
@@ -1106,7 +1128,10 @@ function IndexWizard({
   setAiSkipped,
   summary,
   summaryError,
+  summaryTimedOut,
   summaryLoading,
+  onSkipAiWhileLoading,
+  onRetryAiSummary,
   applyResult,
   applyError,
   applyLoading,
@@ -1199,8 +1224,11 @@ function IndexWizard({
     Boolean(applyQuota?.needsExtraPayment);
   const showApplyQuotaCard = hasPendingWork && !applyResult && applyQuota && showPostSetupBillingUi;
   const showApplyGate = showSetupApplyGate || showExtraApplyGate;
-  const analysisInProgress = aiRequested && summaryLoading;
-  const canContinueFromAnalysis = Boolean(summary) || Boolean(summaryError) || aiSkipped;
+  const analysisInProgress = aiRequested && summaryLoading && !summaryTimedOut;
+  const displaySummaryError =
+    summaryError || (summaryTimedOut ? copyText(copy, "aiTimeout", "Our AI did not respond in time.") : null);
+  const canContinueFromAnalysis =
+    Boolean(summary) || Boolean(displaySummaryError) || aiSkipped || summaryTimedOut;
   const productsUpdatedCount =
     applyResult?.productCount ?? applyResult?.applied ?? displayAppliedItems.length ?? 0;
   const schemaWasApplied = Boolean(applyResult?.schemaApplied || (setupComplete && executive.foundationScore >= 100));
@@ -1572,7 +1600,7 @@ function IndexWizard({
             </div>
           )}
 
-          {(analysisInProgress || summary) && (
+          {(analysisInProgress || summary || (summaryLoading && summaryTimedOut)) && (
             <div
               style={{
                 ...theme.card,
@@ -1598,9 +1626,12 @@ function IndexWizard({
                       {copy.loading}
                     </p>
                   </div>
-                  <p style={{ ...theme.body, fontSize: "0.82rem", color: "#c4c4ff", margin: 0 }}>
+                  <p style={{ ...theme.body, fontSize: "0.82rem", color: "#c4c4ff", margin: "0 0 14px 0" }}>
                     {copyText(copy, "loadingHint", "Please wait before continuing.")}
                   </p>
+                  <button type="button" style={{ ...theme.btnGhost, width: "100%" }} onClick={onSkipAiWhileLoading}>
+                    {copyText(copy, "skipAiWhileLoading", "Continue without AI summary")}
+                  </button>
                 </>
               )}
               {summary && !summaryLoading && (
@@ -1608,9 +1639,14 @@ function IndexWizard({
               )}
             </div>
           )}
-          {summaryError && (
+          {displaySummaryError && (
             <div style={theme.card}>
-              <p style={{ ...theme.body, color: "#f87171" }}>{summaryError}</p>
+              <p style={{ ...theme.body, color: "#f87171", marginBottom: "12px" }}>{displaySummaryError}</p>
+              {!aiSkipped && (
+                <button type="button" style={theme.btnGhost} onClick={onRetryAiSummary}>
+                  {copyText(copy, "retryAiPlan", "Try AI summary again")}
+                </button>
+              )}
             </div>
           )}
 
@@ -1619,13 +1655,13 @@ function IndexWizard({
           </div>
 
           <div style={{ display: "flex", gap: "10px" }}>
-            <button type="button" style={theme.btnGhost} onClick={() => setStep(2)} disabled={summaryLoading}>
+            <button type="button" style={theme.btnGhost} onClick={() => setStep(2)}>
               {copy.back}
             </button>
             <button
               type="button"
-              style={canContinueFromAnalysis && !summaryLoading ? { ...theme.btnPrimary, flex: 2 } : { ...theme.btnDisabled, flex: 2 }}
-              disabled={!canContinueFromAnalysis || summaryLoading}
+              style={canContinueFromAnalysis ? { ...theme.btnPrimary, flex: 2 } : { ...theme.btnDisabled, flex: 2 }}
+              disabled={!canContinueFromAnalysis}
               onClick={() => setStep(4)}
             >
               {copy.continue}
