@@ -7,7 +7,7 @@ COPY package.json package-lock.json* ./
 RUN npm ci && npm cache clean --force
 
 COPY . .
-RUN npx prisma generate
+RUN npx prisma generate --schema=prisma/schema.postgres.prisma
 RUN npm run build
 
 FROM node:20-alpine AS production
@@ -27,7 +27,7 @@ COPY --from=build /app/scripts ./scripts
 COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=build /app/node_modules/@prisma ./node_modules/@prisma
 
-RUN npx prisma generate
+RUN npx prisma generate --schema=prisma/schema.postgres.prisma
 
 EXPOSE 3000
 CMD ["npm", "run", "docker-start"]

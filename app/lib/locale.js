@@ -15,6 +15,21 @@ const MESSAGES = {
     heroTitle: "Free AI visibility audit",
     heroBody:
       "We check your most important products for free and show you what's missing — before you pay anything.",
+    introTitle: "We'll analyze how AI search sees your store",
+    introBody:
+      "Before any payment or changes, we read your catalog and brand data to show an AI readiness score and a clear action plan.",
+    introBullet1: "Read-only scan — we do not change products until you pay and confirm",
+    introBullet2: "Score based on search titles, descriptions, and brand identity for AI",
+    introBullet3: "Preview every change before the one-time $35 setup fee",
+    introNoChanges: "Nothing on your storefront is modified during this free audit.",
+    startAuditButton: "Start free audit — I agree",
+    monthlyBeforePayTitle: "What you get every month ($15, after setup)",
+    monthlyBeforePayBody:
+      "After the one-time optimization, maintenance keeps you visible as your catalog grows:",
+    generateAiPlan: "Generate personalized AI plan",
+    skipAiPlan: "Skip AI summary and continue",
+    previewNotAppliedYet: "Nothing has been changed on your store yet — this is a preview only.",
+    step4FlowIntro: "When you're ready, pay $35 to unlock Apply. We only write to your store after payment and your confirmation.",
     scopeNote: "Top {{analyzed}} products selected from {{total}} in catalog",
     scopeNoteFullCatalog: "All {{analyzed}} products in your catalog analyzed ({{total}} total)",
     scopeNoteFullCatalogExcluded:
@@ -73,7 +88,6 @@ const MESSAGES = {
     subscribeMaintenance: "Complete maintenance setup",
     billingRequired: "Pay the one-time setup fee to unlock Apply on your store.",
     step4FlowTitle: "Apply to your store",
-    step4FlowIntro: "Review the summary above, then pay $35 to unlock Apply.",
     step4PaidIntro: "Payment confirmed — confirm below to publish changes to your store.",
     alreadyOptimizedTitle: "Already optimized",
     alreadyOptimizedBody:
@@ -298,7 +312,20 @@ const MESSAGES = {
     subscribeMaintenance: "Completar mantenimiento",
     billingRequired: "Paga la tarifa única de setup para desbloquear Apply en tu tienda.",
     step4FlowTitle: "Aplicar en tu tienda",
-    step4FlowIntro: "Revisa el resumen arriba, luego paga $35 para desbloquear Apply.",
+    step4FlowIntro: "Cuando estés listo, paga $35 para desbloquear Apply. Solo escribimos en tu tienda después del pago y tu confirmación.",
+    introTitle: "Analizaremos cómo la IA ve tu tienda",
+    introBody:
+      "Antes de cualquier pago o cambio, leemos tu catálogo y datos de marca para mostrar un score de preparación para IA y un plan claro.",
+    introBullet1: "Escaneo solo lectura — no modificamos productos hasta que pagues y confirmes",
+    introBullet2: "Score basado en títulos, descripciones e identidad de marca para IA",
+    introBullet3: "Vista previa de cada cambio antes del pago único de $35",
+    introNoChanges: "Nada en tu tienda se modifica durante esta auditoría gratuita.",
+    startAuditButton: "Iniciar auditoría gratis — acepto",
+    monthlyBeforePayTitle: "Qué recibes cada mes ($15, después del setup)",
+    monthlyBeforePayBody: "Después de la optimización única, el mantenimiento te mantiene visible:",
+    generateAiPlan: "Generar plan personalizado con IA",
+    skipAiPlan: "Omitir resumen IA y continuar",
+    previewNotAppliedYet: "Aún no hemos cambiado nada en tu tienda — esto es solo una vista previa.",
     step4PaidIntro: "Pago confirmado — confirma abajo para publicar los cambios en tu tienda.",
     alreadyOptimizedTitle: "Ya optimizado",
     alreadyOptimizedBody:
@@ -454,6 +481,21 @@ const MESSAGES = {
   fr: {
     title: "PredictaCore",
     subtitle: "Audit de visibilité IA",
+    introTitle: "Nous analyserons comment l'IA voit votre boutique",
+    introBody:
+      "Avant tout paiement ou modification, nous lisons votre catalogue pour afficher un score de préparation IA et un plan d'action clair.",
+    introBullet1: "Scan en lecture seule — aucune modification avant paiement et confirmation",
+    introBullet2: "Score basé sur titres, descriptions et identité de marque pour l'IA",
+    introBullet3: "Aperçu de chaque changement avant les $35 uniques",
+    introNoChanges: "Rien n'est modifié sur votre boutique pendant cet audit gratuit.",
+    startAuditButton: "Démarrer l'audit gratuit — j'accepte",
+    monthlyBeforePayTitle: "Chaque mois ($15, après le setup)",
+    monthlyBeforePayBody: "Après l'optimisation unique, la maintenance vous garde visible :",
+    generateAiPlan: "Générer un plan IA personnalisé",
+    skipAiPlan: "Ignorer le résumé IA et continuer",
+    previewNotAppliedYet: "Rien n'a encore été modifié — ceci est un aperçu uniquement.",
+    step4FlowIntro:
+      "Quand vous êtes prêt, payez $35 pour débloquer Apply. Nous n'écrivons sur votre boutique qu'après paiement et confirmation.",
     heroTitle: "Audit IA gratuit",
     heroBody:
       "Nous analysons gratuitement vos 50 produits prioritaires. Découvrez ce qui bloque les recommandations IA — aperçu de chaque changement avant de payer.",

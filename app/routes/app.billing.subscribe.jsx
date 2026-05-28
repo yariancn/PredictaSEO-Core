@@ -31,3 +31,8 @@ export async function loader({ request }) {
 export default function BillingSubscribeRoute() {
   return null;
 }
+
+export async function headers(headersArgs) {
+  const { boundary } = await import("@shopify/shopify-app-remix/server");
+  return boundary.headers(headersArgs);
+}

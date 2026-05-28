@@ -1,13 +1,14 @@
 import { redirect } from "@remix-run/node";
-import { getShopifyAppUrl } from "./env.server.ts";
 
 export const MAINTENANCE_TRIAL_DAYS = 30;
 
+/** Embedded-app return URLs — must stay inside Shopify Admin (not bare Railway URL). */
 export function getBillingReturnUrls(shop) {
   const shopSlug = shop.replace(".myshopify.com", "");
+  const adminApp = `https://admin.shopify.com/store/${shopSlug}/apps/predictacore-app`;
   return {
-    adminReady: `https://admin.shopify.com/store/${shopSlug}/apps/predictacore-app?billing=ready`,
-    chainSetup: `${getShopifyAppUrl()}/app/billing/setup`,
+    adminReady: `${adminApp}?billing=ready`,
+    chainSetup: `${adminApp}?billing=chain`,
   };
 }
 

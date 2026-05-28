@@ -49,7 +49,7 @@ export function routeErrorMessage(error) {
 export function routeErrorHint(error) {
   const status = error && typeof error === "object" && "status" in error ? error.status : null;
   if (status === 401 || status === 410) {
-    return "Close all Shopify Admin tabs for this store, run npm run dev:clean, then press p in the terminal to reopen the app.";
+    return "Open PredictaCore from Shopify Admin → Apps, or reload this page. If billing failed, try again from step 4.";
   }
-  return "Reload from Shopify Admin → Apps → PredictaCore, or press p in the dev terminal.";
+  return "Reload from Shopify Admin → Apps → PredictaCore.";
 }

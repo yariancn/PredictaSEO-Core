@@ -23,7 +23,10 @@ export async function loadAuditData(request) {
   const prisma = (await import("../db.server.js")).default;
 
   const COPY_KEYS = [
-    "title", "subtitle", "heroTitle", "heroBody", "scopeNote", "scopeNoteFullCatalog", "scopeNoteFullCatalogExcluded", "selectionNote", "priorityPlanSummary", "priorityScopeSummary", "stepOf",
+    "title", "subtitle", "heroTitle", "heroBody", "introTitle", "introBody", "introBullet1", "introBullet2", "introBullet3",
+    "introNoChanges", "startAuditButton", "monthlyBeforePayTitle", "monthlyBeforePayBody",
+    "generateAiPlan", "skipAiPlan", "previewNotAppliedYet",
+    "scopeNote", "scopeNoteFullCatalog", "scopeNoteFullCatalogExcluded", "selectionNote", "priorityPlanSummary", "priorityScopeSummary", "stepOf",
     "catalogScoreLabel", "foundationScoreLabel", "scoreExplain",
     "scoreBreakdownTitle", "foundationBreakdownTitle", "scoreAfterApply", "scoreGainGeneric", "scoreAlmostComplete", "scoreNow", "scoreImproved", "scoreSeoComplete",
     "factorSeoTitle", "factorSeoDesc", "factorDesc", "factorSchema", "factorSchemaDone",

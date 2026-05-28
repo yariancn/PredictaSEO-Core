@@ -1,0 +1,112 @@
+# PredictaCore — Pendientes App Store Review
+# Guardado: 2026-05-28
+# Atender DESPUÉS de corregir fallas de aplicación reportadas por el merchant.
+# Fuente: Shopify Partners dashboard + revisión de código (ai-entity-pro).
+
+================================================================================
+YA COMPLETADO (según Partners / código)
+================================================================================
+[✓] Versiones de API admitidas — resueltas desde configuración (Partners)
+[✓] Contacto de emergencia en la cuenta
+[✓] Webhooks GDPR en código: webhooks.compliance.jsx (customers/data_request, customers/redact, shop/redact)
+[✓] Webhooks declarados en shopify.app.toml (uninstalled, scopes_update, compliance)
+[✓] Verificación HMAC — authenticate.webhook() en todas las rutas webhook
+[✓] Purga de datos al desinstalar — purgeShopData() en app/uninstalled
+[✓] Política de privacidad pública — /privacy (Regenoxy LLC, privacy@predictaseo.com)
+[✓] App embebida — embedded=true, AppProvider, addDocumentResponseHeaders en entry.server.jsx
+[✓] Billing Shopify configurado — SETUP $35 + MAINTENANCE $15/mo en shopify.server.ts
+[✓] Sin scopes de clientes — no read_customers / write_customers en scopes ni en queries
+
+================================================================================
+PENDIENTE — PARTNERS DASHBOARD (contenido / administrativo)
+================================================================================
+[ ] Completar contenido de publicación (Inglés)
+    - Estado Partners: "incompleta o contiene errores"
+    - Revisar: nombre, tagline, descripción larga, pricing, categoría, icono, screenshots, video (opcional)
+    - Copy base ya redactado en conversación previa ($35 setup + $15/mo, GEO/AI visibility)
+
+[ ] Datos protegidos de clientes
+    - Seleccionar en Partners: "Mi aplicación no usará datos de los clientes"
+    - Coherente con código (solo catálogo/SEO de tienda, sin PII de compradores)
+    - Confirmar que no se pide acceso a datos protegidos innecesario
+
+[ ] URL de política de privacidad en Partners
+    - Configurar: https://predictaseo-core-production.up.railway.app/privacy
+
+[ ] Sincronizar configuración con Partners (webhooks + URLs)
+    - Ejecutar: cd ai-entity-pro && npm run deploy
+    - Verificar que application_url y redirect_urls coinciden con Railway
+
+[ ] Seleccionar capacidades de la app en Partners
+    - Embedded app, billing, theme extension (PredictaCore Brand)
+    - Completar requisitos personalizados que aparezcan al seleccionar
+
+================================================================================
+PENDIENTE — COMprobación AUTOMÁTICA (hacer al final, vence a 30 días)
+================================================================================
+[ ] Inicia autenticación inmediatamente después de la instalación
+    - Probar: instalar app en dev store → debe iniciar OAuth sin pasos extra
+    - Código: unstable_newEmbeddedAuthStrategy + auth.$.jsx
+
+[ ] Redirecciona al UI de la aplicación inmediatamente después de la autenticación
+    - Probar: post-OAuth debe cargar /app embebido (wizard), no pantalla en blanco
+    - Código: _index.tsx redirige shop+embedded=1 → /app
+
+[ ] Proporciona webhooks de cumplimiento obligatorios
+    - Verificar en Partners que los 3 compliance topics están registrados tras deploy
+
+[ ] Verifica webhooks con firmas HMAC
+    - Ya implementado; confirmar con test webhook en Partners o instalación real
+
+[ ] Utiliza un certificado TLS válido
+    - Railway HTTPS en predictaseo-core-production.up.railway.app
+
+[ ] Comprobaciones aplicaciones incrustadas
+    - App Bridge, iframe headers, no errores de hidratación en admin Shopify
+
+[ ] Autorrevisión con IA (opcional Shopify AI Toolkit)
+    - Instalar toolkit y ejecutar comando de Partners cuando todo lo demás esté listo
+
+================================================================================
+PENDIENTE — CÓDIGO / INFRA (detectado en revisión)
+================================================================================
+[ ] Alinear versiones de API (posible flag en "Versiones de API")
+    - shopify.server.ts     → ApiVersion.April26 (2026-04)
+    - shopify.app.toml      → webhooks api_version "2026-07"
+    - .graphqlrc.js         → ApiVersion.October25 (desactualizado vs runtime)
+    - theme extension       → api_version "2026-04"
+    - Unificar o documentar intencionalmente antes de submit
+
+[ ] BILLING_DISABLED en producción
+    - .env.example tiene BILLING_DISABLED=true (piloto)
+    - Para App Store con cobro real: BILLING_DISABLED=false en Railway
+    - Probar flujo billing con SHOPIFY_BILLING_TEST=true en dev store primero
+
+[ ] Desplegar theme extension "PredictaCore Brand"
+    - extensions/predictacore-brand/ — schema.org en storefront
+    - Incluir en npm run deploy; merchant debe activar bloque en theme
+
+[ ] Scope read_reports — justificar en listing
+    - Usado en sales-ranking.server.js (ShopifyQL para top productos)
+    - Explicar en descripción de permisos por qué se necesita
+
+[ ] Variables Railway producción (checklist)
+    - SHOPIFY_CLIENT_ID, SHOPIFY_CLIENT_SECRET, SHOPIFY_APP_URL, DATABASE_URL
+    - GEMINI_API_KEY, SCOPES, NODE_ENV=production
+    - BILLING_DISABLED según fase (piloto vs submit)
+
+================================================================================
+FALLAS DE APLICACIÓN (reportadas en última prueba — detalle por merchant)
+================================================================================
+[ ] (Pendiente — merchant compartirá lista de fallas en siguiente mensaje)
+    - Corregir PRIMERO antes de cerrar items de App Store arriba
+
+================================================================================
+ORDEN DE TRABAJO ACORDADO
+================================================================================
+1. Corregir fallas de aplicación (siguiente mensaje del merchant)
+2. Probar E2E en dev store (install → audit → billing → apply → restore → uninstall)
+3. npm run deploy + completar listing en Partners
+4. Declarar "no customer data" + privacy URL
+5. Comprobación automática (último paso)
+6. Enviar a revisión

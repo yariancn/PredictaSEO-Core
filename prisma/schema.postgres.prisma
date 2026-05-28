@@ -1,12 +1,11 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// Production schema (PostgreSQL on Railway). Local dev uses prisma/schema.prisma (SQLite).
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -30,7 +29,6 @@ model Session {
   refreshTokenExpires DateTime?
 }
 
-// Modelo para la inteligencia de PredictaCore
 model ShopSettings {
   id                Int      @id @default(autoincrement())
   shop              String   @unique
@@ -40,7 +38,6 @@ model ShopSettings {
   lastAiAnalysis    DateTime @default(now())
 }
 
-// Perfil de entidad — Capa 1 (Bloque Forense)
 model EntityProfile {
   id              Int      @id @default(autoincrement())
   shop            String   @unique
@@ -55,7 +52,6 @@ model EntityProfile {
   lastGenerated   DateTime @default(now())
 }
 
-// Snapshots para rollback con confirmación — Capa 4 prep
 model OptimizationSnapshot {
   id            Int       @id @default(autoincrement())
   shop          String

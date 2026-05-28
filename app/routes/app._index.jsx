@@ -1,6 +1,6 @@
-import { json } from "@remix-run/node";
-import { Link, useFetcher, useLoaderData, useLocation, useRouteError, isRouteErrorResponse } from "@remix-run/react";
-import { useEffect, useState } from "react";
+import { json, redirect } from "@remix-run/node";
+import { Form, useFetcher, useLoaderData, useRouteError, isRouteErrorResponse } from "@remix-run/react";
+import { useEffect, useRef, useState } from "react";
 import { LoadingShell } from "../components/AppShell.jsx";
 import { AppErrorShell, routeErrorHint, routeErrorMessage } from "../components/AppErrorShell.jsx";
 import { formatStepLabel } from "../lib/locale.js";
@@ -10,7 +10,16 @@ import { formatProjectedScoreRange } from "../lib/score.js";
 export async function loader({ request }) {
   const { authenticate } = await import("../shopify.server");
   const { session } = await authenticate.admin(request);
-  return json({ shop: session.shop });
+  const { t } = await import("../lib/locale.js");
+  const locale = "en";
+  const introKeys = [
+    "title", "subtitle", "introTitle", "introBody", "introBullet1", "introBullet2", "introBullet3",
+    "introNoChanges", "monthlyBeforePayTitle", "monthlyBeforePayBody",
+    "maintenancePlan1", "maintenancePlan2", "maintenancePlan3",
+    "pricingTitle", "pricingFree", "pricingSetup", "pricingMaintenance", "startAuditButton",
+  ];
+  const introCopy = Object.fromEntries(introKeys.map((key) => [key, t(locale, key)]));
+  return json({ shop: session.shop, introCopy });
 }
 
 export async function action({ request }) {
@@ -72,6 +81,50 @@ export async function action({ request }) {
     } catch (err) {
       return json({ intent: "reset-test-store", resetTestError: err.message ?? "Reset failed" });
     }
+  }
+
+  if (intent === "billing-setup") {
+    const { runBillingSetupFlow } = await import("../lib/billing-flow.server.js");
+    return runBillingSetupFlow({
+      billing,
+      session,
+      isTest: isBillingTest(),
+      SETUP_PLAN,
+      MAINTENANCE_PLAN,
+      syncBillingFromShopify: (await import("../lib/billing.server.js")).syncBillingFromShopify,
+    });
+  }
+
+  if (intent === "billing-subscribe") {
+    const { getBillingReturnUrls, MAINTENANCE_TRIAL_DAYS } = await import("../lib/billing-flow.server.js");
+    const { syncBillingFromShopify } = await import("../lib/billing.server.js");
+    const urls = getBillingReturnUrls(session.shop);
+    const setupCheck = await billing.check({ plans: [SETUP_PLAN], isTest: isBillingTest() });
+    const subCheck = await billing.check({ plans: [MAINTENANCE_PLAN], isTest: isBillingTest() });
+    await syncBillingFromShopify(session.shop, setupCheck, subCheck);
+
+    if (!setupCheck.hasActivePayment) {
+      const { runBillingSetupFlow } = await import("../lib/billing-flow.server.js");
+      return runBillingSetupFlow({
+        billing,
+        session,
+        isTest: isBillingTest(),
+        SETUP_PLAN,
+        MAINTENANCE_PLAN,
+        syncBillingFromShopify,
+      });
+    }
+
+    if (!subCheck.hasActivePayment) {
+      return billing.request({
+        plan: MAINTENANCE_PLAN,
+        isTest: isBillingTest(),
+        trialDays: MAINTENANCE_TRIAL_DAYS,
+        returnUrl: urls.adminReady,
+      });
+    }
+
+    return redirect(urls.adminReady);
   }
 
   if (intent === "apply") {
@@ -528,10 +581,14 @@ function PaymentGateCard({ copy }) {
   return (
     <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.35)" }}>
       <h2 style={theme.h2}>{copy.step4FlowTitle}</h2>
+      <p style={{ ...theme.body, marginBottom: "10px", color: "#e8e8ef" }}>{copy.previewNotAppliedYet}</p>
       <p style={{ ...theme.body, marginBottom: "14px", color: "#e8e8ef" }}>{copy.step4FlowIntro}</p>
-      <BillingLink to="/app/billing/setup" style={{ ...theme.btnPrimary, width: "100%" }}>
-        {copy.unlockApply}
-      </BillingLink>
+      <Form method="post" style={{ margin: 0 }}>
+        <input type="hidden" name="intent" value="billing-setup" />
+        <button type="submit" style={{ ...theme.btnPrimary, width: "100%" }}>
+          {copy.unlockApply}
+        </button>
+      </Form>
       <p style={{ ...theme.body, fontSize: "0.78rem", color: "#9ca3af", marginTop: "12px", marginBottom: 0, lineHeight: 1.55 }}>
         {copy.billingFootnote}
       </p>
@@ -539,23 +596,51 @@ function PaymentGateCard({ copy }) {
   );
 }
 
-function BillingLink({ to, children, style }) {
-  const { search } = useLocation();
+function IntroScreen({ copy, shopName, onStart }) {
   return (
-    <Link
-      to={`${to}${search}`}
-      reloadDocument
-      onClick={() => {
-        try {
-          sessionStorage.setItem("predictacore-return-step", "4");
-        } catch {
-          /* ignore */
-        }
-      }}
-      style={{ ...style, textDecoration: "none", display: "inline-block", textAlign: "center" }}
-    >
-      {children}
-    </Link>
+    <div style={theme.page}>
+      <header style={{ marginBottom: "20px" }}>
+        <p style={{ margin: 0, fontSize: "0.75rem", color: "#6366f1", fontWeight: 600, letterSpacing: "0.06em" }}>
+          {copy.subtitle}
+        </p>
+        <h1 style={{ margin: "4px 0 0 0", fontSize: "1.35rem", fontWeight: 700, color: "#fff" }}>
+          {copy.title}
+        </h1>
+        {shopName && (
+          <p style={{ margin: "6px 0 0 0", fontSize: "0.82rem", color: "#6b6b78" }}>{shopName}</p>
+        )}
+      </header>
+
+      <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.35)", background: "rgba(99,102,241,0.08)" }}>
+        <h2 style={{ ...theme.h2, color: "#a5b4fc" }}>{copy.introTitle}</h2>
+        <p style={{ ...theme.body, marginBottom: "14px", color: "#e8e8ef", lineHeight: 1.6 }}>{copy.introBody}</p>
+        <p style={theme.bullet("#a5b4fc")}>{copy.introBullet1}</p>
+        <p style={theme.bullet("#a5b4fc")}>{copy.introBullet2}</p>
+        <p style={theme.bullet("#a5b4fc")}>{copy.introBullet3}</p>
+        <p style={{ ...theme.body, marginTop: "14px", fontSize: "0.82rem", color: "#8b8b9a", lineHeight: 1.55 }}>
+          {copy.introNoChanges}
+        </p>
+      </div>
+
+      <div style={{ ...theme.card, borderColor: "rgba(163,230,53,0.25)" }}>
+        <h2 style={theme.h2}>{copy.monthlyBeforePayTitle}</h2>
+        <p style={{ ...theme.body, marginBottom: "10px" }}>{copy.monthlyBeforePayBody}</p>
+        <p style={theme.bullet("#6366f1")}>{copy.maintenancePlan1}</p>
+        <p style={theme.bullet("#6366f1")}>{copy.maintenancePlan2}</p>
+        <p style={theme.bullet("#6366f1")}>{copy.maintenancePlan3}</p>
+      </div>
+
+      <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.25)" }}>
+        <h2 style={theme.h2}>{copy.pricingTitle}</h2>
+        <p style={theme.bullet("#a3e635")}>{copy.pricingFree}</p>
+        <p style={theme.bullet("#a5b4fc")}>{copy.pricingSetup}</p>
+        <p style={theme.bullet("#8b8b9a")}>{copy.pricingMaintenance}</p>
+      </div>
+
+      <button type="button" style={theme.btnPrimary} onClick={onStart}>
+        {copy.startAuditButton}
+      </button>
+    </div>
   );
 }
 
@@ -618,18 +703,24 @@ function ExpectationsPanel({ copy, priorityCount, productsUpdatedCount = 0, sche
 }
 
 export default function Index() {
-  const { shop: shellShop } = useLoaderData();
+  const { shop: shellShop, introCopy } = useLoaderData();
   const auditFetcher = useFetcher();
   const aiFetcher = useFetcher();
   const applyFetcher = useFetcher();
+  const billingFetcher = useFetcher();
+  const billingChainStarted = useRef(false);
   const [step, setStep] = useState(1);
+  const [auditStarted, setAuditStarted] = useState(false);
+  const [aiRequested, setAiRequested] = useState(false);
+  const [aiSkipped, setAiSkipped] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [summaryInvalidated, setSummaryInvalidated] = useState(false);
   const totalSteps = 4;
 
-  useEffect(() => {
+  const startAudit = () => {
+    setAuditStarted(true);
     auditFetcher.load("/app/audit-data");
-  }, []);
+  };
 
   const audit = auditFetcher.data;
   const auditPending = !audit;
@@ -687,23 +778,21 @@ export default function Index() {
   );
 
   useEffect(() => {
-    if (!billing?.canApply) return;
-    let shouldOpenStep4 = false;
-    try {
-      if (typeof window !== "undefined") {
-        const params = new URLSearchParams(window.location.search);
-        if (params.get("billing") === "ready") shouldOpenStep4 = true;
-        if (sessionStorage.getItem("predictacore-return-step") === "4") shouldOpenStep4 = true;
-        if (shouldOpenStep4) sessionStorage.removeItem("predictacore-return-step");
-      }
-    } catch {
-      /* ignore */
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const billingParam = params.get("billing");
+
+    if (billingParam === "chain" && !billingChainStarted.current && billingFetcher.state === "idle") {
+      billingChainStarted.current = true;
+      billingFetcher.submit({ intent: "billing-setup" }, { method: "post" });
+      return;
     }
-    if (shouldOpenStep4) {
+
+    if (billingParam === "ready" && auditStarted) {
       setStep(4);
       auditFetcher.load("/app/audit-data");
     }
-  }, [billing?.canApply]);
+  }, [auditStarted, billingFetcher.state]);
 
   useEffect(() => {
     if (applyFetcher.data?.intent === "apply" && applyFetcher.data?.applyResult) {
@@ -739,14 +828,20 @@ export default function Index() {
   }, [setupComplete, step]);
 
   useEffect(() => {
-    if (step !== 3 || summary || summaryError || aiFetcher.state !== "idle") return;
+    if (step !== 3 || !aiRequested || summary || summaryError || aiFetcher.state !== "idle") return;
     if (setupComplete) return;
-    const timer = setTimeout(() => {
-      setSummaryInvalidated(false);
-      aiFetcher.submit({ intent: "summary" }, { method: "post" });
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [step, summary, summaryError, aiFetcher.state, summaryInvalidated, setupComplete]);
+    aiFetcher.submit({ intent: "summary" }, { method: "post" });
+  }, [step, aiRequested, summary, summaryError, aiFetcher.state, setupComplete]);
+
+  if (!auditStarted) {
+    return (
+      <IntroScreen
+        copy={introCopy}
+        shopName={shellShop?.replace(".myshopify.com", "")}
+        onStart={startAudit}
+      />
+    );
+  }
 
   if (auditPending || auditReloading) {
     return (
@@ -807,6 +902,10 @@ export default function Index() {
         totalSteps={totalSteps}
         aiFetcher={aiFetcher}
         applyFetcher={applyFetcher}
+        aiRequested={aiRequested}
+        setAiRequested={setAiRequested}
+        aiSkipped={aiSkipped}
+        setAiSkipped={setAiSkipped}
         summary={summary}
         summaryError={summaryError}
         summaryLoading={summaryLoading}
@@ -867,6 +966,10 @@ function IndexWizard({
   totalSteps,
   aiFetcher,
   applyFetcher,
+  aiRequested,
+  setAiRequested,
+  aiSkipped,
+  setAiSkipped,
   summary,
   summaryError,
   summaryLoading,
@@ -933,8 +1036,8 @@ function IndexWizard({
   const showAlreadyOptimized = !applyResult && !hasPendingWork && setupComplete;
   const showPaymentGate = hasPendingWork && !applyResult && !canApply;
   const showApplyGate = hasPendingWork && !applyResult && canApply;
-  const analysisInProgress = summaryLoading || (!summary && !summaryError);
-  const canContinueFromAnalysis = Boolean(summary) || Boolean(summaryError);
+  const analysisInProgress = aiRequested && summaryLoading;
+  const canContinueFromAnalysis = Boolean(summary) || Boolean(summaryError) || aiSkipped;
   const productsUpdatedCount =
     applyResult?.productCount ?? applyResult?.applied ?? displayAppliedItems.length ?? 0;
   const schemaWasApplied = Boolean(applyResult?.schemaApplied || (setupComplete && executive.foundationScore >= 100));
@@ -1139,6 +1242,13 @@ function IndexWizard({
           <p style={{ ...theme.body, marginBottom: "14px", fontSize: "0.78rem", color: "#8b8b9a", textAlign: "center" }}>
             {selectionNote}
           </p>
+          <div style={{ ...theme.card, borderColor: "rgba(163,230,53,0.25)" }}>
+            <h2 style={theme.h2}>{copy.monthlyBeforePayTitle}</h2>
+            <p style={{ ...theme.body, marginBottom: "10px" }}>{copy.monthlyBeforePayBody}</p>
+            <p style={theme.bullet("#6366f1")}>{copy.maintenancePlan1}</p>
+            <p style={theme.bullet("#6366f1")}>{copy.maintenancePlan2}</p>
+            <p style={theme.bullet("#6366f1")}>{copy.maintenancePlan3}</p>
+          </div>
           <div style={theme.card}>
             <h2 style={theme.h2}>{copy.priorityTitle}</h2>
             <p style={{ ...theme.body, marginBottom: "10px", fontSize: "0.82rem", color: "#8b8b9a" }}>
@@ -1173,6 +1283,24 @@ function IndexWizard({
               <p key={item} style={theme.bullet("#a3e635")}>{item}</p>
             ))}
           </div>
+
+          {!aiRequested && !aiSkipped && !summary && (
+            <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.35)" }}>
+              <p style={{ ...theme.body, marginBottom: "14px", color: "#e8e8ef" }}>
+                {copyText(copy, "loadingHint", "Optional: generate a short AI summary of your store's gaps.")}
+              </p>
+              <button type="button" style={theme.btnPrimary} onClick={() => setAiRequested(true)}>
+                {copyText(copy, "generateAiPlan", "Generate personalized AI plan")}
+              </button>
+              <button
+                type="button"
+                style={{ ...theme.btnGhost, width: "100%", marginTop: "8px" }}
+                onClick={() => setAiSkipped(true)}
+              >
+                {copyText(copy, "skipAiPlan", "Skip AI summary and continue")}
+              </button>
+            </div>
+          )}
 
           {(analysisInProgress || summary) && (
             <div
@@ -1260,9 +1388,14 @@ function IndexWizard({
             </div>
           )}
 
+          {showPaymentGate && <PaymentGateCard copy={copy} />}
+
           {!applyResult && hasPendingWork && (
           <div style={theme.card}>
             <h2 style={theme.h2}>{copy.previewTitle}</h2>
+            <p style={{ ...theme.body, marginBottom: "12px", fontSize: "0.82rem", color: "#a5b4fc" }}>
+              {copy.previewNotAppliedYet}
+            </p>
             {schemaOnlyPreview ? (
               <>
                 <p style={{ ...theme.body, marginBottom: "12px", color: "#fbbf24" }}>
@@ -1349,8 +1482,6 @@ function IndexWizard({
           </div>
           )}
 
-          {showPaymentGate && <PaymentGateCard copy={copy} />}
-
           {showApplyGate && (
             <div style={{ ...theme.card, borderColor: "rgba(163,230,53,0.35)", background: "rgba(163,230,53,0.06)" }}>
               <p style={{ ...theme.body, marginBottom: "14px", color: "#a3e635", fontWeight: 600 }}>
@@ -1420,9 +1551,12 @@ function IndexWizard({
               <p style={{ ...theme.body, marginBottom: "10px", fontSize: "0.78rem", color: "#9ca3af", lineHeight: 1.55 }}>
                 {copy.billingFootnote}
               </p>
-              <BillingLink to="/app/billing/subscribe" style={{ ...theme.btnGhost, width: "100%" }}>
-                {copy.subscribeMaintenance}
-              </BillingLink>
+              <Form method="post" style={{ margin: 0 }}>
+                <input type="hidden" name="intent" value="billing-subscribe" />
+                <button type="submit" style={{ ...theme.btnGhost, width: "100%" }}>
+                  {copy.subscribeMaintenance}
+                </button>
+              </Form>
             </div>
           )}
           {applyError && (
