@@ -47,6 +47,8 @@ export async function action({ request }) {
   if (intent === "restore") {
     try {
       const result = await rollbackLatestBatch(admin, session.shop);
+      const { resetApplyQuotaAfterRestore } = await import("../lib/apply-quota.server.js");
+      await resetApplyQuotaAfterRestore(session.shop);
       return json({ intent: "restore", restoreResult: result });
     } catch (err) {
       return json({ intent: "restore", restoreError: err.message ?? "Restore failed" });
@@ -56,6 +58,8 @@ export async function action({ request }) {
   if (intent === "restore-all") {
     try {
       const result = await rollbackAllBatches(admin, session.shop);
+      const { resetApplyQuotaAfterRestore } = await import("../lib/apply-quota.server.js");
+      await resetApplyQuotaAfterRestore(session.shop);
       return json({ intent: "restore-all", restoreResult: result });
     } catch (err) {
       return json({ intent: "restore-all", restoreError: err.message ?? "Restore failed" });
@@ -189,16 +193,16 @@ export async function action({ request }) {
         isTest: isBillingTest(),
       });
       setupPaid = setupCheck.hasActivePayment;
-      if (!setupPaid) {
-        const locale = "en";
-        const { t: tr } = await import("../lib/locale.js");
-        return json({ intent: "apply", applyError: tr(locale, "billingRequired"), billingBlocked: true });
-      }
       const subCheck = await billing.check({
         plans: [MAINTENANCE_PLAN],
         isTest: isBillingTest(),
       });
       subscriptionActive = subCheck.hasActivePayment;
+      if (!setupPaid || !subscriptionActive) {
+        const locale = "en";
+        const { t: tr } = await import("../lib/locale.js");
+        return json({ intent: "apply", applyError: tr(locale, "billingRequired"), billingBlocked: true });
+      }
     }
 
     const { resolveManualApplyPermission } = await import("../lib/apply-quota.server.js");
@@ -622,16 +626,21 @@ function AlreadyOptimizedCard({ copy, executive, onViewDashboard }) {
   );
 }
 
-function PaymentGateCard({ copy }) {
+function PaymentGateCard({ copy, setupPaid = false }) {
+  const needsSubscriptionOnly = setupPaid;
   return (
     <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.35)" }}>
       <h2 style={theme.h2}>{copy.step4FlowTitle}</h2>
       <p style={{ ...theme.body, marginBottom: "10px", color: "#e8e8ef" }}>{copy.previewNotAppliedYet}</p>
-      <p style={{ ...theme.body, marginBottom: "14px", color: "#e8e8ef" }}>{copy.step4FlowIntro}</p>
+      <p style={{ ...theme.body, marginBottom: "14px", color: "#e8e8ef" }}>
+        {needsSubscriptionOnly ? copyText(copy, "billingBundleStep2", copy.step4FlowIntro) : copy.step4FlowIntro}
+      </p>
       <Form method="post" style={{ margin: 0 }}>
         <input type="hidden" name="intent" value="billing-setup" />
         <button type="submit" style={{ ...theme.btnPrimary, width: "100%" }}>
-          {copy.unlockApply}
+          {needsSubscriptionOnly
+            ? copyText(copy, "billingBundleContinue", copy.unlockApply)
+            : copy.unlockApply}
         </button>
       </Form>
       <p style={{ ...theme.body, fontSize: "0.78rem", color: "#9ca3af", marginTop: "12px", marginBottom: 0, lineHeight: 1.55 }}>
@@ -871,6 +880,9 @@ export default function Index() {
     if (restoreResult != null) {
       setSummaryInvalidated(true);
       setConfirmed(false);
+      setAiRequested(false);
+      summarySubmitStarted.current = false;
+      setSummaryTimedOut(false);
       setStep(1);
       auditFetcher.load("/app/audit-data");
     }
@@ -933,10 +945,10 @@ export default function Index() {
     );
   }
 
-  if (auditPending || auditReloading) {
+  if (auditPending) {
     return (
       <LoadingShell
-        message={auditReloading ? "Confirming payment…" : "Analyzing your store…"}
+        message="Analyzing your store…"
       />
     );
   }
@@ -967,6 +979,22 @@ export default function Index() {
           }}
         >
           <LoadingShell message={copy?.applying ?? "Applying…"} />
+        </div>
+      )}
+      {restoreLoading && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 100,
+            background: "rgba(12,12,20,0.92)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "24px",
+          }}
+        >
+          <LoadingShell message={copy?.restoring ?? "Restoring…"} />
         </div>
       )}
       <IndexWizard
@@ -1011,6 +1039,7 @@ export default function Index() {
         uninstallRestorePreference={uninstallRestorePreference}
         extraApplyGranted={Boolean(billingFetcher.data?.extraApplyGranted)}
         extraApplyError={billingFetcher.data?.extraApplyError ?? null}
+        auditReloading={auditReloading}
       />
     </>
   );
@@ -1152,6 +1181,7 @@ function IndexWizard({
   uninstallRestorePreference,
   extraApplyGranted,
   extraApplyError,
+  auditReloading,
 }) {
   const pilotMode = Boolean(billing?.pilotMode);
   const { matrix, summary: snapSummary } = snapshot;
@@ -1202,19 +1232,20 @@ function IndexWizard({
   });
   const previewStats = getPreviewChangeStats(preview);
   const setupPaid = billing?.setupPaid ?? false;
-  const pilotMode = billing?.pilotMode ?? false;
+  const subscriptionActive = billing?.subscriptionActive ?? false;
+  const billingComplete = pilotMode || (setupPaid && subscriptionActive);
   const hasPendingWork = preview.total > 0;
   const showAlreadyOptimized = !applyResult && !hasPendingWork && setupComplete;
   const applyQuota = billing?.applyQuota;
   const firstApplyDone = Boolean(applyQuota?.setupDone);
-  const showPaymentGate = hasPendingWork && !applyResult && !setupPaid && !pilotMode;
+  const showPaymentGate = hasPendingWork && !applyResult && !billingComplete && !pilotMode;
   const showSetupApplyGate =
     hasPendingWork &&
     !applyResult &&
+    billingComplete &&
     !firstApplyDone &&
-    (setupPaid || pilotMode) &&
     Boolean(applyQuota?.canManualApply && applyQuota?.manualApplyKind === "setup");
-  const showPostSetupBillingUi = firstApplyDone && (setupPaid || pilotMode);
+  const showPostSetupBillingUi = firstApplyDone && billingComplete;
   const showExtraApplyGate =
     hasPendingWork &&
     !applyResult &&
@@ -1277,6 +1308,14 @@ function IndexWizard({
         {stepLabel}
       </p>
       <Progress step={step} total={totalSteps} />
+
+      {auditReloading && (
+        <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.35)", background: "rgba(99,102,241,0.08)", marginBottom: "14px" }}>
+          <p style={{ ...theme.body, color: "#a5b4fc", margin: 0, fontSize: "0.88rem" }}>
+            {copyText(copy, "refreshingStore", "Updating your store…")}
+          </p>
+        </div>
+      )}
 
       {step === 1 && (
         <>
@@ -1668,7 +1707,7 @@ function IndexWizard({
             </div>
           )}
 
-          {showPaymentGate && <PaymentGateCard copy={copy} />}
+          {showPaymentGate && <PaymentGateCard copy={copy} setupPaid={setupPaid} />}
 
           {!applyResult && hasPendingWork && (
           <div style={theme.card}>
@@ -1919,19 +1958,6 @@ function IndexWizard({
             </div>
           )}
 
-          {applyResult && !billing?.subscriptionActive && (
-            <div style={theme.card}>
-              <p style={{ ...theme.body, marginBottom: "10px", fontSize: "0.78rem", color: "#9ca3af", lineHeight: 1.55 }}>
-                {copy.billingFootnote}
-              </p>
-              <Form method="post" style={{ margin: 0 }}>
-                <input type="hidden" name="intent" value="billing-subscribe" />
-                <button type="submit" style={{ ...theme.btnGhost, width: "100%" }}>
-                  {copy.subscribeMaintenance}
-                </button>
-              </Form>
-            </div>
-          )}
           {applyError && (
             <div style={theme.card}>
               <p style={{ ...theme.body, color: "#f87171" }}>{applyError}</p>

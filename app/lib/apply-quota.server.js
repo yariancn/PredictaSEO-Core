@@ -141,6 +141,15 @@ export async function recordApplyRun(shop, { kind, batchId = null, status = APPL
   });
 }
 
+/** After restore, merchant can use their included setup Apply again — quota must not stay on "extra $15". */
+export async function resetApplyQuotaAfterRestore(shop) {
+  await prisma.applyRun.deleteMany({ where: { shop } });
+  await prisma.shopBilling.updateMany({
+    where: { shop },
+    data: { extraApplyCredits: 0 },
+  });
+}
+
 export async function getApplyQuotaStatus(shop, billing = {}) {
   const period = currentApplyPeriod();
   const setupDone = await hasRecordedSetupApply(shop);
