@@ -65,13 +65,21 @@ const MESSAGES = {
     pricingFree: "Free — full audit, AI plan & preview",
     pricingSetup: "$35 one-time — full optimization (SEO, descriptions, brand identity)",
     pricingMaintenance: "$15/month — re-scan, new products & monitoring (starts next month)",
-    pricingUnlockBundle:
-      "$35 today to apply all changes. $15/mo maintenance enrolls automatically — first charge in 30 days, no extra cost today.",
+    billingFootnote:
+      "$15/month maintenance included — first charge in 30 days (no charge today)",
     pricingMaintenanceIncluded:
-      "Includes $15/mo maintenance · first charge next month · cancel anytime in Shopify billing",
-    unlockApply: "Unlock optimization — $35",
-    subscribeMaintenance: "Subscribe for maintenance — $15/mo",
-    billingRequired: "Complete payment to apply changes to your store",
+      "Maintenance active — $15/month starting next month. Cancel anytime in Shopify billing.",
+    unlockApply: "Pay $35 to apply",
+    subscribeMaintenance: "Complete maintenance setup",
+    billingRequired: "Pay the one-time setup fee to unlock Apply on your store.",
+    step4FlowTitle: "Apply to your store",
+    step4FlowIntro: "Review the summary above, then pay $35 to unlock Apply.",
+    step4PaidIntro: "Payment confirmed — confirm below to publish changes to your store.",
+    alreadyOptimizedTitle: "Already optimized",
+    alreadyOptimizedBody:
+      "No pending changes right now — your store was optimized in a previous session. Use Restore below to undo and run the wizard again.",
+    refreshingStore: "Updating your store…",
+    confirmingPayment: "Confirming payment…",
     restoreWarning:
       "Restore only undoes the last Apply. Earlier optimizations stay in place.",
     products: "Products",
@@ -282,13 +290,21 @@ const MESSAGES = {
     pricingFree: "Gratis — auditoría completa, plan AI y preview",
     pricingSetup: "$35 único — optimización completa (SEO, descripciones, identidad de marca)",
     pricingMaintenance: "$15/mes — re-scan, productos nuevos y monitoreo (empieza el próximo mes)",
-    pricingUnlockBundle:
-      "$35 hoy para aplicar todos los cambios. Mantenimiento $15/mes se activa solo — primer cargo en 30 días, sin costo extra hoy.",
+    billingFootnote:
+      "Mantenimiento $15/mes incluido — primer cargo en 30 días (sin cargo hoy)",
     pricingMaintenanceIncluded:
-      "Incluye mantenimiento $15/mes · primer cargo el próximo mes · cancela cuando quieras en billing de Shopify",
-    unlockApply: "Desbloquear optimización — $35",
-    subscribeMaintenance: "Suscripción mantenimiento — $15/mes",
-    billingRequired: "Completa el pago para aplicar cambios en tu tienda",
+      "Mantenimiento activo — $15/mes desde el próximo mes. Cancela cuando quieras en billing de Shopify.",
+    unlockApply: "Pagar $35 para aplicar",
+    subscribeMaintenance: "Completar mantenimiento",
+    billingRequired: "Paga la tarifa única de setup para desbloquear Apply en tu tienda.",
+    step4FlowTitle: "Aplicar en tu tienda",
+    step4FlowIntro: "Revisa el resumen arriba, luego paga $35 para desbloquear Apply.",
+    step4PaidIntro: "Pago confirmado — confirma abajo para publicar los cambios en tu tienda.",
+    alreadyOptimizedTitle: "Ya optimizado",
+    alreadyOptimizedBody:
+      "No hay cambios pendientes — tu tienda se optimizó en una sesión anterior. Usa Restore abajo para repetir el wizard.",
+    refreshingStore: "Actualizando tu tienda…",
+    confirmingPayment: "Confirmando pago…",
     restoreWarning:
       "Restore solo revierte el último Apply. Optimizaciones anteriores se mantienen.",
     products: "Productos",

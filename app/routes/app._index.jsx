@@ -400,15 +400,15 @@ function ApplyResultsCard({
   copy,
   applyResult,
   executive,
-  setupComplete,
   preview,
   displayAppliedItems,
   productsUpdatedCount,
   schemaWasApplied,
   schemaOnlyOutcome,
   priorityCount,
-  onViewDashboard,
 }) {
+  if (!applyResult) return null;
+
   const scoreBefore = applyResult?.scoreBefore ?? executive?.score;
   const scoreAfter = applyResult?.scoreAfter ?? executive?.score;
   const gain = Math.max(0, (scoreAfter ?? 0) - (scoreBefore ?? 0));
@@ -443,19 +443,9 @@ function ApplyResultsCard({
           {fillTemplate(copy.scoreImproved, { before: scoreBefore, after: scoreAfter })}
         </p>
       )}
-      {!applyResult && setupComplete && (
-        <p style={{ ...theme.body, color: "#fff", marginBottom: "8px", fontWeight: 700, fontSize: "1.05rem" }}>
-          {copy.scoreNow.replace("{{score}}", String(executive.score))}
-        </p>
-      )}
 
-      {explain && applyResult && (
+      {explain && (
         <p style={{ ...theme.body, marginBottom: "14px", color: "#e8e8ef", lineHeight: 1.55 }}>{explain}</p>
-      )}
-      {!applyResult && setupComplete && (
-        <p style={{ ...theme.body, marginBottom: "14px", color: "#e8e8ef", lineHeight: 1.55 }}>
-          {copy.scoreSeoComplete}
-        </p>
       )}
 
       <p style={{ ...theme.h2, marginBottom: "4px" }}>
@@ -511,15 +501,40 @@ function ApplyResultsCard({
           {applyResult.errors.slice(0, 2).join("; ")}
         </p>
       )}
-      {setupComplete && onViewDashboard && (
-        <button
-          type="button"
-          style={{ ...theme.btnGhost, marginTop: "12px", width: "100%" }}
-          onClick={onViewDashboard}
-        >
+    </div>
+  );
+}
+
+function AlreadyOptimizedCard({ copy, executive, onViewDashboard }) {
+  return (
+    <div style={{ ...theme.card, borderColor: "rgba(163,230,53,0.35)", background: "rgba(163,230,53,0.08)" }}>
+      <h2 style={{ ...theme.h2, color: "#a3e635" }}>{copy.alreadyOptimizedTitle}</h2>
+      <p style={{ ...theme.body, marginBottom: "8px", fontWeight: 600, color: "#fff" }}>
+        {copy.scoreNow.replace("{{score}}", String(executive.score))}
+      </p>
+      <p style={{ ...theme.body, marginBottom: "14px", color: "#e8e8ef", lineHeight: 1.55 }}>
+        {copy.alreadyOptimizedBody}
+      </p>
+      {onViewDashboard && (
+        <button type="button" style={{ ...theme.btnGhost, width: "100%" }} onClick={onViewDashboard}>
           {copy.viewScoreDashboard}
         </button>
       )}
+    </div>
+  );
+}
+
+function PaymentGateCard({ copy }) {
+  return (
+    <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.35)" }}>
+      <h2 style={theme.h2}>{copy.step4FlowTitle}</h2>
+      <p style={{ ...theme.body, marginBottom: "14px", color: "#e8e8ef" }}>{copy.step4FlowIntro}</p>
+      <BillingLink to="/app/billing/setup" style={{ ...theme.btnPrimary, width: "100%" }}>
+        {copy.unlockApply}
+      </BillingLink>
+      <p style={{ ...theme.body, fontSize: "0.78rem", color: "#9ca3af", marginTop: "12px", marginBottom: 0, lineHeight: 1.55 }}>
+        {copy.billingFootnote}
+      </p>
     </div>
   );
 }
@@ -596,11 +611,6 @@ function ExpectationsPanel({ copy, priorityCount, productsUpdatedCount = 0, sche
           <p style={{ ...theme.body, fontSize: "0.82rem", color: "#8b8b9a", marginTop: "10px" }}>
             {copy.maintenancePlanNote}
           </p>
-          {!billing?.subscriptionActive && (
-            <BillingLink to="/app/billing/subscribe" style={{ ...theme.btnGhost, width: "100%", marginTop: "12px" }}>
-              {copy.subscribeMaintenance}
-            </BillingLink>
-          )}
         </>
       )}
     </div>
@@ -738,8 +748,12 @@ export default function Index() {
     return () => clearTimeout(timer);
   }, [step, summary, summaryError, aiFetcher.state, summaryInvalidated, setupComplete]);
 
-  if (auditPending) {
-    return <LoadingShell message="Analyzing your store…" />;
+  if (auditPending || auditReloading) {
+    return (
+      <LoadingShell
+        message={auditReloading ? "Confirming payment…" : "Analyzing your store…"}
+      />
+    );
   }
 
   if (error || !copy || !executive || !snapshot || !report || !preview) {
@@ -754,20 +768,23 @@ export default function Index() {
 
   return (
     <>
-      {auditReloading && (
-        <p
+      {(applyLoading || summaryLoading) && (
+        <div
           style={{
             position: "fixed",
-            top: 8,
-            right: 12,
-            margin: 0,
-            fontSize: "0.72rem",
-            color: "#a5b4fc",
-            zIndex: 10,
+            inset: 0,
+            zIndex: 100,
+            background: "rgba(12,12,20,0.92)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "24px",
           }}
         >
-          Refreshing…
-        </p>
+          <LoadingShell
+            message={applyLoading ? copy?.applying ?? "Applying…" : copy?.loading ?? "Analyzing your store with AI…"}
+          />
+        </div>
       )}
       <IndexWizard
         shop={shop}
@@ -912,6 +929,10 @@ function IndexWizard({
   });
   const previewStats = getPreviewChangeStats(preview);
   const canApply = billing?.canApply ?? false;
+  const hasPendingWork = preview.total > 0;
+  const showAlreadyOptimized = !applyResult && !hasPendingWork && setupComplete;
+  const showPaymentGate = hasPendingWork && !applyResult && !canApply;
+  const showApplyGate = hasPendingWork && !applyResult && canApply;
   const analysisInProgress = summaryLoading || (!summary && !summaryError);
   const canContinueFromAnalysis = Boolean(summary) || Boolean(summaryError);
   const productsUpdatedCount =
@@ -1090,9 +1111,6 @@ function IndexWizard({
                 <p style={theme.bullet("#a3e635")}>{copy.pricingFree}</p>
                 <p style={theme.bullet("#a5b4fc")}>{copy.pricingSetup}</p>
                 <p style={theme.bullet("#8b8b9a")}>{copy.pricingMaintenance}</p>
-                <p style={{ ...theme.body, fontSize: "0.82rem", color: "#a5b4fc", marginTop: "10px", marginBottom: 0 }}>
-                  {copy.pricingMaintenanceIncluded}
-                </p>
               </div>
 
               <button type="button" style={theme.btnPrimary} onClick={() => setStep(2)}>
@@ -1242,12 +1260,10 @@ function IndexWizard({
             </div>
           )}
 
-          {!setupComplete && (
+          {!applyResult && hasPendingWork && (
           <div style={theme.card}>
             <h2 style={theme.h2}>{copy.previewTitle}</h2>
-            {preview.total === 0 ? (
-              <p style={{ ...theme.body, color: "#a3e635" }}>{copy.previewAllDone}</p>
-            ) : schemaOnlyPreview ? (
+            {schemaOnlyPreview ? (
               <>
                 <p style={{ ...theme.body, marginBottom: "12px", color: "#fbbf24" }}>
                   {copyText(copy, "previewProductsDone", "Product SEO is already complete.")}
@@ -1333,23 +1349,54 @@ function IndexWizard({
           </div>
           )}
 
-          {(applyResult || setupComplete) && (
+          {showPaymentGate && <PaymentGateCard copy={copy} />}
+
+          {showApplyGate && (
+            <div style={{ ...theme.card, borderColor: "rgba(163,230,53,0.35)", background: "rgba(163,230,53,0.06)" }}>
+              <p style={{ ...theme.body, marginBottom: "14px", color: "#a3e635", fontWeight: 600 }}>
+                {copy.step4PaidIntro}
+              </p>
+              <label style={{ display: "flex", gap: "10px", alignItems: "flex-start", marginBottom: "12px", cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={confirmed}
+                  onChange={(e) => setConfirmed(e.target.checked)}
+                  style={{ marginTop: "4px" }}
+                />
+                <span style={{ ...theme.body, fontSize: "0.82rem", color: "#8b8b9a" }}>{copy.confirmLabel}</span>
+              </label>
+              <button
+                type="button"
+                style={confirmed && !applyLoading ? theme.btnPrimary : theme.btnDisabled}
+                disabled={!confirmed || applyLoading}
+                onClick={() =>
+                  applyFetcher.submit({ intent: "apply", confirmed: "1" }, { method: "post" })
+                }
+              >
+                {applyLoading ? copy.applying : copy.apply}
+              </button>
+            </div>
+          )}
+
+          {showAlreadyOptimized && (
+            <AlreadyOptimizedCard copy={copy} executive={executive} onViewDashboard={() => setStep(1)} />
+          )}
+
+          {applyResult && (
             <ApplyResultsCard
               copy={copy}
               applyResult={applyResult}
               executive={executive}
-              setupComplete={setupComplete}
               preview={preview}
               displayAppliedItems={displayAppliedItems}
               productsUpdatedCount={productsUpdatedCount}
               schemaWasApplied={schemaWasApplied}
               schemaOnlyOutcome={schemaOnlyOutcome}
               priorityCount={snapSummary.priorityCount}
-              onViewDashboard={() => setStep(1)}
             />
           )}
 
-          {(applyResult || setupComplete) && (
+          {applyResult && (
             <ExpectationsPanel
               copy={copy}
               priorityCount={snapSummary.priorityCount}
@@ -1360,6 +1407,24 @@ function IndexWizard({
             />
           )}
 
+          {applyResult && billing?.subscriptionActive && (
+            <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.2)" }}>
+              <p style={{ ...theme.body, fontSize: "0.78rem", color: "#a5b4fc", margin: 0, lineHeight: 1.55 }}>
+                {copy.pricingMaintenanceIncluded}
+              </p>
+            </div>
+          )}
+
+          {applyResult && !billing?.subscriptionActive && (
+            <div style={theme.card}>
+              <p style={{ ...theme.body, marginBottom: "10px", fontSize: "0.78rem", color: "#9ca3af", lineHeight: 1.55 }}>
+                {copy.billingFootnote}
+              </p>
+              <BillingLink to="/app/billing/subscribe" style={{ ...theme.btnGhost, width: "100%" }}>
+                {copy.subscribeMaintenance}
+              </BillingLink>
+            </div>
+          )}
           {applyError && (
             <div style={theme.card}>
               <p style={{ ...theme.body, color: "#f87171" }}>{applyError}</p>
@@ -1396,65 +1461,6 @@ function IndexWizard({
           {restoreError && (
             <div style={theme.card}>
               <p style={{ ...theme.body, color: "#f87171" }}>{restoreError}</p>
-            </div>
-          )}
-
-          {preview.total > 0 && !applyResult && !canApply && (
-            <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.35)" }}>
-              <h2 style={theme.h2}>{copy.pricingTitle}</h2>
-              <p style={{ ...theme.body, marginBottom: "12px" }}>{copy.billingRequired}</p>
-              <p style={{ ...theme.body, fontSize: "0.88rem", color: "#e8e8ef", marginBottom: "8px" }}>
-                {copy.pricingSetup}
-              </p>
-              <p style={{ ...theme.body, fontSize: "0.82rem", color: "#a5b4fc", marginBottom: "14px", lineHeight: 1.55 }}>
-                {copy.pricingUnlockBundle}
-              </p>
-              <BillingLink to="/app/billing/setup" style={theme.btnPrimary}>
-                {copy.unlockApply}
-              </BillingLink>
-            </div>
-          )}
-
-          {preview.total > 0 && !applyResult && canApply && (
-            <>
-              <label style={{ display: "flex", gap: "10px", alignItems: "flex-start", marginBottom: "12px", cursor: "pointer" }}>
-                <input
-                  type="checkbox"
-                  checked={confirmed}
-                  onChange={(e) => setConfirmed(e.target.checked)}
-                  style={{ marginTop: "4px" }}
-                />
-                <span style={{ ...theme.body, fontSize: "0.82rem", color: "#8b8b9a" }}>{copy.confirmLabel}</span>
-              </label>
-              <button
-                type="button"
-                style={confirmed && !applyLoading ? theme.btnPrimary : theme.btnDisabled}
-                disabled={!confirmed || applyLoading}
-                onClick={() =>
-                  applyFetcher.submit({ intent: "apply", confirmed: "1" }, { method: "post" })
-                }
-              >
-                {applyLoading ? copy.applying : copy.apply}
-              </button>
-            </>
-          )}
-
-          {applyResult && billing?.subscriptionActive && (
-            <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.2)" }}>
-              <p style={{ ...theme.body, fontSize: "0.82rem", color: "#a5b4fc", margin: 0 }}>
-                {copy.pricingMaintenanceIncluded}
-              </p>
-            </div>
-          )}
-
-          {applyResult && !billing?.subscriptionActive && (
-            <div style={theme.card}>
-              <p style={{ ...theme.body, marginBottom: "12px", fontSize: "0.82rem", color: "#8b8b9a" }}>
-                {copy.pricingMaintenance}
-              </p>
-              <BillingLink to="/app/billing/subscribe" style={theme.btnGhost}>
-                {copy.subscribeMaintenance}
-              </BillingLink>
             </div>
           )}
 
