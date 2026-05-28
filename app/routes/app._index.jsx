@@ -118,83 +118,115 @@ export async function action({ request }) {
     return redirect(urls.adminReady);
   }
 
+  if (intent === "billing-extra-apply") {
+    const { getBillingReturnUrls } = await import("../lib/billing-flow.server.js");
+    const { requestExtraApplyPurchase } = await import("../lib/billing-extra-apply.server.js");
+    const { grantExtraApplyCredit } = await import("../lib/apply-quota.server.js");
+    const urls = getBillingReturnUrls(session.shop);
+
+    if (isBillingBypassed()) {
+      await grantExtraApplyCredit(session.shop);
+      return json({ intent: "billing-extra-apply", extraApplyGranted: true });
+    }
+
+    try {
+      const { confirmationUrl } = await requestExtraApplyPurchase(
+        admin,
+        session.shop,
+        `${urls.adminReady}&billing=extra-ready`,
+      );
+      return redirect(confirmationUrl);
+    } catch (err) {
+      return json({ intent: "billing-extra-apply", extraApplyError: err.message ?? "Payment failed" });
+    }
+  }
+
+  if (intent === "confirm-extra-apply") {
+    const { confirmExtraApplyPurchase } = await import("../lib/billing-extra-apply.server.js");
+    const { grantExtraApplyCredit } = await import("../lib/apply-quota.server.js");
+    const chargeId = form.get("charge_id");
+
+    if (isBillingBypassed()) {
+      await grantExtraApplyCredit(session.shop);
+      return json({ intent: "confirm-extra-apply", extraApplyGranted: true });
+    }
+
+    try {
+      const result = await confirmExtraApplyPurchase(admin, session.shop, chargeId);
+      return json({ intent: "confirm-extra-apply", ...result, extraApplyGranted: result.granted });
+    } catch (err) {
+      return json({ intent: "confirm-extra-apply", extraApplyError: err.message ?? "Confirmation failed" });
+    }
+  }
+
   if (intent === "apply") {
     if (form.get("confirmed") !== "1") {
       return json({ intent: "apply", applyError: "Confirmation required" });
     }
 
-    if (!isBillingBypassed()) {
+    const pilotMode = isBillingBypassed();
+    let setupPaid = pilotMode;
+    let subscriptionActive = pilotMode;
+
+    if (!pilotMode) {
       const setupCheck = await billing.check({
         plans: [SETUP_PLAN],
         isTest: isBillingTest(),
       });
-      if (!setupCheck.hasActivePayment) {
+      setupPaid = setupCheck.hasActivePayment;
+      if (!setupPaid) {
         const locale = "en";
         const { t: tr } = await import("../lib/locale.js");
         return json({ intent: "apply", applyError: tr(locale, "billingRequired"), billingBlocked: true });
       }
+      const subCheck = await billing.check({
+        plans: [MAINTENANCE_PLAN],
+        isTest: isBillingTest(),
+      });
+      subscriptionActive = subCheck.hasActivePayment;
+    }
+
+    const { resolveManualApplyPermission } = await import("../lib/apply-quota.server.js");
+    const permission = await resolveManualApplyPermission(session.shop, {
+      pilotMode,
+      setupPaid,
+      subscriptionActive,
+    });
+
+    if (!permission.allowed) {
+      const locale = "en";
+      const { t: tr } = await import("../lib/locale.js");
+      const messageKey =
+        permission.reason === "monthly_auto_scheduled"
+          ? "applyQuotaMonthlyAuto"
+          : permission.reason === "quota_exhausted"
+            ? "applyQuotaMonthlyDone"
+            : "applyQuotaNoSubscription";
+      return json({
+        intent: "apply",
+        applyError: tr(locale, messageKey).replace("{{period}}", permission.period ?? ""),
+        applyQuotaBlocked: true,
+        blockReason: permission.reason,
+      });
     }
 
     try {
-      const response = await admin.graphql(CATALOG_QUERY);
-      const { data, errors } = await response.json();
-      if (errors?.length) {
-        return json({ intent: "apply", applyError: errors.map((e) => e.message).join("; ") });
-      }
-      const locale = getStoreLocale(data);
-      const catalogData = await prepareCatalogData(admin, data);
-      const snapshot = analyzeSnapshot(catalogData, locale);
-      const jsonLd = buildOrganizationJsonLd(
-        data.shop,
-        snapshot.markets,
-        data.locations?.nodes ?? [],
-      );
-      const { active: schemaActive } = await getSchemaStatus(session.shop);
-      const priorityProducts = getPriorityProducts(catalogData.products?.nodes ?? [], snapshot.matrix);
-      const preview = buildPreviewPlan(
-        priorityProducts,
-        data.shop.name,
-        snapshot.matrix,
-        { jsonLd, schemaActive },
-      );
-      if (preview.productCount === 0 && !preview.schema?.willApply) {
-        const locale = getStoreLocale(data);
-        return json({ intent: "apply", applyError: t(locale, "noChangesAlreadyApplied") });
-      }
-      const beforeExec = analyzeExecutive(catalogData, locale, {
-        previewItems: preview.items,
-        schemaActive,
-        schemaPending: preview.schema?.willApply,
-      });
-      const batchId = `batch_${Date.now()}`;
-      const result = await applyPreviewPlan(admin, session.shop, preview, batchId, { jsonLd });
+      const { runStoreApply } = await import("../lib/apply-runner.server.js");
+      const outcome = await runStoreApply(admin, session.shop, { applyKind: permission.kind });
 
-      const responseAfter = await admin.graphql(CATALOG_QUERY);
-      const { data: dataAfter, errors: errorsAfter } = await responseAfter.json();
-      let afterExec = beforeExec;
-      if (!errorsAfter?.length && dataAfter) {
-        const catalogAfter = await prepareCatalogData(admin, dataAfter);
-        afterExec = analyzeExecutive(catalogAfter, locale, {
-          previewItems: [],
-          schemaActive: result.schemaApplied || schemaActive,
-        });
+      if (outcome.skipped) {
+        const locale = "en";
+        const { t: tr } = await import("../lib/locale.js");
+        const msg =
+          outcome.reason === "all_failed"
+            ? outcome.errors?.slice(0, 2).join("; ") || tr(locale, "applyError")
+            : tr(locale, "noChangesAlreadyApplied");
+        return json({ intent: "apply", applyError: msg });
       }
 
       return json({
         intent: "apply",
-        applyResult: {
-          ...result,
-          productCount: preview.productCount,
-          batchCount: preview.batchCount,
-          appliedItems: buildAppliedItemsFromPreview(preview.items),
-          scoreBefore: beforeExec.score,
-          scoreAfter: afterExec.score,
-          catalogScoreBefore: beforeExec.catalogScore,
-          foundationScoreBefore: beforeExec.foundationScore,
-          catalogScoreAfter: afterExec.catalogScore,
-          foundationScoreAfter: afterExec.foundationScore,
-          priorityCount: beforeExec.priorityCount,
-        },
+        applyResult: outcome.applyResult,
         hasBackup: true,
       });
     } catch (err) {
@@ -704,6 +736,7 @@ export default function Index() {
   const applyFetcher = useFetcher();
   const billingFetcher = useFetcher();
   const billingChainStarted = useRef(false);
+  const extraApplyConfirmStarted = useRef(false);
   const [step, setStep] = useState(1);
   const [auditStarted, setAuditStarted] = useState(false);
   const [aiRequested, setAiRequested] = useState(false);
@@ -787,7 +820,22 @@ export default function Index() {
       setStep(4);
       auditFetcher.load("/app/audit-data");
     }
+
+    if (billingParam === "extra-ready" && auditStarted && !extraApplyConfirmStarted.current && billingFetcher.state === "idle") {
+      extraApplyConfirmStarted.current = true;
+      const chargeId = params.get("charge_id");
+      billingFetcher.submit(
+        { intent: "confirm-extra-apply", charge_id: chargeId ?? "" },
+        { method: "post" },
+      );
+    }
   }, [auditStarted, billingFetcher.state]);
+
+  useEffect(() => {
+    if (billingFetcher.data?.extraApplyGranted) {
+      auditFetcher.load("/app/audit-data");
+    }
+  }, [billingFetcher.data?.extraApplyGranted]);
 
   useEffect(() => {
     if (applyFetcher.data?.intent === "apply" && applyFetcher.data?.applyResult) {
@@ -913,6 +961,8 @@ export default function Index() {
         resetTestResult={resetTestResult}
         resetTestError={resetTestError}
         backupAvailable={backupAvailable}
+        extraApplyGranted={Boolean(billingFetcher.data?.extraApplyGranted)}
+        extraApplyError={billingFetcher.data?.extraApplyError ?? null}
       />
     </>
   );
@@ -977,6 +1027,8 @@ function IndexWizard({
   resetTestResult,
   resetTestError,
   backupAvailable,
+  extraApplyGranted,
+  extraApplyError,
 }) {
   const pilotMode = Boolean(billing?.pilotMode);
   const { matrix, summary: snapSummary } = snapshot;
@@ -1030,7 +1082,15 @@ function IndexWizard({
   const hasPendingWork = preview.total > 0;
   const showAlreadyOptimized = !applyResult && !hasPendingWork && setupComplete;
   const showPaymentGate = hasPendingWork && !applyResult && !canApply;
-  const showApplyGate = hasPendingWork && !applyResult && canApply;
+  const applyQuota = billing?.applyQuota;
+  const showSetupApplyGate =
+    hasPendingWork && !applyResult && Boolean(applyQuota?.canManualApply && applyQuota?.manualApplyKind === "setup");
+  const showExtraApplyGate =
+    hasPendingWork && !applyResult && Boolean(applyQuota?.canManualApply && applyQuota?.manualApplyKind === "extra");
+  const showMonthlyAutoNotice =
+    hasPendingWork && !applyResult && applyQuota?.blockReason === "monthly_auto_scheduled";
+  const showExtraPaymentGate = hasPendingWork && !applyResult && Boolean(applyQuota?.needsExtraPayment);
+  const showApplyGate = showSetupApplyGate || showExtraApplyGate;
   const analysisInProgress = aiRequested && summaryLoading;
   const canContinueFromAnalysis = Boolean(summary) || Boolean(summaryError) || aiSkipped;
   const productsUpdatedCount =
@@ -1512,10 +1572,103 @@ function IndexWizard({
           </div>
           )}
 
+          {hasPendingWork && !applyResult && applyQuota && (
+            <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.35)", background: "rgba(99,102,241,0.08)" }}>
+              <h2 style={{ ...theme.h2, color: "#a5b4fc" }}>{copyText(copy, "applyQuotaTitle", "Apply rules")}</h2>
+              <p style={{ ...theme.body, fontSize: "0.78rem", color: "#8b8b9a", marginBottom: "10px" }}>
+                {fillCopy(copyText(copy, "applyQuotaPeriod", "Month: {{period}}"), { period: applyQuota.period })}
+              </p>
+              {!applyQuota.setupDone ? (
+                <p style={{ ...theme.body, fontSize: "0.88rem" }}>{copyText(copy, "applyQuotaSetup", "")}</p>
+              ) : applyQuota.extraApplyCredits > 0 ? (
+                <p style={{ ...theme.body, fontSize: "0.88rem", color: "#a3e635" }}>
+                  {fillCopy(copyText(copy, "applyQuotaExtraAvailable", ""), {
+                    count: applyQuota.extraApplyCredits,
+                  })}
+                </p>
+              ) : applyQuota.includedApplyUsed ? (
+                <p style={{ ...theme.body, fontSize: "0.88rem" }}>
+                  {fillCopy(copyText(copy, "applyQuotaMonthlyDone", ""), { period: applyQuota.period })}
+                </p>
+              ) : applyQuota.subscriptionActive ? (
+                <p style={{ ...theme.body, fontSize: "0.88rem" }}>
+                  {fillCopy(copyText(copy, "applyQuotaMonthlyAuto", ""), { period: applyQuota.period })}
+                </p>
+              ) : (
+                <p style={{ ...theme.body, fontSize: "0.88rem" }}>
+                  {copyText(copy, "applyQuotaNoSubscription", "")}
+                </p>
+              )}
+            </div>
+          )}
+
+          {extraApplyGranted && (
+            <div style={{ ...theme.card, borderColor: "rgba(163,230,53,0.35)", background: "rgba(163,230,53,0.08)" }}>
+              <p style={{ ...theme.body, color: "#a3e635", margin: 0 }}>
+                {copyText(copy, "extraApplySuccess", "Extra Apply credit added.")}
+              </p>
+            </div>
+          )}
+
+          {extraApplyError && (
+            <div style={theme.card}>
+              <p style={{ ...theme.body, color: "#f87171", margin: 0 }}>{extraApplyError}</p>
+            </div>
+          )}
+
+          {showMonthlyAutoNotice && (
+            <div style={{ ...theme.card, borderColor: "rgba(251,191,36,0.4)", background: "rgba(251,191,36,0.08)" }}>
+              <p style={{ ...theme.body, marginBottom: "12px", color: "#fbbf24" }}>
+                {fillCopy(copyText(copy, "applyQuotaMonthlyAuto", ""), { period: applyQuota?.period ?? "" })}
+              </p>
+              <Form method="post" style={{ margin: 0 }}>
+                <input type="hidden" name="intent" value="billing-extra-apply" />
+                <button
+                  type="submit"
+                  style={{ ...theme.btnGhost, width: "100%", borderColor: "rgba(251,191,36,0.5)", color: "#fbbf24" }}
+                  onClick={(e) => {
+                    if (!window.confirm(copyText(copy, "confirmExtraApply", "Pay $15 for extra Apply?"))) {
+                      e.preventDefault();
+                    }
+                  }}
+                >
+                  {copyText(copy, "payExtraApply", "Pay $15 for extra Apply")}
+                </button>
+              </Form>
+            </div>
+          )}
+
+          {showExtraPaymentGate && !showMonthlyAutoNotice && (
+            <div style={{ ...theme.card, borderColor: "rgba(251,191,36,0.4)", background: "rgba(251,191,36,0.08)" }}>
+              <h2 style={{ ...theme.h2, color: "#fbbf24" }}>{copyText(copy, "applyQuotaExtraPayment", "Extra Apply")}</h2>
+              <p style={{ ...theme.body, marginBottom: "12px", fontSize: "0.88rem" }}>
+                {copyText(copy, "applyQuotaExtraPaymentBody", "")}
+              </p>
+              <Form method="post" style={{ margin: 0 }}>
+                <input type="hidden" name="intent" value="billing-extra-apply" />
+                <button
+                  type="submit"
+                  style={{ ...theme.btnPrimary, width: "100%" }}
+                  onClick={(e) => {
+                    if (!window.confirm(copyText(copy, "confirmExtraApply", "Pay $15?"))) {
+                      e.preventDefault();
+                    }
+                  }}
+                >
+                  {copyText(copy, "payExtraApply", "Pay $15 for extra Apply")}
+                </button>
+              </Form>
+            </div>
+          )}
+
           {showApplyGate && (
             <div style={{ ...theme.card, borderColor: "rgba(163,230,53,0.35)", background: "rgba(163,230,53,0.06)" }}>
               <p style={{ ...theme.body, marginBottom: "14px", color: "#a3e635", fontWeight: 600 }}>
-                {copy.step4PaidIntro}
+                {showExtraApplyGate
+                  ? fillCopy(copyText(copy, "applyQuotaExtraAvailable", ""), {
+                      count: applyQuota?.extraApplyCredits ?? 1,
+                    })
+                  : copy.step4PaidIntro}
               </p>
               <label style={{ display: "flex", gap: "10px", alignItems: "flex-start", marginBottom: "12px", cursor: "pointer" }}>
                 <input

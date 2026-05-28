@@ -73,5 +73,29 @@ model ShopBilling {
   setupPaid          Boolean   @default(false)
   setupPaidAt        DateTime?
   subscriptionActive Boolean   @default(false)
+  extraApplyCredits  Int       @default(0)
   updatedAt          DateTime  @updatedAt
+}
+
+model ApplyRun {
+  id        Int      @id @default(autoincrement())
+  shop      String
+  period    String
+  kind      String
+  batchId   String?
+  status    String
+  note      String?
+  appliedAt DateTime @default(now())
+
+  @@index([shop, period])
+  @@index([shop, kind])
+}
+
+model ProcessedBillingCharge {
+  id          String   @id
+  shop        String
+  kind        String
+  processedAt DateTime @default(now())
+
+  @@index([shop, kind])
 }

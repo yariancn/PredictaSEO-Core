@@ -255,6 +255,24 @@ const MESSAGES = {
     maintenancePlan3: "Optimization for new catalog items as you grow",
     maintenancePlanNote:
       "Maintenance is included when you unlock — $15/mo starts after a 30-day trial. Cancel anytime in Shopify billing.",
+    applyQuotaTitle: "Apply rules — read before continuing",
+    applyQuotaSetup:
+      "Your $35 setup includes one Apply now — that counts as this month's included update. After that, one automatic Apply runs each calendar month with your $15/mo plan.",
+    applyQuotaMonthlyAuto:
+      "Your included Apply for {{period}} runs automatically — we scan your catalog and apply pending fixes without you clicking Apply. Manual Apply is not included this month unless you purchase an extra.",
+    applyQuotaMonthlyDone:
+      "Your included automatic Apply for {{period}} has already run. Need another update this month? Extra Apply costs $15 (one-time).",
+    applyQuotaExtraAvailable:
+      "You have {{count}} extra Apply credit(s) ready — paid $15 each. You can run Apply manually now.",
+    applyQuotaExtraPayment: "Extra Apply — $15 one-time",
+    applyQuotaExtraPaymentBody:
+      "Your monthly included Apply is already used (or scheduled automatically). An additional Apply this month requires a $15 one-time charge. Same optimization quality — manual trigger.",
+    applyQuotaNoSubscription:
+      "Automatic monthly Apply requires active maintenance ($15/mo). Without it, you can still purchase an extra Apply for $15 when you need changes.",
+    applyQuotaPeriod: "Billing month: {{period}}",
+    payExtraApply: "Pay $15 for extra Apply",
+    confirmExtraApply: "Pay $15 one-time to unlock one manual Apply this month?",
+    extraApplySuccess: "Payment confirmed — 1 extra Apply credit added. You can Apply now.",
     reasonNoSeoTitle: "Missing search title",
     reasonNoSeoDesc: "Missing search description",
     reasonNoDesc: "Missing product description",
@@ -506,6 +524,24 @@ const MESSAGES = {
     maintenancePlan3: "Optimización de productos nuevos conforme creces",
     maintenancePlanNote:
       "El mantenimiento se incluye al desbloquear — $15/mes empieza tras 30 días de prueba. Cancela cuando quieras en billing de Shopify.",
+    applyQuotaTitle: "Reglas de Apply — lee antes de continuar",
+    applyQuotaSetup:
+      "Tu setup de $35 incluye un Apply ahora — cuenta como la actualización incluida de este mes. Después, un Apply automático corre cada mes calendario con tu plan de $15/mes.",
+    applyQuotaMonthlyAuto:
+      "Tu Apply incluido de {{period}} corre automáticamente — escaneamos tu catálogo y aplicamos cambios pendientes sin que pulses Apply. Apply manual no está incluido este mes salvo que compres uno extra.",
+    applyQuotaMonthlyDone:
+      "Tu Apply automático incluido de {{period}} ya se ejecutó. ¿Necesitas otro este mes? Apply extra cuesta $15 (pago único).",
+    applyQuotaExtraAvailable:
+      "Tienes {{count}} crédito(s) de Apply extra — pagados $15 c/u. Puedes ejecutar Apply manualmente ahora.",
+    applyQuotaExtraPayment: "Apply extra — $15 pago único",
+    applyQuotaExtraPaymentBody:
+      "Tu Apply mensual incluido ya se usó (o está programado automáticamente). Un Apply adicional este mes requiere $15 pago único. Misma calidad — lo disparas tú.",
+    applyQuotaNoSubscription:
+      "El Apply mensual automático requiere mantenimiento activo ($15/mes). Sin él, puedes comprar un Apply extra por $15 cuando necesites cambios.",
+    applyQuotaPeriod: "Mes de facturación: {{period}}",
+    payExtraApply: "Pagar $15 por Apply extra",
+    confirmExtraApply: "¿Pagar $15 pago único para desbloquear un Apply manual este mes?",
+    extraApplySuccess: "Pago confirmado — 1 crédito de Apply extra añadido. Ya puedes Apply.",
     reasonNoSeoTitle: "Sin título de búsqueda",
     reasonNoSeoDesc: "Sin descripción de búsqueda",
     reasonNoDesc: "Sin descripción de producto",
@@ -692,6 +728,24 @@ const MESSAGES = {
     restoreAllSuccess: "Terminé — {{count}} produits restaurés sur {{batches}} changements.",
     restoreAllHint:
       "Restaurer et Annuler utilisent la même sauvegarde — produits et identité de marque reviennent à l'état d'avant Apply. Le score doit refléter ce moment, pas zéro.",
+    applyQuotaTitle: "Règles d'Apply — à lire avant de continuer",
+    applyQuotaSetup:
+      "Votre setup à $35 inclut un Apply manuel maintenant. Ensuite, les Apply inclus tournent automatiquement une fois par mois avec votre plan à $15/mois.",
+    applyQuotaMonthlyAuto:
+      "Votre Apply inclus pour {{period}} s'exécute automatiquement — nous scannons le catalogue sans clic Apply. Apply manuel non inclus ce mois sauf achat extra.",
+    applyQuotaMonthlyDone:
+      "Votre Apply automatique inclus pour {{period}} a déjà été exécuté. Besoin d'une autre mise à jour ce mois ? Apply extra : $15 (unique).",
+    applyQuotaExtraAvailable:
+      "Vous avez {{count}} crédit(s) Apply extra ($15 chacun). Vous pouvez Apply manuellement maintenant.",
+    applyQuotaExtraPayment: "Apply extra — $15 unique",
+    applyQuotaExtraPaymentBody:
+      "Votre Apply mensuel inclus est utilisé (ou programmé). Un Apply supplémentaire ce mois coûte $15. Même qualité — déclenché par vous.",
+    applyQuotaNoSubscription:
+      "L'Apply mensuel automatique nécessite la maintenance ($15/mo). Sinon, achetez un Apply extra à $15 quand vous en avez besoin.",
+    applyQuotaPeriod: "Mois de facturation : {{period}}",
+    payExtraApply: "Payer $15 pour un Apply extra",
+    confirmExtraApply: "Payer $15 pour débloquer un Apply manuel ce mois ?",
+    extraApplySuccess: "Paiement confirmé — 1 crédit Apply extra ajouté. Vous pouvez Apply.",
     resetTestTitle: "Annuler tous les changements PredictaCore (pilote)",
     resetTestBody:
       "Identique à Tout restaurer : remet la boutique comme avant Apply via la sauvegarde. Le score remonte si vous aviez déjà appliqué des changements.",

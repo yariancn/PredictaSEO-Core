@@ -62,6 +62,9 @@ export async function loadAuditData(request) {
     "expectationsDoneTitle", "expectationsDone1Updated", "expectationsDone1Verified", "expectationsDone2", "expectationsDone3", "expectationsDone4",
     "expectationsTimelineTitle", "expectationsTimeline1", "expectationsTimeline2",
     "maintenancePlanTitle", "maintenancePlanIntro", "maintenancePlan1", "maintenancePlan2", "maintenancePlan3", "maintenancePlanNote",
+    "applyQuotaTitle", "applyQuotaSetup", "applyQuotaMonthlyAuto", "applyQuotaMonthlyDone", "applyQuotaExtraAvailable",
+    "applyQuotaExtraPayment", "applyQuotaExtraPaymentBody", "applyQuotaNoSubscription", "payExtraApply", "confirmExtraApply",
+    "extraApplySuccess", "applyQuotaPeriod",
   ];
 
   const buildCopy = (locale) =>
@@ -143,25 +146,34 @@ export async function loadAuditData(request) {
             isTest: isBillingTest(),
           });
           await syncBillingFromShopify(session.shop, setupCheck, subCheck);
-          return {
+          const base = {
             canApply: setupCheck.hasActivePayment,
             setupPaid: setupCheck.hasActivePayment,
             subscriptionActive: subCheck.hasActivePayment,
             pilotMode: false,
           };
+          const { getApplyQuotaStatus } = await import("./apply-quota.server.js");
+          const applyQuota = await getApplyQuotaStatus(session.shop, base);
+          return { ...base, applyQuota };
         } catch {
           const record = await prisma.shopBilling.findUnique({ where: { shop: session.shop } });
-          return {
+          const base = {
             canApply: record?.setupPaid ?? false,
             setupPaid: record?.setupPaid ?? false,
             subscriptionActive: record?.subscriptionActive ?? false,
             pilotMode: false,
           };
+          const { getApplyQuotaStatus } = await import("./apply-quota.server.js");
+          const applyQuota = await getApplyQuotaStatus(session.shop, base);
+          return { ...base, applyQuota };
         }
       })(),
       BILLING_TIMEOUT_MS,
-      { canApply: false, setupPaid: false, subscriptionActive: false, pilotMode: false },
+      { canApply: false, setupPaid: false, subscriptionActive: false, pilotMode: false, applyQuota: null },
     );
+  } else {
+    const { getApplyQuotaStatus } = await import("./apply-quota.server.js");
+    billingStatus.applyQuota = await getApplyQuotaStatus(session.shop, billingStatus);
   }
 
   return {

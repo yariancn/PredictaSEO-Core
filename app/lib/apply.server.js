@@ -1,7 +1,7 @@
 import prisma from "../db.server.js";
 import { describePreviewChanges } from "./preview.js";
 import { inferProductCategory } from "./forense.server.js";
-import { applySchemaToTheme, rollbackSchemaFromTheme, deactivateSchemaForShop } from "./schema.server.js";
+import { applySchemaToTheme, rollbackSchemaFromTheme } from "./schema.server.js";
 
 const PRODUCT_UPDATE = `#graphql
   mutation PredictaCoreProductUpdate($input: ProductInput!) {
@@ -177,6 +177,16 @@ async function applyProductChange(admin, item) {
   if (userErrors.length) throw new Error(userErrors.map((e) => e.message).join("; "));
 }
 
+function isProductMissingError(message = "") {
+  const lower = message.toLowerCase();
+  return (
+    lower.includes("not found") ||
+    lower.includes("does not exist") ||
+    lower.includes("could not find") ||
+    lower.includes("invalid product")
+  );
+}
+
 async function saveProductSnapshots(shop, batchId, item) {
   const originals = item.originals ?? item.before;
 
@@ -227,13 +237,20 @@ async function saveProductSnapshots(shop, batchId, item) {
 export async function applyPreviewPlan(admin, shop, preview, batchId, options = {}) {
   const { jsonLd } = options;
   let applied = 0;
+  let failedCount = 0;
+  const errors = [];
   let schemaApplied = false;
   let schemaError = null;
 
   for (const item of preview.items) {
-    await applyProductChange(admin, item);
-    await saveProductSnapshots(shop, batchId, item);
-    applied += 1;
+    try {
+      await applyProductChange(admin, item);
+      await saveProductSnapshots(shop, batchId, item);
+      applied += 1;
+    } catch (err) {
+      failedCount += 1;
+      errors.push(`${item.title ?? item.id}: ${err.message ?? "Update failed"}`);
+    }
   }
 
   if (preview.schema?.willApply && jsonLd) {
@@ -260,7 +277,7 @@ export async function applyPreviewPlan(admin, shop, preview, batchId, options = 
     }
   }
 
-  return { applied, batchId, schemaApplied, schemaError };
+  return { applied, failedCount, errors, partial: failedCount > 0, batchId, schemaApplied, schemaError };
 }
 
 async function rollbackProductSnapshots(admin, snapshots) {
@@ -272,6 +289,10 @@ async function rollbackProductSnapshots(admin, snapshots) {
   }
 
   let productsRestored = 0;
+  let productsSkipped = 0;
+  const skipped = [];
+  const failed = [];
+
   for (const [resourceId, fields] of byProduct) {
     const input = { id: resourceId };
     if ("seo.title" in fields || "seo.description" in fields) {
@@ -284,14 +305,45 @@ async function rollbackProductSnapshots(admin, snapshots) {
       input.descriptionHtml = fields["descriptionHtml"] ?? "";
     }
 
-    const response = await admin.graphql(PRODUCT_UPDATE, { variables: { input } });
-    const { data, errors } = await response.json();
-    if (errors?.length) throw new Error(errors.map((e) => e.message).join("; "));
-    const userErrors = data?.productUpdate?.userErrors ?? [];
-    if (userErrors.length) throw new Error(userErrors.map((e) => e.message).join("; "));
-    productsRestored += 1;
+    try {
+      const response = await admin.graphql(PRODUCT_UPDATE, { variables: { input } });
+      const { data, errors } = await response.json();
+      if (errors?.length) {
+        const msg = errors.map((e) => e.message).join("; ");
+        if (isProductMissingError(msg)) {
+          productsSkipped += 1;
+          skipped.push(resourceId);
+          continue;
+        }
+        throw new Error(msg);
+      }
+      const userErrors = data?.productUpdate?.userErrors ?? [];
+      if (userErrors.length) {
+        const msg = userErrors.map((e) => e.message).join("; ");
+        if (isProductMissingError(msg)) {
+          productsSkipped += 1;
+          skipped.push(resourceId);
+          continue;
+        }
+        throw new Error(msg);
+      }
+      productsRestored += 1;
+    } catch (err) {
+      const msg = err.message ?? "Restore failed";
+      if (isProductMissingError(msg)) {
+        productsSkipped += 1;
+        skipped.push(resourceId);
+        continue;
+      }
+      failed.push({ resourceId, error: msg });
+    }
   }
-  return productsRestored;
+
+  if (failed.length > 0) {
+    throw new Error(failed.map((f) => f.error).join("; "));
+  }
+
+  return { productsRestored, productsSkipped, skippedProductIds: skipped };
 }
 
 function summarizeRollback(snapshots) {
@@ -326,14 +378,15 @@ export async function rollbackBatch(admin, shop, batchId) {
   if (schemaSnaps.length) {
     await rollbackSchemaFromTheme(admin, shop, schemaSnaps);
   }
-  const productsRestored = await rollbackProductSnapshots(admin, productSnaps);
+  const productOutcome = await rollbackProductSnapshots(admin, productSnaps);
   await prisma.optimizationSnapshot.deleteMany({ where: { shop, batchId } });
 
   return {
     restored: snapshots.length,
     batchId,
     snapshotCount: summary.snapshotCount,
-    productCount: productsRestored,
+    productCount: productOutcome.productsRestored,
+    productsSkipped: productOutcome.productsSkipped,
     schemaRestored: summary.schemaRestored,
   };
 }
@@ -359,17 +412,20 @@ export async function rollbackAllBatches(admin, shop) {
   });
   let snapshotCount = 0;
   let productCount = 0;
+  let productsSkipped = 0;
   let schemaRestored = false;
   for (const { batchId } of batches) {
     const result = await rollbackBatch(admin, shop, batchId);
     snapshotCount += result.snapshotCount ?? result.restored ?? 0;
     productCount += result.productCount ?? 0;
+    productsSkipped += result.productsSkipped ?? 0;
     schemaRestored = schemaRestored || Boolean(result.schemaRestored);
   }
   return {
     restored: snapshotCount,
     snapshotCount,
     productCount,
+    productsSkipped,
     schemaRestored,
     batches: batches.length,
   };
