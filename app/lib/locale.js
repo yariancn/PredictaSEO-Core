@@ -109,20 +109,20 @@ const MESSAGES = {
     billingFootnote:
       "No refunds. Cancel anytime in Shopify Admin — takes effect next billing period; the current month stays paid ($35 first month, then $15/month).",
     pricingMaintenanceIncluded:
-      "Plan active — $15/month on your Shopify bill. Cancel anytime; current period stays paid.",
+      "Included: $15/month updates start automatically after your first month. Cancel anytime in Shopify Admin — takes effect next billing period.",
     unlockApply: "Pay $35 — unlock Apply",
     billingBundleContinue: "Continue — approve $15/month plan (required)",
-    billingRequired: "Complete payment ($35 + $15/mo plan) to unlock Apply.",
+    billingRequired: "Complete the $35 setup payment to unlock Apply.",
+    applyAlreadyDone:
+      "Your initial optimization is already applied. Monthly updates run automatically — no extra action needed.",
     step4FlowTitle: "Apply to your store",
-    step4PaymentBodyFirst:
-      "Nothing changed yet — preview only. Continue to pay $35 (first month + Apply). Then $15/month until you cancel in Shopify. No refunds; cancellation applies next billing period. Shopify may show two approval screens.",
-    step4PaymentBodySetupDone:
-      "$35 setup is already approved on this store — that is why Shopify shows $15/month next, not $35 again. Continue to approve the required $15/month plan. No refunds; cancel in Shopify Admin takes effect next period.",
+    step4PaymentBodyFirst: "Continue to pay $35 and unlock Apply on your store.",
+    step4PaymentSuccess: "Payment successful — $35 setup complete.",
     step4FlowIntro:
-      "One plan: $35 today (first month + Apply), then $15/month until you cancel. Shopify may show two approval screens — both required. No refunds.",
+      "One payment of $35 unlocks your first optimization. $15/month starts automatically after the first month.",
     billingBundleStep2:
       "$35 setup is active on this store. Continue to approve the required $15/month subscription.",
-    step4PaidIntro: "Plan active — confirm below to publish changes to your store.",
+    step4PaidIntro: "Payment complete — confirm below to publish changes to your store.",
     billingStatusTitle: "Billing status (this store)",
     billingStatusNone:
       "Not paid yet — Shopify will ask you to approve $35, then $15/month. Charges appear on your Shopify invoice.",
@@ -398,15 +398,18 @@ const MESSAGES = {
     billingFootnote:
       "Sin devoluciones. Cancela en Shopify Admin — aplica al siguiente periodo; el mes en curso ya está pagado ($35 primer mes, luego $15/mes).",
     pricingMaintenanceIncluded:
-      "Plan activo — $15/mes en tu factura Shopify. Cancela cuando quieras; el periodo en curso sigue pagado.",
+      "Incluido: actualizaciones de $15/mes empiezan automáticamente después del primer mes. Cancela en Shopify Admin cuando quieras.",
     unlockApply: "Pagar $35 — desbloquear Apply",
     billingBundleContinue: "Continuar — aprobar plan $15/mes (obligatorio)",
-    billingRequired: "Completa el pago ($35 + plan $15/mes) para desbloquear Apply.",
+    billingRequired: "Completa el pago de $35 para desbloquear Apply.",
+    applyAlreadyDone:
+      "Tu optimización inicial ya está aplicada. Las actualizaciones mensuales son automáticas — no necesitas hacer nada más.",
     step4FlowTitle: "Aplicar en tu tienda",
-    step4PaymentBodyFirst:
-      "Aún no cambiamos nada — solo preview. Continuar para pagar $35 (primer mes + Apply). Luego $15/mes hasta cancelar en Shopify. Sin devoluciones; cancelación aplica al siguiente periodo. Shopify puede mostrar dos pantallas.",
-    step4PaymentBodySetupDone:
-      "El setup de $35 ya está aprobado en esta tienda — por eso Shopify muestra $15/mes ahora, no $35 otra vez. Continuar para aprobar el plan obligatorio de $15/mes. Sin devoluciones; cancelar en Shopify aplica al siguiente periodo.",
+    step4PaymentBodyFirst: "Continúa para pagar $35 y desbloquear Apply en tu tienda.",
+    step4PaymentSuccess: "Pago exitoso — setup de $35 completado.",
+    step4FlowIntro:
+      "Un pago de $35 desbloquea tu primera optimización. $15/mes empieza automáticamente después del primer mes.",
+    step4PaidIntro: "Pago completado — confirma abajo para publicar los cambios en tu tienda.",
     introTitle: "Analizaremos cómo la IA ve tu tienda",
     introBody:
       "Antes de cualquier pago o cambio, leemos tu catálogo y datos de marca para mostrar un score de preparación para IA y un plan claro.",
@@ -711,18 +714,18 @@ const MESSAGES = {
     billingFootnote:
       "Sans remboursement. Annulez dans Shopify Admin — effet à la période suivante ; le mois en cours reste payé ($35 premier mois, puis $15/mois).",
     pricingMaintenanceIncluded:
-      "Plan actif — $15/mois sur votre facture Shopify. Annulable ; la période en cours reste payée.",
+      "Inclus : mises à jour à $15/mois automatiques après le premier mois. Annulez dans Shopify Admin quand vous voulez.",
     unlockApply: "Payer $35 — débloquer Apply",
     billingBundleContinue: "Continuer — approuver le plan $15/mois (obligatoire)",
-    billingRequired: "Finalisez le paiement ($35 + plan $15/mois) pour débloquer Apply.",
+    billingRequired: "Finalisez le paiement de $35 pour débloquer Apply.",
+    applyAlreadyDone:
+      "Votre optimisation initiale est déjà appliquée. Les mises à jour mensuelles sont automatiques — aucune action supplémentaire.",
     step4FlowTitle: "Appliquer sur votre boutique",
-    step4PaymentBodyFirst:
-      "Rien n'a changé — aperçu seulement. Continuer pour payer $35 (premier mois + Apply). Puis $15/mois jusqu'à annulation dans Shopify. Sans remboursement ; annulation au prochain cycle. Shopify peut afficher deux écrans.",
-    step4PaymentBodySetupDone:
-      "Le setup $35 est déjà approuvé sur cette boutique — c'est pourquoi Shopify affiche $15/mois maintenant, pas $35. Continuer pour approuver le plan obligatoire à $15/mois. Sans remboursement ; annulation effet période suivante.",
+    step4PaymentBodyFirst: "Continuer pour payer $35 et débloquer Apply sur votre boutique.",
+    step4PaymentSuccess: "Paiement réussi — setup $35 terminé.",
     step4FlowIntro:
-      "Un seul plan : $35 aujourd'hui (premier mois + Apply), puis $15/mois jusqu'à annulation.",
-    step4PaidIntro: "Plan actif — confirmez ci-dessous pour publier les changements.",
+      "Un paiement de $35 débloque votre première optimisation. $15/mois démarre automatiquement après le premier mois.",
+    step4PaidIntro: "Paiement effectué — confirmez ci-dessous pour publier les changements.",
     restoreWarning:
       "La restauration n'annule que la dernière application. Les optimisations précédentes restent en place.",
     products: "Produits",

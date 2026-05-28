@@ -6,29 +6,19 @@ export function getBillingReturnUrls(shop) {
   const adminApp = `https://admin.shopify.com/store/${shopSlug}/apps/predictacore-app`;
   return {
     adminReady: `${adminApp}?billing=ready`,
-    chainSetup: `${adminApp}?billing=chain`,
   };
 }
 
-/** Setup ($35, month 1) then maintenance ($15/mo from next billing cycle). */
-export async function runBillingSetupFlow({ billing, session, isTest, SETUP_PLAN, MAINTENANCE_PLAN, syncBillingFromShopify }) {
+/** Single merchant-facing charge: $35 setup (includes month 1). $15/mo is registered in background after payment. */
+export async function runBillingSetupFlow({ billing, session, isTest, SETUP_PLAN, syncBillingFromShopify }) {
   const urls = getBillingReturnUrls(session.shop);
 
   const setupCheck = await billing.check({ plans: [SETUP_PLAN], isTest });
-  const subCheck = await billing.check({ plans: [MAINTENANCE_PLAN], isTest });
-  await syncBillingFromShopify(session.shop, setupCheck, subCheck);
+  await syncBillingFromShopify(session.shop, setupCheck);
 
   if (!setupCheck.hasActivePayment) {
     return billing.request({
       plan: SETUP_PLAN,
-      isTest,
-      returnUrl: urls.chainSetup,
-    });
-  }
-
-  if (!subCheck.hasActivePayment) {
-    return billing.request({
-      plan: MAINTENANCE_PLAN,
       isTest,
       returnUrl: urls.adminReady,
     });

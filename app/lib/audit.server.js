@@ -8,7 +8,7 @@ function withTimeout(promise, ms, fallback) {
 }
 
 export async function loadAuditData(request) {
-  const { authenticate, SETUP_PLAN, MAINTENANCE_PLAN } = await import("../shopify.server");
+  const { authenticate, SETUP_PLAN } = await import("../shopify.server");
   const { CATALOG_QUERY, analyzeExecutive, analyzeSnapshot, getPriorityProducts, prepareCatalogData } =
     await import("./diagnostic.server.js");
   const { buildForenseReport, buildOrganizationJsonLd, groupProductsByCategory } = await import(
@@ -37,7 +37,7 @@ export async function loadAuditData(request) {
     "fixSeoDone", "previewAllDone", "previewProductsDone", "previewSchemaOnlyExplain", "previewSchemaRow", "previewSchemaRowDetail", "seeUpdatedScore",
     "whyUsTitle", "whyUs1", "whyUs2", "whyUs3", "whyUs4",
     "pricingTitle", "pricingFree", "pricingSetup", "pricingMaintenance", "billingFootnote", "pricingMaintenanceIncluded",
-    "step4FlowTitle", "step4FlowIntro", "step4PaymentBodyFirst", "step4PaymentBodySetupDone", "step4PaidIntro", "alreadyOptimizedTitle", "alreadyOptimizedBody",
+    "step4FlowTitle", "step4FlowIntro", "step4PaymentBodyFirst", "step4PaymentSuccess", "step4PaidIntro", "applyAlreadyDone", "alreadyOptimizedTitle", "alreadyOptimizedBody",
     "refreshingStore", "confirmingPayment",
     "unlockApply", "subscribeMaintenance", "billingRequired", "restoreWarning",
     "products", "markets", "continue", "back",
@@ -153,15 +153,16 @@ export async function loadAuditData(request) {
             plans: [SETUP_PLAN],
             isTest: isBillingTest(),
           });
-          const subCheck = await billing.check({
-            plans: [MAINTENANCE_PLAN],
-            isTest: isBillingTest(),
-          });
-          await syncBillingFromShopify(session.shop, setupCheck, subCheck);
+          await syncBillingFromShopify(session.shop, setupCheck);
+          const setupPaid = setupCheck.hasActivePayment;
+          if (setupPaid) {
+            const { ensureDeferredMaintenanceSubscription } = await import("./billing-maintenance.server.js");
+            ensureDeferredMaintenanceSubscription(admin, session.shop, { isTest: isBillingTest() }).catch(() => {});
+          }
           const base = {
-            canApply: setupCheck.hasActivePayment,
-            setupPaid: setupCheck.hasActivePayment,
-            subscriptionActive: subCheck.hasActivePayment,
+            canApply: setupPaid,
+            setupPaid,
+            subscriptionActive: setupPaid,
             pilotMode: false,
           };
           const { getApplyQuotaStatus } = await import("./apply-quota.server.js");
@@ -172,7 +173,7 @@ export async function loadAuditData(request) {
           const base = {
             canApply: record?.setupPaid ?? false,
             setupPaid: record?.setupPaid ?? false,
-            subscriptionActive: record?.subscriptionActive ?? false,
+            subscriptionActive: record?.setupPaid ?? record?.subscriptionActive ?? false,
             pilotMode: false,
           };
           const { getApplyQuotaStatus } = await import("./apply-quota.server.js");

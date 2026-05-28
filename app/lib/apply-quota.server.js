@@ -63,43 +63,11 @@ export async function hasMonthlyRunThisPeriod(shop, period = currentApplyPeriod(
   return Boolean(run);
 }
 
-export async function getExtraApplyCredits(shop) {
-  const billing = await prisma.shopBilling.findUnique({ where: { shop } });
-  return billing?.extraApplyCredits ?? 0;
-}
-
-export async function grantExtraApplyCredit(shop, chargeId = null) {
-  if (chargeId) {
-    const existing = await prisma.processedBillingCharge.findUnique({ where: { id: chargeId } });
-    if (existing) return false;
-    await prisma.processedBillingCharge.create({
-      data: { id: chargeId, shop, kind: "extra_apply" },
-    });
-  }
-
-  await prisma.shopBilling.upsert({
-    where: { shop },
-    create: { shop, extraApplyCredits: 1 },
-    update: { extraApplyCredits: { increment: 1 } },
-  });
-  return true;
-}
-
-export async function consumeExtraApplyCredit(shop) {
-  const billing = await prisma.shopBilling.findUnique({ where: { shop } });
-  if (!billing || billing.extraApplyCredits < 1) return false;
-  await prisma.shopBilling.update({
-    where: { shop },
-    data: { extraApplyCredits: { decrement: 1 } },
-  });
-  return true;
-}
-
 /**
- * Manual apply from the wizard (merchant-initiated).
- * After setup: only extra-credit applies unless pilot mode.
+ * Manual apply from the wizard — one initial setup apply only.
+ * Further updates run automatically once per month (cron). No extra paid scans.
  */
-export async function resolveManualApplyPermission(shop, { pilotMode = false, setupPaid = false, subscriptionActive = false }) {
+export async function resolveManualApplyPermission(shop, { pilotMode = false, setupPaid = false }) {
   if (pilotMode) {
     return { allowed: true, kind: APPLY_KIND.SETUP, reason: "pilot" };
   }
@@ -113,25 +81,20 @@ export async function resolveManualApplyPermission(shop, { pilotMode = false, se
     return { allowed: true, kind: APPLY_KIND.SETUP, reason: "setup_first" };
   }
 
-  const credits = await getExtraApplyCredits(shop);
-  if (credits > 0) {
-    return { allowed: true, kind: APPLY_KIND.EXTRA, reason: "extra_credit", credits };
-  }
+  return { allowed: false, reason: "already_applied" };
+}
 
-  const period = currentApplyPeriod();
-  const includedUsed = await hasIncludedApplyThisPeriod(shop, period);
-  const monthlyDone = await hasMonthlyRunThisPeriod(shop, period);
+/** @deprecated Extra apply disabled. */
+export async function consumeExtraApplyCredit(_shop) {
+  return false;
+}
 
-  if (subscriptionActive && !includedUsed && !monthlyDone) {
-    return { allowed: false, reason: "monthly_auto_scheduled", period };
-  }
-
-  if (includedUsed || monthlyDone) {
-    return { allowed: false, reason: "quota_exhausted", needsExtraPayment: true, period };
-  }
-
-  // Post-setup, new month, no active maintenance — manual re-apply requires extra payment.
-  return { allowed: false, reason: "quota_exhausted", needsExtraPayment: true, period };
+/** @deprecated Extra apply disabled — kept for legacy billing module compatibility. */
+export async function grantExtraApplyCredit(shop) {
+  return prisma.shopBilling.updateMany({
+    where: { shop },
+    data: { extraApplyCredits: 0 },
+  });
 }
 
 export async function recordApplyRun(shop, { kind, batchId = null, status = APPLY_STATUS.COMPLETED, note = null }) {
@@ -141,7 +104,7 @@ export async function recordApplyRun(shop, { kind, batchId = null, status = APPL
   });
 }
 
-/** After restore, merchant can use their included setup Apply again — quota must not stay on "extra $15". */
+/** After restore, merchant can run their included setup Apply again. */
 export async function resetApplyQuotaAfterRestore(shop) {
   await prisma.applyRun.deleteMany({ where: { shop } });
   await prisma.shopBilling.updateMany({
@@ -155,29 +118,17 @@ export async function getApplyQuotaStatus(shop, billing = {}) {
   const setupDone = await hasRecordedSetupApply(shop);
   const monthlyAutoDone = await hasMonthlyRunThisPeriod(shop, period);
   const includedApplyUsed = await hasIncludedApplyThisPeriod(shop, period);
-  const extraApplyCredits = await getExtraApplyCredits(shop);
   const permission = await resolveManualApplyPermission(shop, billing);
-
-  const extraRunsThisPeriod = await prisma.applyRun.count({
-    where: {
-      shop,
-      period,
-      kind: APPLY_KIND.EXTRA,
-      status: APPLY_STATUS.COMPLETED,
-    },
-  });
 
   return {
     period,
     setupDone,
     monthlyAutoDone,
     includedApplyUsed,
-    extraRunsThisPeriod,
-    extraApplyCredits,
     canManualApply: permission.allowed,
     manualApplyKind: permission.kind ?? null,
     blockReason: permission.allowed ? null : permission.reason,
-    needsExtraPayment: permission.needsExtraPayment ?? false,
+    needsExtraPayment: false,
     subscriptionActive: Boolean(billing.subscriptionActive),
     setupPaid: Boolean(billing.setupPaid),
     pilotMode: Boolean(billing.pilotMode),

@@ -138,7 +138,7 @@ export async function syncSubscriptionFromAdmin(admin, shop) {
     await prisma.shopBilling.upsert({
       where: { shop },
       create: { shop, subscriptionActive: maintenanceActive, setupPaid: false },
-      update: { subscriptionActive: maintenanceActive },
+      update: maintenanceActive ? { subscriptionActive: true } : {},
     });
 
     return { shop, synced: true, subscriptionActive: maintenanceActive };

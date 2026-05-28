@@ -1,5 +1,5 @@
 import { json } from "@remix-run/node";
-import { authenticate, SETUP_PLAN, MAINTENANCE_PLAN } from "../shopify.server";
+import { authenticate, SETUP_PLAN } from "../shopify.server";
 import { runBillingSetupFlow } from "../lib/billing-flow.server.js";
 
 export async function loader({ request }) {
@@ -12,7 +12,6 @@ export async function loader({ request }) {
       session,
       isTest: isBillingTest(),
       SETUP_PLAN,
-      MAINTENANCE_PLAN,
       syncBillingFromShopify,
     });
   } catch (error) {

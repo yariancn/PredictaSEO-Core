@@ -1,29 +1,11 @@
 import { redirect } from "@remix-run/node";
-import { authenticate, SETUP_PLAN, MAINTENANCE_PLAN } from "../shopify.server";
+import { authenticate } from "../shopify.server";
 import { getBillingReturnUrls } from "../lib/billing-flow.server.js";
 
+/** Legacy route — maintenance billing is deferred; redirect to app home. */
 export async function loader({ request }) {
-  const { isBillingTest, syncBillingFromShopify } = await import("../lib/billing.server.js");
-  const { billing, session } = await authenticate.admin(request);
-  const isTest = isBillingTest();
+  const { session } = await authenticate.admin(request);
   const urls = getBillingReturnUrls(session.shop);
-
-  const setupCheck = await billing.check({ plans: [SETUP_PLAN], isTest });
-  const subCheck = await billing.check({ plans: [MAINTENANCE_PLAN], isTest });
-  await syncBillingFromShopify(session.shop, setupCheck, subCheck);
-
-  if (!setupCheck.hasActivePayment) {
-    throw redirect("/app/billing/setup");
-  }
-
-  if (!subCheck.hasActivePayment) {
-    return billing.request({
-      plan: MAINTENANCE_PLAN,
-      isTest,
-      returnUrl: urls.adminReady,
-    });
-  }
-
   throw redirect(urls.adminReady);
 }
 
