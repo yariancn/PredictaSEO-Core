@@ -23,15 +23,16 @@ const MESSAGES = {
     introBullet3: "Preview every change before the one-time $35 setup fee",
     introNoChanges: "Nothing on your storefront is modified during this free audit.",
     startAuditButton: "Start free audit — I agree",
-    monthlyBeforePayTitle: "What you get every month ($15, after setup)",
+    monthlyBeforePayTitle: "After you unlock ($15/month)",
     monthlyBeforePayBody:
-      "After the one-time optimization, maintenance keeps you visible as your catalog grows:",
+      "$35 today covers your first month and unlocks Apply. Then $15/month until you cancel in Shopify — no refunds; cancellation applies to the next billing period.",
     generateAiPlan: "Generate personalized AI plan",
     skipAiPlan: "Skip AI summary and continue",
-    step3AiTitle: "Optional AI summary (step 3)",
+    step3AiTitle: "AI summary",
     step3AiIntro:
-      "Your fix list above is complete. This is an optional short narrative — you can continue to preview without it.",
-    step3ContinueHint: "Ready for preview — Continue goes to step 4. AI summary is optional.",
+      "Generate a short AI narrative of your store's gaps. When it finishes, Continue unlocks for step 4.",
+    step3ContinueWait: "Generate the AI summary above to continue.",
+    step3ContinueReady: "Summary ready — continue to preview.",
     generateAiPlanBody:
       "Uses AI to write a short, plain-language summary of your gaps and priorities — useful if you want a narrative before the preview. Takes about 10–20 seconds.",
     skipAiPlanBody:
@@ -103,21 +104,30 @@ const MESSAGES = {
     whyUs4: "Built for AI search visibility — not traditional SEO alone",
     pricingTitle: "Pricing",
     pricingFree: "Free — full audit, AI plan & preview",
-    pricingSetup: "$35 one-time — full optimization (SEO, descriptions, brand identity)",
-    pricingMaintenance: "$15/month — re-scan, new products & monitoring (starts next month)",
+    pricingSetup: "$35 — first month + full optimization (Apply unlock)",
+    pricingMaintenance: "$15/month after that — until you cancel in Shopify",
     billingFootnote:
-      "Included in the same plan: $15/month starts in 30 days. Cancel anytime in Shopify billing.",
+      "No refunds. Cancel anytime in Shopify Admin — takes effect next billing period; the current month stays paid ($35 first month, then $15/month).",
     pricingMaintenanceIncluded:
-      "Maintenance active — $15/month starting next month. Cancel anytime in Shopify billing.",
+      "Plan active — $15/month on your Shopify bill. Cancel anytime; current period stays paid.",
     unlockApply: "Pay $35 — unlock Apply",
-    billingBundleContinue: "Continue — approve included plan ($15/mo in 30 days)",
-    billingRequired: "Complete payment ($35 setup + included $15/mo plan) to unlock Apply.",
+    billingBundleContinue: "Continue — approve $15/month plan (required)",
+    billingRequired: "Complete payment ($35 + $15/mo plan) to unlock Apply.",
     step4FlowTitle: "Apply to your store",
     step4FlowIntro:
-      "One plan, no optional add-ons: $35 today to unlock Apply, plus $15/month starting in 30 days (Shopify may show two approval screens — both are required).",
+      "One plan: $35 today (first month + Apply), then $15/month until you cancel. Shopify may show two approval screens — both required. No refunds.",
     billingBundleStep2:
-      "Setup payment received. Continue to approve the included $15/month plan — first charge in 30 days, not optional.",
+      "$35 setup is active on this store. Continue to approve the required $15/month subscription.",
     step4PaidIntro: "Plan active — confirm below to publish changes to your store.",
+    billingStatusTitle: "Billing status (this store)",
+    billingStatusNone:
+      "Not paid yet — Shopify will ask you to approve $35, then $15/month. Charges appear on your Shopify invoice.",
+    billingStatusSetupOnly:
+      "$35 setup is active on this store. Approve the $15/month plan to continue. If you approved charges before, Shopify may not ask for your card again — check Settings → Apps and sales channels → PredictaCore for charges.",
+    billingStatusActive:
+      "Plan active — $35 setup paid · $15/month subscription active. Shopify bills your store automatically each month. Cancel in Shopify Admin takes effect next period; no refunds for the current month.",
+    billingShopifyReceipt:
+      "To verify charges: Shopify Admin → Settings → Apps and sales channels → PredictaCore → View charges. Test stores may show $0 test charges.",
     alreadyOptimizedTitle: "Already optimized",
     alreadyOptimizedBody:
       "No pending changes right now — your store was optimized in a previous session. Use Restore below to undo and run the wizard again.",
@@ -280,7 +290,7 @@ const MESSAGES = {
     maintenancePlan2: "Alerts when new products or gaps lower your score",
     maintenancePlan3: "Optimization for new catalog items as you grow",
     maintenancePlanNote:
-      "Maintenance is included when you unlock — $15/mo starts after a 30-day trial. Cancel anytime in Shopify billing.",
+      "Included with unlock — $15/mo billed by Shopify each month after your first month ($35). Cancel anytime; no refunds.",
     applyQuotaTitle: "Apply rules — read before continuing",
     applyQuotaSetup:
       "Your $35 setup includes one Apply now — that counts as this month's included update. After that, one automatic Apply runs each calendar month with your $15/mo plan.",
@@ -379,20 +389,29 @@ const MESSAGES = {
     whyUs4: "Hecho para visibilidad en AI search — no solo SEO tradicional",
     pricingTitle: "Precios",
     pricingFree: "Gratis — auditoría completa, plan AI y preview",
-    pricingSetup: "$35 único — optimización completa (SEO, descripciones, identidad de marca)",
-    pricingMaintenance: "$15/mes — re-scan, productos nuevos y monitoreo (empieza el próximo mes)",
+    pricingSetup: "$35 — primer mes + optimización completa (desbloquea Apply)",
+    pricingMaintenance: "$15/mes después — hasta cancelar en Shopify",
     billingFootnote:
-      "Incluido en el mismo plan: $15/mes empieza en 30 días. Cancela cuando quieras en billing de Shopify.",
+      "Sin devoluciones. Cancela en Shopify Admin — aplica al siguiente periodo; el mes en curso ya está pagado ($35 primer mes, luego $15/mes).",
     pricingMaintenanceIncluded:
-      "Mantenimiento activo — $15/mes desde el próximo mes. Cancela cuando quieras en billing de Shopify.",
+      "Plan activo — $15/mes en tu factura Shopify. Cancela cuando quieras; el periodo en curso sigue pagado.",
     unlockApply: "Pagar $35 — desbloquear Apply",
-    billingBundleContinue: "Continuar — aprobar plan incluido ($15/mes en 30 días)",
-    billingRequired: "Completa el pago ($35 setup + plan $15/mes incluido) para desbloquear Apply.",
+    billingBundleContinue: "Continuar — aprobar plan $15/mes (obligatorio)",
+    billingRequired: "Completa el pago ($35 + plan $15/mes) para desbloquear Apply.",
     step4FlowTitle: "Aplicar en tu tienda",
     step4FlowIntro:
-      "Un solo plan, sin extras opcionales: $35 hoy para desbloquear Apply, más $15/mes a partir de 30 días (Shopify puede mostrar dos pantallas de aprobación — ambas son obligatorias).",
+      "Un solo plan: $35 hoy (primer mes + Apply), luego $15/mes hasta cancelar. Shopify puede mostrar dos pantallas — ambas obligatorias. Sin devoluciones.",
     billingBundleStep2:
-      "Pago de setup recibido. Continúa para aprobar el plan incluido de $15/mes — primer cargo en 30 días, no es opcional.",
+      "Setup de $35 activo en esta tienda. Continúa para aprobar la suscripción obligatoria de $15/mes.",
+    billingStatusTitle: "Estado de cobro (esta tienda)",
+    billingStatusNone:
+      "Sin pagar aún — Shopify pedirá aprobar $35 y luego $15/mes. Los cargos aparecen en tu factura Shopify.",
+    billingStatusSetupOnly:
+      "Setup de $35 activo en esta tienda. Aprueba el plan $15/mes para continuar. Si ya aprobaste antes, Shopify puede no pedir tarjeta otra vez — revisa Ajustes → Apps → PredictaCore.",
+    billingStatusActive:
+      "Plan activo — setup $35 pagado · suscripción $15/mes activa. Shopify cobra automáticamente cada mes. Cancelar aplica al siguiente periodo; sin devoluciones del mes en curso.",
+    billingShopifyReceipt:
+      "Ver cargos: Shopify Admin → Ajustes → Apps y canales de venta → PredictaCore → Ver cargos. Tiendas de prueba pueden mostrar cargos de $0.",
     introTitle: "Analizaremos cómo la IA ve tu tienda",
     introBody:
       "Antes de cualquier pago o cambio, leemos tu catálogo y datos de marca para mostrar un score de preparación para IA y un plan claro.",
@@ -401,14 +420,16 @@ const MESSAGES = {
     introBullet3: "Vista previa de cada cambio antes del pago único de $35",
     introNoChanges: "Nada en tu tienda se modifica durante esta auditoría gratuita.",
     startAuditButton: "Iniciar auditoría gratis — acepto",
-    monthlyBeforePayTitle: "Qué recibes cada mes ($15, después del setup)",
-    monthlyBeforePayBody: "Después de la optimización única, el mantenimiento te mantiene visible:",
+    monthlyBeforePayTitle: "Después de desbloquear ($15/mes)",
+    monthlyBeforePayBody:
+      "$35 hoy cubre tu primer mes y desbloquea Apply. Luego $15/mes hasta cancelar en Shopify — sin devoluciones; la cancelación aplica al siguiente periodo.",
     generateAiPlan: "Generar plan personalizado con IA",
     skipAiPlan: "Omitir resumen IA y continuar",
-    step3AiTitle: "Resumen IA opcional (paso 3)",
+    step3AiTitle: "Resumen IA",
     step3AiIntro:
-      "Tu lista de correcciones arriba ya está lista. Este resumen narrativo es opcional — puedes continuar al preview sin él.",
-    step3ContinueHint: "Listo para el preview — Continuar va al paso 4. El resumen IA es opcional.",
+      "Genera un resumen narrativo con IA. Cuando termine, se activa Continuar para el paso 4.",
+    step3ContinueWait: "Genera el resumen IA arriba para continuar.",
+    step3ContinueReady: "Resumen listo — continúa al preview.",
     generateAiPlanBody:
       "La IA escribe un resumen breve en lenguaje claro de tus gaps y prioridades — útil si quieres leer un plan narrativo antes del preview. Tarda unos 10–20 segundos.",
     skipAiPlanBody:
@@ -575,7 +596,7 @@ const MESSAGES = {
     maintenancePlan2: "Alertas si productos nuevos o gaps bajan tu score",
     maintenancePlan3: "Optimización de productos nuevos conforme creces",
     maintenancePlanNote:
-      "El mantenimiento se incluye al desbloquear — $15/mes empieza tras 30 días de prueba. Cancela cuando quieras en billing de Shopify.",
+      "Incluido al desbloquear — $15/mes facturado por Shopify cada mes después del primer mes ($35). Cancela cuando quieras; sin devoluciones.",
     applyQuotaTitle: "Reglas de Apply — lee antes de continuar",
     applyQuotaSetup:
       "Tu setup de $35 incluye un Apply ahora — cuenta como la actualización incluida de este mes. Después, un Apply automático corre cada mes calendario con tu plan de $15/mes.",
@@ -611,14 +632,16 @@ const MESSAGES = {
     introBullet3: "Aperçu de chaque changement avant les $35 uniques",
     introNoChanges: "Rien n'est modifié sur votre boutique pendant cet audit gratuit.",
     startAuditButton: "Démarrer l'audit gratuit — j'accepte",
-    monthlyBeforePayTitle: "Chaque mois ($15, après le setup)",
-    monthlyBeforePayBody: "Après l'optimisation unique, la maintenance vous garde visible :",
+    monthlyBeforePayTitle: "Après déblocage ($15/mois)",
+    monthlyBeforePayBody:
+      "$35 aujourd'hui couvre votre premier mois et débloque Apply. Puis $15/mois jusqu'à annulation dans Shopify — sans remboursement ; l'annulation s'applique à la période suivante.",
     generateAiPlan: "Générer un plan IA personnalisé",
     skipAiPlan: "Ignorer le résumé IA et continuer",
-    step3AiTitle: "Résumé IA optionnel (étape 3)",
+    step3AiTitle: "Résumé IA",
     step3AiIntro:
-      "Votre liste de corrections ci-dessus est prête. Ce résumé narratif est optionnel — vous pouvez continuer vers l'aperçu sans lui.",
-    step3ContinueHint: "Prêt pour l'aperçu — Continuer va à l'étape 4. Le résumé IA est optionnel.",
+      "Générez un court résumé IA. Quand il est prêt, Continuer s'active pour l'étape 4.",
+    step3ContinueWait: "Générez le résumé IA ci-dessus pour continuer.",
+    step3ContinueReady: "Résumé prêt — continuez vers l'aperçu.",
     generateAiPlanBody:
       "L'IA rédige un court résumé clair de vos lacunes et priorités — utile si vous voulez un plan narratif avant l'aperçu. Comptez 10–20 secondes.",
     skipAiPlanBody:
@@ -688,21 +711,30 @@ const MESSAGES = {
     whyUs4: "Conçu pour le GEO — visibilité IA, pas seulement Google",
     pricingTitle: "Tarifs",
     pricingFree: "Gratuit — audit complet, plan IA et aperçu",
-    pricingSetup: "$35 unique — optimisation complète (SEO, descriptions, identité de marque)",
-    pricingMaintenance: "$15/mois — re-scan, nouveaux produits et suivi (dès le mois prochain)",
-    pricingUnlockBundle:
-      "$35 aujourd'hui pour appliquer. Maintenance $15/mois incluse automatiquement — premier prélèvement dans 30 jours.",
+    pricingSetup: "$35 — premier mois + optimisation complète (débloque Apply)",
+    pricingMaintenance: "$15/mois ensuite — jusqu'à annulation dans Shopify",
+    billingFootnote:
+      "Sans remboursement. Annulez dans Shopify Admin — effet à la période suivante ; le mois en cours reste payé ($35 premier mois, puis $15/mois).",
     pricingMaintenanceIncluded:
-      "Maintenance $15/mois incluse · premier prélèvement le mois prochain · annulable dans Shopify billing",
+      "Plan actif — $15/mois sur votre facture Shopify. Annulable ; la période en cours reste payée.",
     unlockApply: "Payer $35 — débloquer Apply",
-    billingBundleContinue: "Continuer — approuver le plan inclus ($15/mois dans 30 jours)",
-    billingRequired: "Finalisez le paiement ($35 setup + plan $15/mois inclus) pour débloquer Apply.",
+    billingBundleContinue: "Continuer — approuver le plan $15/mois (obligatoire)",
+    billingRequired: "Finalisez le paiement ($35 + plan $15/mois) pour débloquer Apply.",
     step4FlowTitle: "Appliquer sur votre boutique",
     step4FlowIntro:
-      "Un seul plan, sans options : $35 aujourd'hui pour débloquer Apply, plus $15/mois à partir de 30 jours (Shopify peut afficher deux écrans d'approbation — les deux sont requis).",
+      "Un seul plan : $35 aujourd'hui (premier mois + Apply), puis $15/mois jusqu'à annulation. Shopify peut afficher deux écrans — les deux requis. Sans remboursement.",
     billingBundleStep2:
-      "Paiement setup reçu. Continuez pour approuver le plan inclus à $15/mois — premier prélèvement dans 30 jours, non optionnel.",
+      "Setup $35 actif sur cette boutique. Continuez pour approuver l'abonnement obligatoire à $15/mois.",
     step4PaidIntro: "Plan actif — confirmez ci-dessous pour publier les changements.",
+    billingStatusTitle: "Statut de facturation (cette boutique)",
+    billingStatusNone:
+      "Pas encore payé — Shopify demandera d'approuver $35 puis $15/mois. Les charges apparaissent sur votre facture Shopify.",
+    billingStatusSetupOnly:
+      "Setup $35 actif sur cette boutique. Approuvez le plan $15/mois pour continuer. Si vous avez déjà approuvé, Shopify peut ne pas redemander la carte — vérifiez Paramètres → Apps → PredictaCore.",
+    billingStatusActive:
+      "Plan actif — setup $35 payé · abonnement $15/mois actif. Shopify facture automatiquement chaque mois. Annulation effet période suivante ; pas de remboursement du mois en cours.",
+    billingShopifyReceipt:
+      "Voir les charges : Shopify Admin → Paramètres → Apps et canaux de vente → PredictaCore → Voir les charges. Les boutiques test peuvent afficher $0.",
     restoreWarning:
       "La restauration n'annule que la dernière application. Les optimisations précédentes restent en place.",
     products: "Produits",

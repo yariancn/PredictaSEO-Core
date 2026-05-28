@@ -91,7 +91,7 @@ export async function action({ request }) {
   }
 
   if (intent === "billing-subscribe") {
-    const { getBillingReturnUrls, MAINTENANCE_TRIAL_DAYS } = await import("../lib/billing-flow.server.js");
+    const { getBillingReturnUrls, MAINTENANCE_FIRST_CHARGE_DEFER_DAYS } = await import("../lib/billing-flow.server.js");
     const { syncBillingFromShopify } = await import("../lib/billing.server.js");
     const urls = getBillingReturnUrls(session.shop);
     const setupCheck = await billing.check({ plans: [SETUP_PLAN], isTest: isBillingTest() });
@@ -114,7 +114,7 @@ export async function action({ request }) {
       return billing.request({
         plan: MAINTENANCE_PLAN,
         isTest: isBillingTest(),
-        trialDays: MAINTENANCE_TRIAL_DAYS,
+        trialDays: MAINTENANCE_FIRST_CHARGE_DEFER_DAYS,
         returnUrl: urls.adminReady,
       });
     }
@@ -626,6 +626,28 @@ function AlreadyOptimizedCard({ copy, executive, onViewDashboard }) {
   );
 }
 
+function BillingStatusCard({ copy, setupPaid, subscriptionActive, pilotMode }) {
+  if (pilotMode) return null;
+
+  const statusKey = setupPaid && subscriptionActive
+    ? "billingStatusActive"
+    : setupPaid
+      ? "billingStatusSetupOnly"
+      : "billingStatusNone";
+
+  return (
+    <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.25)", background: "rgba(99,102,241,0.06)" }}>
+      <h2 style={{ ...theme.h2, color: "#a5b4fc" }}>{copyText(copy, "billingStatusTitle", "Billing status")}</h2>
+      <p style={{ ...theme.body, fontSize: "0.88rem", color: "#e8e8ef", marginBottom: "10px", lineHeight: 1.55 }}>
+        {copyText(copy, statusKey, "")}
+      </p>
+      <p style={{ ...theme.body, fontSize: "0.78rem", color: "#8b8b9a", margin: 0, lineHeight: 1.55 }}>
+        {copyText(copy, "billingShopifyReceipt", "")}
+      </p>
+    </div>
+  );
+}
+
 function PaymentGateCard({ copy, setupPaid = false }) {
   const needsSubscriptionOnly = setupPaid;
   return (
@@ -930,11 +952,6 @@ export default function Index() {
     setAiRequested(true);
   };
 
-  const skipAiWhileLoading = () => {
-    setAiRequested(false);
-    summarySubmitStarted.current = true;
-  };
-
   if (!auditStarted) {
     return (
       <IntroScreen
@@ -1025,7 +1042,6 @@ export default function Index() {
         summaryError={summaryError}
         summaryTimedOut={summaryTimedOut}
         summaryLoading={summaryLoading}
-        onSkipAiWhileLoading={skipAiWhileLoading}
         onRetryAiSummary={retryAiSummary}
         applyResult={applyResult}
         applyError={applyError}
@@ -1167,7 +1183,6 @@ function IndexWizard({
   summaryError,
   summaryTimedOut,
   summaryLoading,
-  onSkipAiWhileLoading,
   onRetryAiSummary,
   applyResult,
   applyError,
@@ -1266,6 +1281,8 @@ function IndexWizard({
   const analysisInProgress = aiRequested && summaryLoading && !summaryTimedOut;
   const displaySummaryError =
     summaryError || (summaryTimedOut ? copyText(copy, "aiTimeout", "Our AI did not respond in time.") : null);
+  const canContinueFromStep3 =
+    Boolean(summary) || Boolean(displaySummaryError) || !aiSummaryAvailable;
   const productsUpdatedCount =
     applyResult?.productCount ?? applyResult?.applied ?? displayAppliedItems.length ?? 0;
   const schemaWasApplied = Boolean(applyResult?.schemaApplied || (setupComplete && executive.foundationScore >= 100));
@@ -1584,30 +1601,17 @@ function IndexWizard({
           </div>
 
           {!summary && !analysisInProgress && (
-            <div
-              style={{
-                ...theme.card,
-                borderColor: "rgba(255,255,255,0.06)",
-                background: "rgba(255,255,255,0.02)",
-              }}
-            >
-              <h2 style={theme.h2}>{copyText(copy, "step3AiTitle", "Optional AI summary")}</h2>
-              <p style={{ ...theme.body, marginBottom: "12px", color: "#8b8b9a", lineHeight: 1.55, fontSize: "0.88rem" }}>
+            <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.35)" }}>
+              <h2 style={theme.h2}>{copyText(copy, "step3AiTitle", "AI summary")}</h2>
+              <p style={{ ...theme.body, marginBottom: "14px", color: "#8b8b9a", lineHeight: 1.55, fontSize: "0.88rem" }}>
                 {copyText(copy, "step3AiIntro", "")}
               </p>
               {aiSummaryAvailable ? (
-                !aiRequested && (
-                  <>
-                    <p style={{ ...theme.body, fontSize: "0.82rem", color: "#6b6b78", marginBottom: "12px", lineHeight: 1.55 }}>
-                      {copyText(copy, "generateAiPlanBody", "")}
-                    </p>
-                    <button type="button" style={theme.btnGhost} onClick={onRequestAiSummary}>
-                      {copyText(copy, "generateAiPlan", "Generate AI summary")}
-                    </button>
-                  </>
-                )
+                <button type="button" style={{ ...theme.btnPrimary, width: "100%" }} onClick={onRequestAiSummary}>
+                  {copyText(copy, "generateAiPlan", "Generate personalized AI plan")}
+                </button>
               ) : (
-                <p style={{ ...theme.body, fontSize: "0.82rem", color: "#6b6b78", margin: 0, lineHeight: 1.55 }}>
+                <p style={{ ...theme.body, fontSize: "0.82rem", color: "#f87171", margin: 0, lineHeight: 1.55 }}>
                   {copyText(copy, "aiNotConfigured", "")}
                 </p>
               )}
@@ -1640,12 +1644,9 @@ function IndexWizard({
                       {copy.loading}
                     </p>
                   </div>
-                  <p style={{ ...theme.body, fontSize: "0.82rem", color: "#c4c4ff", margin: "0 0 14px 0" }}>
+                  <p style={{ ...theme.body, fontSize: "0.82rem", color: "#c4c4ff", margin: 0 }}>
                     {copyText(copy, "loadingHint", "Please wait before continuing.")}
                   </p>
-                  <button type="button" style={{ ...theme.btnGhost, width: "100%" }} onClick={onSkipAiWhileLoading}>
-                    {copyText(copy, "skipAiWhileLoading", "Continue without AI summary")}
-                  </button>
                 </>
               )}
               {summary && !summaryLoading && (
@@ -1668,15 +1669,22 @@ function IndexWizard({
             <p style={{ ...theme.body, fontSize: "0.82rem", color: "#8b8b9a" }}>{copy.rollbackNote}</p>
           </div>
 
-          <p style={{ ...theme.body, fontSize: "0.82rem", color: "#a5b4fc", textAlign: "center", margin: "0 0 10px 0" }}>
-            {copyText(copy, "step3ContinueHint", "")}
+          <p style={{ ...theme.body, fontSize: "0.82rem", color: "#8b8b9a", textAlign: "center", margin: "0 0 10px 0" }}>
+            {canContinueFromStep3
+              ? copyText(copy, "step3ContinueReady", copy.continue)
+              : copyText(copy, "step3ContinueWait", "Generate the AI summary above to continue.")}
           </p>
 
           <div style={{ display: "flex", gap: "10px" }}>
             <button type="button" style={theme.btnGhost} onClick={() => setStep(2)}>
               {copy.back}
             </button>
-            <button type="button" style={{ ...theme.btnPrimary, flex: 2 }} onClick={() => setStep(4)}>
+            <button
+              type="button"
+              style={canContinueFromStep3 ? { ...theme.btnPrimary, flex: 2 } : { ...theme.btnDisabled, flex: 2 }}
+              disabled={!canContinueFromStep3}
+              onClick={() => setStep(4)}
+            >
               {copy.continue}
             </button>
           </div>
@@ -1708,6 +1716,15 @@ function IndexWizard({
           )}
 
           {showPaymentGate && <PaymentGateCard copy={copy} setupPaid={setupPaid} />}
+
+          {!pilotMode && (
+            <BillingStatusCard
+              copy={copy}
+              setupPaid={setupPaid}
+              subscriptionActive={subscriptionActive}
+              pilotMode={pilotMode}
+            />
+          )}
 
           {!applyResult && hasPendingWork && (
           <div style={theme.card}>
