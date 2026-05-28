@@ -118,6 +118,21 @@ export async function action({ request }) {
     return redirect(urls.adminReady);
   }
 
+  if (intent === "set-uninstall-preference") {
+    const { setUninstallRestorePreference, UNINSTALL_PREF } = await import("../lib/shop-lifecycle.server.js");
+    const preference = form.get("preference");
+    try {
+      await setUninstallRestorePreference(session.shop, preference);
+      return json({
+        intent: "set-uninstall-preference",
+        uninstallRestorePreference:
+          preference === UNINSTALL_PREF.KEEP ? UNINSTALL_PREF.KEEP : UNINSTALL_PREF.RESTORE,
+      });
+    } catch (err) {
+      return json({ intent: "set-uninstall-preference", preferenceError: err.message ?? "Could not save" });
+    }
+  }
+
   if (intent === "billing-extra-apply") {
     const { getBillingReturnUrls } = await import("../lib/billing-flow.server.js");
     const { requestExtraApplyPurchase } = await import("../lib/billing-extra-apply.server.js");
@@ -767,6 +782,7 @@ export default function Index() {
     hasBackup,
     backupBatchCount,
     billing,
+    uninstallRestorePreference = "restore",
   } = audit ?? {};
 
   const summary = aiFetcher.data?.intent === "summary" && !summaryInvalidated
@@ -961,10 +977,83 @@ export default function Index() {
         resetTestResult={resetTestResult}
         resetTestError={resetTestError}
         backupAvailable={backupAvailable}
+        uninstallRestorePreference={uninstallRestorePreference}
         extraApplyGranted={Boolean(billingFetcher.data?.extraApplyGranted)}
         extraApplyError={billingFetcher.data?.extraApplyError ?? null}
       />
     </>
+  );
+}
+
+function UninstallPreferencePanel({
+  copy,
+  preference,
+  applyFetcher,
+  saving,
+  saved,
+  preferenceError,
+}) {
+  const optionStyle = (active) => ({
+    display: "block",
+    padding: "12px 14px",
+    marginBottom: "10px",
+    borderRadius: "10px",
+    border: active ? "1px solid rgba(99,102,241,0.55)" : "1px solid rgba(255,255,255,0.1)",
+    background: active ? "rgba(99,102,241,0.12)" : "rgba(255,255,255,0.03)",
+    cursor: saving ? "wait" : "pointer",
+  });
+
+  const select = (value) => {
+    if (saving || preference === value) return;
+    applyFetcher.submit({ intent: "set-uninstall-preference", preference: value }, { method: "post" });
+  };
+
+  return (
+    <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.35)", background: "rgba(99,102,241,0.06)" }}>
+      <h2 style={{ ...theme.h2, color: "#a5b4fc" }}>{copyText(copy, "uninstallPrefTitle", "If you uninstall")}</h2>
+      <p style={{ ...theme.body, fontSize: "0.88rem", marginBottom: "14px" }}>
+        {copyText(copy, "uninstallPrefIntro", "")}
+      </p>
+      <label style={optionStyle(preference === "restore")}>
+        <input
+          type="radio"
+          name="uninstall-pref"
+          checked={preference === "restore"}
+          onChange={() => select("restore")}
+          disabled={saving}
+          style={{ marginRight: "8px" }}
+        />
+        <strong style={{ color: "#e8e8ef" }}>{copyText(copy, "uninstallPrefRestoreLabel", "Restore")}</strong>
+        <span style={{ display: "block", marginTop: "6px", fontSize: "0.82rem", color: "#8b8b9a" }}>
+          {copyText(copy, "uninstallPrefRestoreBody", "")}
+        </span>
+      </label>
+      <label style={optionStyle(preference === "keep")}>
+        <input
+          type="radio"
+          name="uninstall-pref"
+          checked={preference === "keep"}
+          onChange={() => select("keep")}
+          disabled={saving}
+          style={{ marginRight: "8px" }}
+        />
+        <strong style={{ color: "#e8e8ef" }}>{copyText(copy, "uninstallPrefKeepLabel", "Keep")}</strong>
+        <span style={{ display: "block", marginTop: "6px", fontSize: "0.82rem", color: "#8b8b9a" }}>
+          {copyText(copy, "uninstallPrefKeepBody", "")}
+        </span>
+      </label>
+      {saved && (
+        <p style={{ ...theme.body, color: "#a3e635", fontSize: "0.82rem", margin: "8px 0 0 0" }}>
+          {copyText(copy, "uninstallPrefSaved", "Saved.")}
+        </p>
+      )}
+      {preferenceError && (
+        <p style={{ ...theme.body, color: "#f87171", fontSize: "0.82rem", margin: "8px 0 0 0" }}>{preferenceError}</p>
+      )}
+      <p style={{ ...theme.body, fontSize: "0.78rem", color: "#6b6b78", margin: "12px 0 0 0", lineHeight: 1.5 }}>
+        {copyText(copy, "uninstallPrefSteps", "")}
+      </p>
+    </div>
   );
 }
 
@@ -1027,6 +1116,7 @@ function IndexWizard({
   resetTestResult,
   resetTestError,
   backupAvailable,
+  uninstallRestorePreference,
   extraApplyGranted,
   extraApplyError,
 }) {
@@ -1100,6 +1190,19 @@ function IndexWizard({
     ? Boolean(applyResult.schemaApplied && productsUpdatedCount === 0)
     : Boolean(setupComplete && preview.productCount === 0 && executive.foundationScore >= 100);
   const whyUsItems = [copy.whyUs1, copy.whyUs2, copy.whyUs3, copy.whyUs4];
+
+  const prefSaving =
+    applyFetcher.state !== "idle" &&
+    applyFetcher.formData?.get("intent") === "set-uninstall-preference";
+  const activeUninstallPref =
+    applyFetcher.data?.intent === "set-uninstall-preference" &&
+    applyFetcher.data?.uninstallRestorePreference
+      ? applyFetcher.data.uninstallRestorePreference
+      : uninstallRestorePreference ?? "restore";
+  const prefSaved =
+    applyFetcher.data?.intent === "set-uninstall-preference" &&
+    applyFetcher.data?.uninstallRestorePreference &&
+    !applyFetcher.data?.preferenceError;
 
   return (
     <div style={theme.page}>
@@ -1320,6 +1423,21 @@ function IndexWizard({
                 {copy.viewSummary}
               </button>
             </div>
+          )}
+
+          {setupComplete && backupAvailable && (
+            <UninstallPreferencePanel
+              copy={copy}
+              preference={activeUninstallPref}
+              applyFetcher={applyFetcher}
+              saving={prefSaving}
+              saved={prefSaved}
+              preferenceError={
+                applyFetcher.data?.intent === "set-uninstall-preference"
+                  ? applyFetcher.data?.preferenceError
+                  : null
+              }
+            />
           )}
         </>
       )}
@@ -1825,6 +1943,21 @@ function IndexWizard({
                 ? copyText(copy, "resetTestLoading", "Resetting…")
                 : copyText(copy, "resetTestTitle", "Reset demo store")}
             </button>
+          )}
+
+          {backupAvailable && (
+            <UninstallPreferencePanel
+              copy={copy}
+              preference={activeUninstallPref}
+              applyFetcher={applyFetcher}
+              saving={prefSaving}
+              saved={prefSaved}
+              preferenceError={
+                applyFetcher.data?.intent === "set-uninstall-preference"
+                  ? applyFetcher.data?.preferenceError
+                  : null
+              }
+            />
           )}
 
           <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.2)" }}>

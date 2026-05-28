@@ -2,6 +2,7 @@ import { authenticate } from "../shopify.server";
 import {
   attemptAutomaticRestore,
   shopPayloadLooksInactive,
+  shouldRestoreOnOffboarding,
 } from "../lib/shop-lifecycle.server.js";
 
 export const action = async ({ request }) => {
@@ -10,6 +11,11 @@ export const action = async ({ request }) => {
   console.log(`Received ${topic} webhook for ${shop}`);
 
   if (!shopPayloadLooksInactive(payload)) {
+    return new Response();
+  }
+
+  if (!(await shouldRestoreOnOffboarding(shop))) {
+    console.log(`[PredictaCore] Shop inactive — merchant chose keep, skip restore for ${shop}`);
     return new Response();
   }
 

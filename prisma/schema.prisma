@@ -32,12 +32,13 @@ model Session {
 
 // Modelo para la inteligencia de PredictaCore
 model ShopSettings {
-  id                Int      @id @default(autoincrement())
-  shop              String   @unique
-  specialization    String?
-  manufacturing     String?
-  customization     String?
-  lastAiAnalysis    DateTime @default(now())
+  id                         Int      @id @default(autoincrement())
+  shop                       String   @unique
+  specialization             String?
+  manufacturing              String?
+  customization              String?
+  uninstallRestorePreference String   @default("restore")
+  lastAiAnalysis             DateTime @default(now())
 }
 
 // Perfil de entidad — Capa 1 (Bloque Forense)

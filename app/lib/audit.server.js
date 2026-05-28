@@ -65,6 +65,8 @@ export async function loadAuditData(request) {
     "applyQuotaTitle", "applyQuotaSetup", "applyQuotaMonthlyAuto", "applyQuotaMonthlyDone", "applyQuotaExtraAvailable",
     "applyQuotaExtraPayment", "applyQuotaExtraPaymentBody", "applyQuotaNoSubscription", "payExtraApply", "confirmExtraApply",
     "extraApplySuccess", "applyQuotaPeriod",
+    "uninstallPrefTitle", "uninstallPrefIntro", "uninstallPrefRestoreLabel", "uninstallPrefRestoreBody",
+    "uninstallPrefKeepLabel", "uninstallPrefKeepBody", "uninstallPrefSaved", "uninstallPrefSteps",
   ];
 
   const buildCopy = (locale) =>
@@ -124,6 +126,14 @@ export async function loadAuditData(request) {
   } catch {
     hasBackup = false;
     backupBatchCount = 0;
+  }
+
+  let uninstallRestorePreference = "restore";
+  try {
+    const { getUninstallRestorePreference } = await import("./shop-lifecycle.server.js");
+    uninstallRestorePreference = await getUninstallRestorePreference(session.shop);
+  } catch {
+    uninstallRestorePreference = "restore";
   }
 
   let billingStatus = {
@@ -190,5 +200,6 @@ export async function loadAuditData(request) {
     hasBackup,
     backupBatchCount,
     billing: billingStatus,
+    uninstallRestorePreference,
   };
 }

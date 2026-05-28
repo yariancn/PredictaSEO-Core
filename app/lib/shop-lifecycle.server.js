@@ -2,6 +2,35 @@ import prisma from "../db.server.js";
 import { unauthenticated } from "../shopify.server";
 import { rollbackAllBatches } from "./apply.server.js";
 
+export const UNINSTALL_PREF = {
+  RESTORE: "restore",
+  KEEP: "keep",
+};
+
+export async function getUninstallRestorePreference(shop) {
+  const settings = await prisma.shopSettings.findUnique({
+    where: { shop },
+    select: { uninstallRestorePreference: true },
+  });
+  const pref = settings?.uninstallRestorePreference;
+  return pref === UNINSTALL_PREF.KEEP ? UNINSTALL_PREF.KEEP : UNINSTALL_PREF.RESTORE;
+}
+
+export async function setUninstallRestorePreference(shop, preference) {
+  if (preference !== UNINSTALL_PREF.RESTORE && preference !== UNINSTALL_PREF.KEEP) {
+    throw new Error("Invalid uninstall preference");
+  }
+  return prisma.shopSettings.upsert({
+    where: { shop },
+    create: { shop, uninstallRestorePreference: preference },
+    update: { uninstallRestorePreference: preference },
+  });
+}
+
+export async function shouldRestoreOnOffboarding(shop) {
+  return (await getUninstallRestorePreference(shop)) === UNINSTALL_PREF.RESTORE;
+}
+
 function normalizeProductGid(id) {
   if (!id) return null;
   const raw = String(id);
@@ -129,9 +158,22 @@ export async function handleProductDeletedWebhook(shop, productId) {
   return { shop, productId: resourceId, deleted: count };
 }
 
-/** Uninstall / shop closure: restore first (while session may still exist), then purge our DB. */
+/** Uninstall / shop closure: optional restore (merchant choice), then purge our DB. */
 export async function handleShopOffboarding(shop, trigger) {
-  const restore = await attemptAutomaticRestore(shop, trigger);
+  const preference = await getUninstallRestorePreference(shop);
+  let restore = {
+    shop,
+    trigger,
+    attempted: false,
+    restored: false,
+    reason: "merchant_chose_keep",
+    preference,
+  };
+
+  if (preference === UNINSTALL_PREF.RESTORE) {
+    restore = { ...await attemptAutomaticRestore(shop, trigger), preference };
+  }
+
   const purged = await (await import("./shop-data.server.js")).purgeShopData(shop);
-  return { restore, purged };
+  return { preference, restore, purged };
 }

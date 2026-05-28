@@ -120,7 +120,19 @@ const MESSAGES = {
     impactTitle: "Why AI can't recommend you",
     planTitle: "What we'll fix",
     rollbackNote:
-      "We save a backup before any change. When you uninstall, we automatically restore your store to pre-Apply values when Shopify still allows API access. For guaranteed rollback, use Restore everything before uninstalling.",
+      "We save a backup before any change. Before uninstalling, choose below whether to restore your store or keep optimized data.",
+    uninstallPrefTitle: "If you uninstall PredictaCore",
+    uninstallPrefIntro:
+      "Choose what happens to your product SEO and brand data when you remove the app from Shopify Admin. You can change this anytime before uninstalling.",
+    uninstallPrefRestoreLabel: "Restore my original store data (recommended)",
+    uninstallPrefRestoreBody:
+      "On uninstall we try to put titles, descriptions, and brand data back to how they were before PredictaCore. Best if you are leaving the app.",
+    uninstallPrefKeepLabel: "Keep my optimized data",
+    uninstallPrefKeepBody:
+      "On uninstall we only remove PredictaCore from your shop — your optimized SEO and brand changes stay on your products.",
+    uninstallPrefSaved: "Preference saved.",
+    uninstallPrefSteps:
+      "To uninstall: Shopify Admin → Settings → Apps → PredictaCore → Delete. Your choice above applies when the app is removed.",
     previewSoon: "Preview changes — coming next",
     priorityTitle: "Products to fix first",
     priorityExplain:
@@ -393,7 +405,19 @@ const MESSAGES = {
     impactTitle: "Por qué las AI no te recomiendan",
     planTitle: "Qué vamos a corregir",
     rollbackNote:
-      "Guardamos una copia antes de cada cambio. Al desinstalar, restauramos automáticamente tu tienda al estado pre-Apply si Shopify aún permite acceso API. Para garantía total, usa Restaurar todo antes de desinstalar.",
+      "Guardamos una copia antes de cada cambio. Antes de desinstalar, elige abajo si restaurar tu tienda o conservar los datos optimizados.",
+    uninstallPrefTitle: "Si desinstalas PredictaCore",
+    uninstallPrefIntro:
+      "Elige qué pasa con tu SEO e identidad de marca cuando quites la app en Shopify Admin. Puedes cambiarlo antes de desinstalar.",
+    uninstallPrefRestoreLabel: "Restaurar mis datos originales (recomendado)",
+    uninstallPrefRestoreBody:
+      "Al desinstalar intentamos devolver títulos, descripciones e identidad de marca al estado pre-Apply. Ideal si dejas la app.",
+    uninstallPrefKeepLabel: "Conservar mis datos optimizados",
+    uninstallPrefKeepBody:
+      "Al desinstalar solo quitamos PredictaCore — tu SEO optimizado y cambios de marca permanecen en tus productos.",
+    uninstallPrefSaved: "Preferencia guardada.",
+    uninstallPrefSteps:
+      "Para desinstalar: Shopify Admin → Configuración → Apps → PredictaCore → Eliminar. Se aplicará la opción elegida arriba.",
     previewSoon: "Vista previa de cambios — próximamente",
     priorityTitle: "Productos prioritarios",
     priorityExplain:
@@ -647,7 +671,19 @@ const MESSAGES = {
     impactTitle: "Pourquoi l'IA ne vous recommande pas",
     planTitle: "Ce que nous allons corriger",
     rollbackNote:
-      "Sauvegarde avant chaque modification. À la désinstallation, nous restaurons automatiquement si Shopify autorise encore l'API. Pour une garantie totale, utilisez Tout restaurer avant de désinstaller.",
+      "Sauvegarde avant chaque modification. Avant de désinstaller, choisissez ci-dessous : restaurer ou conserver les données optimisées.",
+    uninstallPrefTitle: "Si vous désinstallez PredictaCore",
+    uninstallPrefIntro:
+      "Choisissez ce qui arrive à votre SEO et identité de marque quand vous supprimez l'app dans Shopify Admin.",
+    uninstallPrefRestoreLabel: "Restaurer mes données d'origine (recommandé)",
+    uninstallPrefRestoreBody:
+      "À la désinstallation, nous remettons titres, descriptions et identité de marque comme avant PredictaCore.",
+    uninstallPrefKeepLabel: "Conserver mes données optimisées",
+    uninstallPrefKeepBody:
+      "À la désinstallation, nous retirons seulement PredictaCore — votre SEO optimisé reste sur vos produits.",
+    uninstallPrefSaved: "Préférence enregistrée.",
+    uninstallPrefSteps:
+      "Pour désinstaller : Shopify Admin → Paramètres → Apps → PredictaCore → Supprimer.",
     previewSoon: "Aperçu des modifications — bientôt",
     priorityTitle: "Produits prioritaires",
     priorityExplain:
