@@ -375,33 +375,9 @@ export async function rollbackAllBatches(admin, shop) {
   };
 }
 
-/** Pilot only — clears PredictaCore backups, brand identity, and SEO on priority products for a full demo rerun. */
-export async function resetTestStoreForDemo(admin, shop, priorityProducts) {
-  const rollback = await rollbackAllBatches(admin, shop);
-  await deactivateSchemaForShop(admin, shop);
-
-  let productsCleared = 0;
-  for (const product of priorityProducts) {
-    const response = await admin.graphql(PRODUCT_UPDATE, {
-      variables: {
-        input: {
-          id: product.id,
-          seo: { title: "", description: "" },
-        },
-      },
-    });
-    const { data, errors } = await response.json();
-    if (errors?.length) throw new Error(errors.map((e) => e.message).join("; "));
-    const userErrors = data?.productUpdate?.userErrors ?? [];
-    if (userErrors.length) throw new Error(userErrors.map((e) => e.message).join("; "));
-    productsCleared += 1;
-  }
-
-  return {
-    ...rollback,
-    productsCleared,
-    schemaCleared: true,
-  };
+/** Pilot only — restores the store to pre-Apply values using PredictaCore backups (same as Restore all). */
+export async function resetTestStoreForDemo(admin, shop) {
+  return rollbackAllBatches(admin, shop);
 }
 
 export function buildAppliedItemsFromPreview(items = []) {

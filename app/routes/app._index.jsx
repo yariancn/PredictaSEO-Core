@@ -67,16 +67,7 @@ export async function action({ request }) {
       return json({ intent: "reset-test-store", resetTestError: "Not available in production billing mode" });
     }
     try {
-      const response = await admin.graphql(CATALOG_QUERY);
-      const { data, errors } = await response.json();
-      if (errors?.length) {
-        return json({ intent: "reset-test-store", resetTestError: errors.map((e) => e.message).join("; ") });
-      }
-      const locale = getStoreLocale(data);
-      const catalogData = await prepareCatalogData(admin, data);
-      const snapshot = analyzeSnapshot(catalogData, locale);
-      const priorityProducts = getPriorityProducts(catalogData.products?.nodes ?? [], snapshot.matrix);
-      const result = await resetTestStoreForDemo(admin, session.shop, priorityProducts);
+      const result = await resetTestStoreForDemo(admin, session.shop);
       return json({ intent: "reset-test-store", resetTestResult: result });
     } catch (err) {
       return json({ intent: "reset-test-store", resetTestError: err.message ?? "Reset failed" });
@@ -419,10 +410,14 @@ function formatRestoreMessage(copy, intent, result) {
     ? copyText(copy, "resultsAppliedBrand", "brand identity")
     : copyText(copy, "previewSchemaRow", "brand identity");
 
-  if (intent === "restore-all" && result.productCount === 0 && result.schemaRestored) {
+  if (
+    (intent === "restore-all" || intent === "reset-test-store") &&
+    result.productCount === 0 &&
+    result.schemaRestored
+  ) {
     return copyText(copy, "restoreAllSchemaOnly", "Brand identity restored. No product SEO was in the backup.");
   }
-  if (intent === "restore-all") {
+  if (intent === "restore-all" || intent === "reset-test-store") {
     return fillTemplate(copyText(copy, "restoreAllSuccess", ""), { products, batches, schema });
   }
   return fillTemplate(copyText(copy, "restoreSuccess", ""), { products });
@@ -1137,6 +1132,32 @@ function IndexWizard({
             </div>
           </div>
 
+          <div style={{ ...theme.card, borderColor: "rgba(255,255,255,0.08)" }}>
+            <h2 style={theme.h2}>{copyText(copy, "scorePlainTitle", "How to read your score")}</h2>
+            <p style={{ ...theme.body, marginBottom: "10px" }}>
+              {copyText(copy, "scorePlainBody", "Think of it as a readiness grade for AI search.")}
+            </p>
+            <p style={theme.bullet("#6366f1")}>{copyText(copy, "scorePlain1", "")}</p>
+            <p style={theme.bullet("#6366f1")}>{copyText(copy, "scorePlain2", "")}</p>
+            <p style={theme.bullet("#6366f1")}>{copyText(copy, "scorePlain3", "")}</p>
+            <p style={theme.bullet("#6366f1")}>{copyText(copy, "scorePlain4", "")}</p>
+            <p style={{ ...theme.body, marginTop: "12px", fontSize: "0.82rem", color: "#8b8b9a" }}>
+              {copyText(copy, "scorePlainLow", "")}
+            </p>
+          </div>
+
+          {(snapSummary?.excludedCount ?? 0) > 0 && (
+            <div style={{ ...theme.card, borderColor: "rgba(165,180,252,0.25)", background: "rgba(99,102,241,0.06)" }}>
+              <p style={{ ...theme.body, margin: 0, fontSize: "0.88rem", color: "#c8c8d0" }}>
+                {fillCopy(copyText(copy, "catalogCountExplain", ""), {
+                  analyzed: snapSummary?.priorityCount ?? 0,
+                  total: snapSummary?.catalogTotal ?? 0,
+                  excluded: snapSummary?.excludedCount ?? 0,
+                })}
+              </p>
+            </div>
+          )}
+
           <div style={theme.card}>
             <h2 style={theme.h2}>{copy.scoreBreakdownTitle}</h2>
             {catalogFactors.map((factor) => (
@@ -1159,15 +1180,24 @@ function IndexWizard({
 
           {pilotMode && (
             <div style={{ ...theme.card, borderColor: "rgba(251,191,36,0.45)", background: "rgba(251,191,36,0.08)" }}>
-              <h2 style={{ ...theme.h2, color: "#fbbf24" }}>{copyText(copy, "resetTestTitle", "Reset demo store")}</h2>
+              <h2 style={{ ...theme.h2, color: "#fbbf24" }}>
+                {copyText(copy, "restoreVsResetTitle", "Undo vs reset")}
+              </h2>
+              <p style={{ ...theme.body, marginBottom: "8px", fontSize: "0.88rem" }}>
+                {copyText(copy, "restoreVsResetBody", "")}
+              </p>
+              <p style={{ ...theme.body, marginBottom: "14px", fontSize: "0.82rem", color: "#8b8b9a" }}>
+                {copyText(copy, "restoreVsResetWarning", "")}
+              </p>
+              <h3 style={{ ...theme.h2, fontSize: "0.95rem", color: "#fbbf24", marginTop: 0 }}>
+                {copyText(copy, "resetTestTitle", "Undo all PredictaCore changes")}
+              </h3>
               <p style={{ ...theme.body, marginBottom: "12px", fontSize: "0.88rem" }}>
-                {copyText(copy, "resetTestBody", "Clear product SEO and brand identity for a full demo rerun.")}
+                {copyText(copy, "resetTestBody", "")}
               </p>
               {resetTestResult && (
                 <p style={{ ...theme.body, color: "#a3e635", marginBottom: "12px" }}>
-                  {fillTemplate(copyText(copy, "resetTestSuccess", "Demo reset complete."), {
-                    count: resetTestResult.productsCleared ?? 0,
-                  })}
+                  {formatRestoreMessage(copy, "restore-all", resetTestResult)}
                 </p>
               )}
               {resetTestError && (
@@ -1581,9 +1611,7 @@ function IndexWizard({
           {resetTestResult && (
             <div style={theme.card}>
               <p style={{ ...theme.body, color: "#a3e635" }}>
-                {fillTemplate(copyText(copy, "resetTestSuccess", "Demo reset complete."), {
-                  count: resetTestResult.productsCleared ?? 0,
-                })}
+                {formatRestoreMessage(copy, "restore-all", resetTestResult)}
               </p>
             </div>
           )}

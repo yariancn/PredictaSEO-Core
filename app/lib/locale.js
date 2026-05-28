@@ -46,6 +46,22 @@ const MESSAGES = {
     foundationScoreLabel: "Brand visibility to AI",
     scoreExplain:
       "Your score combines search titles, search descriptions, product descriptions, and brand identity — averaged across your top products.",
+    scorePlainTitle: "How to read your score",
+    scorePlainBody:
+      "Think of it as a readiness grade for AI search (ChatGPT, Perplexity, Google AI). We average four checks on your priority products — not your whole Shopify admin, not your sales.",
+    scorePlain1: "Search titles — can AI find a clear name for each product?",
+    scorePlain2: "Search descriptions — short summaries AI can quote",
+    scorePlain3: "Product descriptions — enough detail on the page",
+    scorePlain4: "Brand identity — does AI know who your store is (US & Canada)?",
+    scorePlainLow:
+      "A low score after Undo/Restore usually means your store is back to how it was before PredictaCore — often with missing SEO fields, not because the math broke.",
+    catalogCountExplain:
+      "We analyze {{analyzed}} sellable products. Your catalog shows {{total}} total — {{excluded}} gift card is skipped (gift cards are not optimized for AI product search).",
+    restoreVsResetTitle: "Undo vs reset — important",
+    restoreVsResetBody:
+      "Restore / Undo uses the backup PredictaCore saved before Apply. It puts your titles, descriptions, and brand data back to that moment — your score should return close to what you had before paying to apply.",
+    restoreVsResetWarning:
+      "Do not confuse this with wiping your store. We never empty your SEO on restore.",
     scoreBreakdownTitle: "Your products",
     foundationBreakdownTitle: "Your brand",
     scoreAfterApply: "Your score should increase considerably — typically {{low}}–{{high}} after optimization",
@@ -197,19 +213,20 @@ const MESSAGES = {
     restoreAllSchemaOnly:
       "Brand identity restored. No product SEO was in the backup — only schema was applied last time.",
     restoreAllHint:
-      "Restore only reverts PredictaCore backups. To clear product SEO for a full demo rerun, use Reset demo store (pilot).",
-    resetTestTitle: "Reset demo store (pilot)",
+      "Restore and Undo use the same backup — products and brand identity return to how they were before Apply. Your score should match that moment, not zero.",
+    resetTestTitle: "Undo all PredictaCore changes (pilot)",
     resetTestBody:
-      "Clears search SEO on your priority products, removes brand identity, and deletes all PredictaCore backups — so you can run the full wizard from scratch.",
+      "Same as Restore everything: puts your store back to how it was before Apply, using the backup we saved. Your score should go back up if you had applied changes.",
     resetTestConfirm:
-      "Reset your test store? This clears SEO titles/descriptions on priority products and removes brand identity. Continue?",
+      "Undo all PredictaCore changes on this store? Products and brand identity will return to the pre-Apply backup.",
     resetTestSuccess:
-      "Demo reset complete — {{count}} products cleared, brand identity removed. Start again from step 1.",
-    resetTestLoading: "Resetting demo store…",
+      "Undo complete — {{products}} products restored from backup{{schema}}. Refresh step 1 to see your updated score.",
+    resetTestLoading: "Undoing changes…",
     resetTitle: "Store fully optimized",
     resetBody:
       "You're at 100/100 — gaps, recommendations, and the change preview are hidden because there's nothing left to fix. To walk through the full flow again, restore your store to how it was before PredictaCore.",
-    resetHint: "After restore, your score will drop and pending changes will reappear in steps 2–4. For a full demo with empty product SEO, use Reset demo store.",
+    resetHint:
+      "After undo/restore, your score returns to what it was before PredictaCore — often ~25 on a demo store that had not been optimized yet. Steps 2–4 will show pending changes again.",
     aiUnavailable: "Our AI is temporarily unavailable. Try again later.",
     aiError: "Our AI could not complete the analysis.",
     aiTimeout: "Our AI did not respond in time. Try again.",
@@ -266,6 +283,22 @@ const MESSAGES = {
     foundationScoreLabel: "Visibilidad de marca",
     scoreExplain:
       "Tu score combina títulos de búsqueda, descripciones SEO, descripciones de producto e identidad de marca — promedio en tus top 50.",
+    scorePlainTitle: "Cómo leer tu score",
+    scorePlainBody:
+      "Piensa en él como una nota de preparación para búsqueda con IA (ChatGPT, Perplexity, Google AI). Promediamos cuatro chequeos en tus productos prioritarios — no todo el admin de Shopify ni tus ventas.",
+    scorePlain1: "Títulos de búsqueda — ¿la IA puede encontrar un nombre claro para cada producto?",
+    scorePlain2: "Descripciones de búsqueda — resúmenes cortos que la IA puede citar",
+    scorePlain3: "Descripciones de producto — suficiente detalle en la página",
+    scorePlain4: "Identidad de marca — ¿la IA sabe quién es tu tienda (US y Canadá)?",
+    scorePlainLow:
+      "Un score bajo tras Deshacer/Restaurar suele significar que tu tienda volvió a como estaba antes de PredictaCore — a menudo con SEO incompleto, no porque el cálculo se haya roto.",
+    catalogCountExplain:
+      "Analizamos {{analyzed}} productos vendibles. Tu catálogo muestra {{total}} en total — se omite {{excluded}} gift card (las gift cards no se optimizan para búsqueda AI de productos).",
+    restoreVsResetTitle: "Deshacer vs reset — importante",
+    restoreVsResetBody:
+      "Restaurar / Deshacer usa la copia de seguridad que PredictaCore guardó antes de Aplicar. Devuelve títulos, descripciones e identidad de marca a ese momento — tu score debería volver cerca de lo que tenías antes de pagar.",
+    restoreVsResetWarning:
+      "No confundas esto con vaciar tu tienda. En restaurar nunca borramos tu SEO.",
     scoreBreakdownTitle: "Cobertura del catálogo",
     foundationBreakdownTitle: "Base de tienda (GEO)",
     scoreAfterApply: "Tu score debería subir considerablemente — típicamente {{low}}–{{high}} tras optimizar",
@@ -431,19 +464,20 @@ const MESSAGES = {
     restoreAllSchemaOnly:
       "Identidad de marca restaurada. No había SEO de productos en el backup — solo se aplicó schema la última vez.",
     restoreAllHint:
-      "Restore solo revierte backups de PredictaCore. Para limpiar SEO y correr el demo completo, usa Reset demo store (piloto).",
-    resetTestTitle: "Reset demo store (piloto)",
+      "Restaurar y Deshacer usan la misma copia — productos e identidad de marca vuelven a como estaban antes de Aplicar. Tu score debería reflejar ese momento, no cero.",
+    resetTestTitle: "Deshacer todos los cambios de PredictaCore (piloto)",
     resetTestBody:
-      "Limpia el SEO de búsqueda en productos prioritarios, quita la identidad de marca y borra todos los backups — para correr el wizard desde cero.",
+      "Igual que Restaurar todo: devuelve tu tienda a como estaba antes de Aplicar, usando la copia que guardamos. Tu score debería subir si ya habías aplicado cambios.",
     resetTestConfirm:
-      "¿Resetear la tienda de prueba? Limpia títulos/descripciones SEO en productos prioritarios y quita la identidad de marca. ¿Continuar?",
+      "¿Deshacer todos los cambios de PredictaCore en esta tienda? Productos e identidad de marca volverán a la copia pre-Aplicar.",
     resetTestSuccess:
-      "Reset demo listo — {{count}} productos limpiados, identidad de marca removida. Empieza de nuevo en el paso 1.",
-    resetTestLoading: "Reseteando demo store…",
+      "Deshacer completo — {{products}} productos restaurados de la copia{{schema}}. Actualiza el paso 1 para ver tu score.",
+    resetTestLoading: "Deshaciendo cambios…",
     resetTitle: "Tienda totalmente optimizada",
     resetBody:
       "Estás en 100/100 — los gaps, recomendaciones y la vista previa no aparecen porque no queda nada por corregir. Para volver a ver el flujo completo, restaura la tienda a como estaba antes de PredictaCore.",
-    resetHint: "Tras restaurar, el score bajará y verás de nuevo los cambios pendientes en pasos 2–4. Para demo completo con SEO vacío, usa Reset demo store.",
+    resetHint:
+      "Tras deshacer/restaurar, tu score vuelve a lo que era antes de PredictaCore — a menudo ~25 en una tienda demo sin optimizar. Los pasos 2–4 mostrarán cambios pendientes otra vez.",
     aiUnavailable: "Nuestra AI no está disponible. Intenta de nuevo más tarde.",
     aiError: "Nuestra AI no pudo completar el análisis.",
     aiTimeout: "Nuestra AI no respondió a tiempo. Intenta de nuevo.",
@@ -515,6 +549,22 @@ const MESSAGES = {
     foundationScoreLabel: "Fondation boutique",
     scoreExplain:
       "Le score catalogue est la couverture SEO moyenne sur vos 50 produits prioritaires. Apply corrige titres et descriptions. Descriptions produit et Schema.org sont des étapes séparées.",
+    scorePlainTitle: "Comment lire votre score",
+    scorePlainBody:
+      "C'est une note de préparation pour la recherche IA (ChatGPT, Perplexity, Google AI). Nous faisons la moyenne de quatre contrôles sur vos produits prioritaires — pas tout l'admin Shopify ni vos ventes.",
+    scorePlain1: "Titres de recherche — l'IA trouve-t-elle un nom clair pour chaque produit ?",
+    scorePlain2: "Descriptions de recherche — courts résumés que l'IA peut citer",
+    scorePlain3: "Descriptions produit — assez de détail sur la page",
+    scorePlain4: "Identité de marque — l'IA sait-elle qui est votre boutique (US & Canada) ?",
+    scorePlainLow:
+      "Un score bas après Annuler/Restaurer signifie souvent que la boutique est revenue à l'état d'avant PredictaCore — SEO incomplet, pas un bug de calcul.",
+    catalogCountExplain:
+      "Nous analysons {{analyzed}} produits vendables. Votre catalogue en compte {{total}} — {{excluded}} carte cadeau est exclue (non optimisée pour la recherche IA produit).",
+    restoreVsResetTitle: "Annuler vs reset — important",
+    restoreVsResetBody:
+      "Restaurer / Annuler utilise la sauvegarde PredictaCore d'avant Apply. Titres, descriptions et identité de marque reviennent à ce moment — le score devrait y correspondre.",
+    restoreVsResetWarning:
+      "Ce n'est pas un effacement de votre boutique. Nous ne vidons jamais le SEO lors d'une restauration.",
     scoreBreakdownTitle: "Couverture catalogue",
     foundationBreakdownTitle: "Fondation boutique (GEO)",
     scoreAfterApply: "Après Apply : {{score}}/100",
@@ -640,10 +690,21 @@ const MESSAGES = {
     restoring: "Restauration…",
     restoreSuccess: "{{count}} produits restaurés",
     restoreAllSuccess: "Terminé — {{count}} produits restaurés sur {{batches}} changements.",
+    restoreAllHint:
+      "Restaurer et Annuler utilisent la même sauvegarde — produits et identité de marque reviennent à l'état d'avant Apply. Le score doit refléter ce moment, pas zéro.",
+    resetTestTitle: "Annuler tous les changements PredictaCore (pilote)",
+    resetTestBody:
+      "Identique à Tout restaurer : remet la boutique comme avant Apply via la sauvegarde. Le score remonte si vous aviez déjà appliqué des changements.",
+    resetTestConfirm:
+      "Annuler tous les changements PredictaCore sur cette boutique ? Produits et identité de marque reviendront à la sauvegarde pre-Apply.",
+    resetTestSuccess:
+      "Annulation terminée — {{products}} produits restaurés{{schema}}. Actualisez l'étape 1 pour voir le score.",
+    resetTestLoading: "Annulation en cours…",
     resetTitle: "Boutique entièrement optimisée",
     resetBody:
       "Score 100/100 — les lacunes, recommandations et l'aperçu des changements sont masqués car il ne reste rien à corriger. Pour revoir le parcours complet, restaurez la boutique à son état d'origine.",
-    resetHint: "Après restauration, le score baissera et les changements en attente réapparaîtront aux étapes 2–4.",
+    resetHint:
+      "Après annulation/restauration, le score revient à l'état d'avant PredictaCore — souvent ~25 sur une boutique demo non optimisée. Les étapes 2–4 afficheront à nouveau les changements en attente.",
     aiUnavailable: "Notre IA est temporairement indisponible.",
     aiError: "Notre IA n'a pas pu terminer l'analyse.",
     aiTimeout: "Notre IA n'a pas répondu à temps. Réessayez.",

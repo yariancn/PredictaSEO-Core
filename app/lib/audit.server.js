@@ -28,6 +28,8 @@ export async function loadAuditData(request) {
     "generateAiPlan", "skipAiPlan", "previewNotAppliedYet",
     "scopeNote", "scopeNoteFullCatalog", "scopeNoteFullCatalogExcluded", "selectionNote", "priorityPlanSummary", "priorityScopeSummary", "stepOf",
     "catalogScoreLabel", "foundationScoreLabel", "scoreExplain",
+    "scorePlainTitle", "scorePlainBody", "scorePlain1", "scorePlain2", "scorePlain3", "scorePlain4", "scorePlainLow",
+    "catalogCountExplain", "restoreVsResetTitle", "restoreVsResetBody", "restoreVsResetWarning",
     "scoreBreakdownTitle", "foundationBreakdownTitle", "scoreAfterApply", "scoreGainGeneric", "scoreAlmostComplete", "scoreNow", "scoreImproved", "scoreSeoComplete",
     "factorSeoTitle", "factorSeoDesc", "factorDesc", "factorSchema", "factorSchemaDone",
     "fixSeoDone", "previewAllDone", "previewProductsDone", "previewSchemaOnlyExplain", "previewSchemaRow", "previewSchemaRowDetail", "seeUpdatedScore",
