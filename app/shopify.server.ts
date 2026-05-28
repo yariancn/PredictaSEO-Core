@@ -10,7 +10,7 @@ import prisma from "./db.server";
 import { getShopifyApiKey, getShopifyAppUrl, getShopifyApiSecret, getShopifyScopes } from "./lib/env.server";
 
 export const SETUP_PLAN = "SETUP";
-export const MAINTENANCE_PLAN = "MAINTENANCE";
+export const MAINTENANCE_PLAN = "PredictaCore monthly";
 
 const shopify = shopifyApp({
   apiKey: getShopifyApiKey(),

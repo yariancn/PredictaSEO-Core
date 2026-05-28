@@ -1,6 +1,6 @@
 import { redirect } from "@remix-run/node";
 import { authenticate, SETUP_PLAN, MAINTENANCE_PLAN } from "../shopify.server";
-import { getBillingReturnUrls, MAINTENANCE_FIRST_CHARGE_DEFER_DAYS } from "../lib/billing-flow.server.js";
+import { getBillingReturnUrls } from "../lib/billing-flow.server.js";
 
 export async function loader({ request }) {
   const { isBillingTest, syncBillingFromShopify } = await import("../lib/billing.server.js");
@@ -20,7 +20,6 @@ export async function loader({ request }) {
     return billing.request({
       plan: MAINTENANCE_PLAN,
       isTest,
-      trialDays: MAINTENANCE_FIRST_CHARGE_DEFER_DAYS,
       returnUrl: urls.adminReady,
     });
   }

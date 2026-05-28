@@ -114,6 +114,10 @@ const MESSAGES = {
     billingBundleContinue: "Continue — approve $15/month plan (required)",
     billingRequired: "Complete payment ($35 + $15/mo plan) to unlock Apply.",
     step4FlowTitle: "Apply to your store",
+    step4PaymentBodyFirst:
+      "Nothing changed yet — preview only. Continue to pay $35 (first month + Apply). Then $15/month until you cancel in Shopify. No refunds; cancellation applies next billing period. Shopify may show two approval screens.",
+    step4PaymentBodySetupDone:
+      "$35 setup is already approved on this store — that is why Shopify shows $15/month next, not $35 again. Continue to approve the required $15/month plan. No refunds; cancel in Shopify Admin takes effect next period.",
     step4FlowIntro:
       "One plan: $35 today (first month + Apply), then $15/month until you cancel. Shopify may show two approval screens — both required. No refunds.",
     billingBundleStep2:
@@ -399,19 +403,10 @@ const MESSAGES = {
     billingBundleContinue: "Continuar — aprobar plan $15/mes (obligatorio)",
     billingRequired: "Completa el pago ($35 + plan $15/mes) para desbloquear Apply.",
     step4FlowTitle: "Aplicar en tu tienda",
-    step4FlowIntro:
-      "Un solo plan: $35 hoy (primer mes + Apply), luego $15/mes hasta cancelar. Shopify puede mostrar dos pantallas — ambas obligatorias. Sin devoluciones.",
-    billingBundleStep2:
-      "Setup de $35 activo en esta tienda. Continúa para aprobar la suscripción obligatoria de $15/mes.",
-    billingStatusTitle: "Estado de cobro (esta tienda)",
-    billingStatusNone:
-      "Sin pagar aún — Shopify pedirá aprobar $35 y luego $15/mes. Los cargos aparecen en tu factura Shopify.",
-    billingStatusSetupOnly:
-      "Setup de $35 activo en esta tienda. Aprueba el plan $15/mes para continuar. Si ya aprobaste antes, Shopify puede no pedir tarjeta otra vez — revisa Ajustes → Apps → PredictaCore.",
-    billingStatusActive:
-      "Plan activo — setup $35 pagado · suscripción $15/mes activa. Shopify cobra automáticamente cada mes. Cancelar aplica al siguiente periodo; sin devoluciones del mes en curso.",
-    billingShopifyReceipt:
-      "Ver cargos: Shopify Admin → Ajustes → Apps y canales de venta → PredictaCore → Ver cargos. Tiendas de prueba pueden mostrar cargos de $0.",
+    step4PaymentBodyFirst:
+      "Aún no cambiamos nada — solo preview. Continuar para pagar $35 (primer mes + Apply). Luego $15/mes hasta cancelar en Shopify. Sin devoluciones; cancelación aplica al siguiente periodo. Shopify puede mostrar dos pantallas.",
+    step4PaymentBodySetupDone:
+      "El setup de $35 ya está aprobado en esta tienda — por eso Shopify muestra $15/mes ahora, no $35 otra vez. Continuar para aprobar el plan obligatorio de $15/mes. Sin devoluciones; cancelar en Shopify aplica al siguiente periodo.",
     introTitle: "Analizaremos cómo la IA ve tu tienda",
     introBody:
       "Antes de cualquier pago o cambio, leemos tu catálogo y datos de marca para mostrar un score de preparación para IA y un plan claro.",
@@ -721,20 +716,13 @@ const MESSAGES = {
     billingBundleContinue: "Continuer — approuver le plan $15/mois (obligatoire)",
     billingRequired: "Finalisez le paiement ($35 + plan $15/mois) pour débloquer Apply.",
     step4FlowTitle: "Appliquer sur votre boutique",
+    step4PaymentBodyFirst:
+      "Rien n'a changé — aperçu seulement. Continuer pour payer $35 (premier mois + Apply). Puis $15/mois jusqu'à annulation dans Shopify. Sans remboursement ; annulation au prochain cycle. Shopify peut afficher deux écrans.",
+    step4PaymentBodySetupDone:
+      "Le setup $35 est déjà approuvé sur cette boutique — c'est pourquoi Shopify affiche $15/mois maintenant, pas $35. Continuer pour approuver le plan obligatoire à $15/mois. Sans remboursement ; annulation effet période suivante.",
     step4FlowIntro:
-      "Un seul plan : $35 aujourd'hui (premier mois + Apply), puis $15/mois jusqu'à annulation. Shopify peut afficher deux écrans — les deux requis. Sans remboursement.",
-    billingBundleStep2:
-      "Setup $35 actif sur cette boutique. Continuez pour approuver l'abonnement obligatoire à $15/mois.",
+      "Un seul plan : $35 aujourd'hui (premier mois + Apply), puis $15/mois jusqu'à annulation.",
     step4PaidIntro: "Plan actif — confirmez ci-dessous pour publier les changements.",
-    billingStatusTitle: "Statut de facturation (cette boutique)",
-    billingStatusNone:
-      "Pas encore payé — Shopify demandera d'approuver $35 puis $15/mois. Les charges apparaissent sur votre facture Shopify.",
-    billingStatusSetupOnly:
-      "Setup $35 actif sur cette boutique. Approuvez le plan $15/mois pour continuer. Si vous avez déjà approuvé, Shopify peut ne pas redemander la carte — vérifiez Paramètres → Apps → PredictaCore.",
-    billingStatusActive:
-      "Plan actif — setup $35 payé · abonnement $15/mois actif. Shopify facture automatiquement chaque mois. Annulation effet période suivante ; pas de remboursement du mois en cours.",
-    billingShopifyReceipt:
-      "Voir les charges : Shopify Admin → Paramètres → Apps et canaux de vente → PredictaCore → Voir les charges. Les boutiques test peuvent afficher $0.",
     restoreWarning:
       "La restauration n'annule que la dernière application. Les optimisations précédentes restent en place.",
     products: "Produits",

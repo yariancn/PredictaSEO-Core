@@ -1,8 +1,5 @@
 import { redirect } from "@remix-run/node";
 
-/** Defer first $15 until next cycle — month 1 is covered by the $35 setup charge (not a free trial). */
-export const MAINTENANCE_FIRST_CHARGE_DEFER_DAYS = 30;
-
 /** Embedded-app return URLs — must stay inside Shopify Admin (not bare Railway URL). */
 export function getBillingReturnUrls(shop) {
   const shopSlug = shop.replace(".myshopify.com", "");
@@ -33,7 +30,6 @@ export async function runBillingSetupFlow({ billing, session, isTest, SETUP_PLAN
     return billing.request({
       plan: MAINTENANCE_PLAN,
       isTest,
-      trialDays: MAINTENANCE_FIRST_CHARGE_DEFER_DAYS,
       returnUrl: urls.adminReady,
     });
   }

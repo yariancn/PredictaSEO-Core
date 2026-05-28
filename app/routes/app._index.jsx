@@ -14,9 +14,7 @@ export async function loader({ request }) {
   const locale = "en";
   const introKeys = [
     "title", "subtitle", "introTitle", "introBody", "introBullet1", "introBullet2", "introBullet3",
-    "introNoChanges", "monthlyBeforePayTitle", "monthlyBeforePayBody",
-    "maintenancePlan1", "maintenancePlan2", "maintenancePlan3",
-    "pricingTitle", "pricingFree", "pricingSetup", "pricingMaintenance", "startAuditButton",
+    "introNoChanges", "pricingTitle", "pricingFree", "pricingSetup", "startAuditButton",
   ];
   const introCopy = Object.fromEntries(introKeys.map((key) => [key, t(locale, key)]));
   return json({ shop: session.shop, introCopy });
@@ -91,7 +89,7 @@ export async function action({ request }) {
   }
 
   if (intent === "billing-subscribe") {
-    const { getBillingReturnUrls, MAINTENANCE_FIRST_CHARGE_DEFER_DAYS } = await import("../lib/billing-flow.server.js");
+    const { getBillingReturnUrls } = await import("../lib/billing-flow.server.js");
     const { syncBillingFromShopify } = await import("../lib/billing.server.js");
     const urls = getBillingReturnUrls(session.shop);
     const setupCheck = await billing.check({ plans: [SETUP_PLAN], isTest: isBillingTest() });
@@ -114,7 +112,6 @@ export async function action({ request }) {
       return billing.request({
         plan: MAINTENANCE_PLAN,
         isTest: isBillingTest(),
-        trialDays: MAINTENANCE_FIRST_CHARGE_DEFER_DAYS,
         returnUrl: urls.adminReady,
       });
     }
@@ -626,48 +623,30 @@ function AlreadyOptimizedCard({ copy, executive, onViewDashboard }) {
   );
 }
 
-function BillingStatusCard({ copy, setupPaid, subscriptionActive, pilotMode }) {
-  if (pilotMode) return null;
-
-  const statusKey = setupPaid && subscriptionActive
-    ? "billingStatusActive"
-    : setupPaid
-      ? "billingStatusSetupOnly"
-      : "billingStatusNone";
-
-  return (
-    <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.25)", background: "rgba(99,102,241,0.06)" }}>
-      <h2 style={{ ...theme.h2, color: "#a5b4fc" }}>{copyText(copy, "billingStatusTitle", "Billing status")}</h2>
-      <p style={{ ...theme.body, fontSize: "0.88rem", color: "#e8e8ef", marginBottom: "10px", lineHeight: 1.55 }}>
-        {copyText(copy, statusKey, "")}
-      </p>
-      <p style={{ ...theme.body, fontSize: "0.78rem", color: "#8b8b9a", margin: 0, lineHeight: 1.55 }}>
-        {copyText(copy, "billingShopifyReceipt", "")}
-      </p>
-    </div>
-  );
+function readBillingReturnState() {
+  if (typeof window === "undefined") return { auditStarted: false, step: 1 };
+  const params = new URLSearchParams(window.location.search);
+  const billing = params.get("billing");
+  return {
+    auditStarted: Boolean(billing),
+    step: billing === "ready" ? 4 : 1,
+  };
 }
 
 function PaymentGateCard({ copy, setupPaid = false }) {
-  const needsSubscriptionOnly = setupPaid;
+  const bodyKey = setupPaid ? "step4PaymentBodySetupDone" : "step4PaymentBodyFirst";
   return (
     <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.35)" }}>
       <h2 style={theme.h2}>{copy.step4FlowTitle}</h2>
-      <p style={{ ...theme.body, marginBottom: "10px", color: "#e8e8ef" }}>{copy.previewNotAppliedYet}</p>
-      <p style={{ ...theme.body, marginBottom: "14px", color: "#e8e8ef" }}>
-        {needsSubscriptionOnly ? copyText(copy, "billingBundleStep2", copy.step4FlowIntro) : copy.step4FlowIntro}
+      <p style={{ ...theme.body, marginBottom: "16px", color: "#e8e8ef", lineHeight: 1.55 }}>
+        {copyText(copy, bodyKey, copy.step4FlowIntro)}
       </p>
       <Form method="post" style={{ margin: 0 }}>
         <input type="hidden" name="intent" value="billing-setup" />
         <button type="submit" style={{ ...theme.btnPrimary, width: "100%" }}>
-          {needsSubscriptionOnly
-            ? copyText(copy, "billingBundleContinue", copy.unlockApply)
-            : copy.unlockApply}
+          {copy.continue}
         </button>
       </Form>
-      <p style={{ ...theme.body, fontSize: "0.78rem", color: "#9ca3af", marginTop: "12px", marginBottom: 0, lineHeight: 1.55 }}>
-        {copy.billingFootnote}
-      </p>
     </div>
   );
 }
@@ -698,19 +677,10 @@ function IntroScreen({ copy, shopName, onStart }) {
         </p>
       </div>
 
-      <div style={{ ...theme.card, borderColor: "rgba(163,230,53,0.25)" }}>
-        <h2 style={theme.h2}>{copy.monthlyBeforePayTitle}</h2>
-        <p style={{ ...theme.body, marginBottom: "10px" }}>{copy.monthlyBeforePayBody}</p>
-        <p style={theme.bullet("#6366f1")}>{copy.maintenancePlan1}</p>
-        <p style={theme.bullet("#6366f1")}>{copy.maintenancePlan2}</p>
-        <p style={theme.bullet("#6366f1")}>{copy.maintenancePlan3}</p>
-      </div>
-
       <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.25)" }}>
         <h2 style={theme.h2}>{copy.pricingTitle}</h2>
         <p style={theme.bullet("#a3e635")}>{copy.pricingFree}</p>
         <p style={theme.bullet("#a5b4fc")}>{copy.pricingSetup}</p>
-        <p style={theme.bullet("#8b8b9a")}>{copy.pricingMaintenance}</p>
       </div>
 
       <button type="button" style={theme.btnPrimary} onClick={onStart}>
@@ -787,9 +757,10 @@ export default function Index() {
   const billingChainStarted = useRef(false);
   const extraApplyConfirmStarted = useRef(false);
   const summarySubmitStarted = useRef(false);
-  const [step, setStep] = useState(1);
+  const billingReturn = readBillingReturnState();
+  const [step, setStep] = useState(billingReturn.step);
   const [summaryTimedOut, setSummaryTimedOut] = useState(false);
-  const [auditStarted, setAuditStarted] = useState(false);
+  const [auditStarted, setAuditStarted] = useState(billingReturn.auditStarted);
   const [aiRequested, setAiRequested] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [summaryInvalidated, setSummaryInvalidated] = useState(false);
@@ -799,6 +770,12 @@ export default function Index() {
     setAuditStarted(true);
     auditFetcher.load("/app/audit-data");
   };
+
+  useEffect(() => {
+    if (auditStarted && !auditFetcher.data && auditFetcher.state === "idle") {
+      auditFetcher.load("/app/audit-data");
+    }
+  }, [auditStarted, auditFetcher.data, auditFetcher.state]);
 
   const audit = auditFetcher.data;
   const auditPending = !audit;
@@ -871,6 +848,10 @@ export default function Index() {
     if (billingParam === "ready" && auditStarted) {
       setStep(4);
       auditFetcher.load("/app/audit-data");
+      params.delete("billing");
+      params.delete("charge_id");
+      const qs = params.toString();
+      window.history.replaceState({}, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
     }
 
     if (billingParam === "extra-ready" && auditStarted && !extraApplyConfirmStarted.current && billingFetcher.state === "idle") {
@@ -1558,13 +1539,6 @@ function IndexWizard({
           <p style={{ ...theme.body, marginBottom: "14px", fontSize: "0.78rem", color: "#8b8b9a", textAlign: "center" }}>
             {selectionNote}
           </p>
-          <div style={{ ...theme.card, borderColor: "rgba(163,230,53,0.25)" }}>
-            <h2 style={theme.h2}>{copy.monthlyBeforePayTitle}</h2>
-            <p style={{ ...theme.body, marginBottom: "10px" }}>{copy.monthlyBeforePayBody}</p>
-            <p style={theme.bullet("#6366f1")}>{copy.maintenancePlan1}</p>
-            <p style={theme.bullet("#6366f1")}>{copy.maintenancePlan2}</p>
-            <p style={theme.bullet("#6366f1")}>{copy.maintenancePlan3}</p>
-          </div>
           <div style={theme.card}>
             <h2 style={theme.h2}>{copy.priorityTitle}</h2>
             <p style={{ ...theme.body, marginBottom: "10px", fontSize: "0.82rem", color: "#8b8b9a" }}>
@@ -1717,21 +1691,14 @@ function IndexWizard({
 
           {showPaymentGate && <PaymentGateCard copy={copy} setupPaid={setupPaid} />}
 
-          {!pilotMode && (
-            <BillingStatusCard
-              copy={copy}
-              setupPaid={setupPaid}
-              subscriptionActive={subscriptionActive}
-              pilotMode={pilotMode}
-            />
-          )}
-
           {!applyResult && hasPendingWork && (
           <div style={theme.card}>
             <h2 style={theme.h2}>{copy.previewTitle}</h2>
-            <p style={{ ...theme.body, marginBottom: "12px", fontSize: "0.82rem", color: "#a5b4fc" }}>
-              {copy.previewNotAppliedYet}
-            </p>
+            {!showPaymentGate && (
+              <p style={{ ...theme.body, marginBottom: "12px", fontSize: "0.82rem", color: "#a5b4fc" }}>
+                {copy.previewNotAppliedYet}
+              </p>
+            )}
             {schemaOnlyPreview ? (
               <>
                 <p style={{ ...theme.body, marginBottom: "12px", color: "#fbbf24" }}>
@@ -1964,6 +1931,7 @@ function IndexWizard({
               schemaOnlyOutcome={schemaOnlyOutcome}
               schemaWasApplied={schemaWasApplied}
               billing={billing}
+              showMaintenance={false}
             />
           )}
 
