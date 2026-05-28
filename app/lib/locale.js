@@ -30,7 +30,8 @@ const MESSAGES = {
     skipAiPlan: "Skip AI summary and continue",
     step3AiTitle: "Optional AI summary (step 3)",
     step3AiIntro:
-      "This step is optional. It does not change your store, cost money, or affect the optimization in step 4.",
+      "Your fix list above is complete. This is an optional short narrative — you can continue to preview without it.",
+    step3ContinueHint: "Ready for preview — Continue goes to step 4. AI summary is optional.",
     generateAiPlanBody:
       "Uses AI to write a short, plain-language summary of your gaps and priorities — useful if you want a narrative before the preview. Takes about 10–20 seconds.",
     skipAiPlanBody:
@@ -249,6 +250,7 @@ const MESSAGES = {
     resetHint:
       "After undo/restore, your score returns to what it was before PredictaCore — often ~25 on a demo store that had not been optimized yet. Steps 2–4 will show pending changes again.",
     aiUnavailable: "Our AI is temporarily unavailable. Try again later.",
+    aiNotConfigured: "AI summary is not enabled on this server. You can continue — your audit plan is complete.",
     aiError: "Our AI could not complete the analysis.",
     aiTimeout: "Our AI did not respond in time. Try again.",
     expectationsTitle: "What happens now",
@@ -399,7 +401,8 @@ const MESSAGES = {
     skipAiPlan: "Omitir resumen IA y continuar",
     step3AiTitle: "Resumen IA opcional (paso 3)",
     step3AiIntro:
-      "Este paso es opcional. No cambia tu tienda, no cuesta dinero ni afecta la optimización del paso 4.",
+      "Tu lista de correcciones arriba ya está lista. Este resumen narrativo es opcional — puedes continuar al preview sin él.",
+    step3ContinueHint: "Listo para el preview — Continuar va al paso 4. El resumen IA es opcional.",
     generateAiPlanBody:
       "La IA escribe un resumen breve en lenguaje claro de tus gaps y prioridades — útil si quieres leer un plan narrativo antes del preview. Tarda unos 10–20 segundos.",
     skipAiPlanBody:
@@ -539,6 +542,7 @@ const MESSAGES = {
     resetHint:
       "Tras deshacer/restaurar, tu score vuelve a lo que era antes de PredictaCore — a menudo ~25 en una tienda demo sin optimizar. Los pasos 2–4 mostrarán cambios pendientes otra vez.",
     aiUnavailable: "Nuestra AI no está disponible. Intenta de nuevo más tarde.",
+    aiNotConfigured: "El resumen IA no está activo en este servidor. Puedes continuar — tu plan del audit ya está listo.",
     aiError: "Nuestra AI no pudo completar el análisis.",
     aiTimeout: "Nuestra AI no respondió a tiempo. Intenta de nuevo.",
     expectationsTitle: "Qué pasa ahora",
@@ -607,7 +611,8 @@ const MESSAGES = {
     skipAiPlan: "Ignorer le résumé IA et continuer",
     step3AiTitle: "Résumé IA optionnel (étape 3)",
     step3AiIntro:
-      "Cette étape est optionnelle. Elle ne modifie pas votre boutique, ne coûte rien et n'affecte pas l'optimisation à l'étape 4.",
+      "Votre liste de corrections ci-dessus est prête. Ce résumé narratif est optionnel — vous pouvez continuer vers l'aperçu sans lui.",
+    step3ContinueHint: "Prêt pour l'aperçu — Continuer va à l'étape 4. Le résumé IA est optionnel.",
     generateAiPlanBody:
       "L'IA rédige un court résumé clair de vos lacunes et priorités — utile si vous voulez un plan narratif avant l'aperçu. Comptez 10–20 secondes.",
     skipAiPlanBody:
@@ -823,6 +828,7 @@ const MESSAGES = {
     resetHint:
       "Après annulation/restauration, le score revient à l'état d'avant PredictaCore — souvent ~25 sur une boutique demo non optimisée. Les étapes 2–4 afficheront à nouveau les changements en attente.",
     aiUnavailable: "Notre IA est temporairement indisponible.",
+    aiNotConfigured: "Le résumé IA n'est pas activé sur ce serveur. Vous pouvez continuer — votre plan d'audit est prêt.",
     aiError: "Notre IA n'a pas pu terminer l'analyse.",
     aiTimeout: "Notre IA n'a pas répondu à temps. Réessayez.",
     reasonNoSeoTitle: "Titre de recherche manquant",

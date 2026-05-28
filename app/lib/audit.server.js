@@ -25,8 +25,8 @@ export async function loadAuditData(request) {
   const COPY_KEYS = [
     "title", "subtitle", "heroTitle", "heroBody", "introTitle", "introBody", "introBullet1", "introBullet2", "introBullet3",
     "introNoChanges", "startAuditButton", "monthlyBeforePayTitle", "monthlyBeforePayBody",
-    "generateAiPlan", "skipAiPlan", "step3AiTitle", "step3AiIntro", "generateAiPlanBody", "skipAiPlanBody",
-    "skipAiWhileLoading", "retryAiPlan", "aiTimeout", "previewNotAppliedYet",
+    "generateAiPlan", "skipAiPlan", "step3AiTitle", "step3AiIntro", "step3ContinueHint", "generateAiPlanBody", "skipAiPlanBody",
+    "skipAiWhileLoading", "retryAiPlan", "aiTimeout", "aiNotConfigured", "previewNotAppliedYet",
     "scopeNote", "scopeNoteFullCatalog", "scopeNoteFullCatalogExcluded", "selectionNote", "priorityPlanSummary", "priorityScopeSummary", "stepOf",
     "catalogScoreLabel", "foundationScoreLabel", "scoreExplain",
     "scorePlainTitle", "scorePlainBody", "scorePlain1", "scorePlain2", "scorePlain3", "scorePlain4", "scorePlainLow",
@@ -202,5 +202,6 @@ export async function loadAuditData(request) {
     backupBatchCount,
     billing: billingStatus,
     uninstallRestorePreference,
+    aiSummaryAvailable: Boolean(process.env.GEMINI_API_KEY?.trim()),
   };
 }
