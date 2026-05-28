@@ -1,5 +1,6 @@
 import prisma from "../db.server.js";
 import { unauthenticated } from "../shopify.server";
+import { syncSubscriptionFromAdmin } from "./shop-lifecycle.server.js";
 import {
   APPLY_KIND,
   hasCompletedSetupApply,
@@ -10,6 +11,15 @@ import {
 import { runStoreApply, recordSkippedMonthlyApply } from "./apply-runner.server.js";
 
 export async function runMonthlyApplyForShop(shop) {
+  let admin;
+  try {
+    ({ admin } = await unauthenticated.admin(shop));
+  } catch (err) {
+    return { shop, status: "failed", reason: "no_session", error: err.message };
+  }
+
+  await syncSubscriptionFromAdmin(admin, shop);
+
   const billing = await prisma.shopBilling.findUnique({ where: { shop } });
   if (!billing?.subscriptionActive) {
     return { shop, status: "skipped", reason: "no_subscription" };
@@ -26,13 +36,6 @@ export async function runMonthlyApplyForShop(shop) {
 
   if (await hasMonthlyRunThisPeriod(shop, period)) {
     return { shop, status: "skipped", reason: "already_ran_this_month" };
-  }
-
-  let admin;
-  try {
-    ({ admin } = await unauthenticated.admin(shop));
-  } catch (err) {
-    return { shop, status: "failed", reason: "no_session", error: err.message };
   }
 
   try {

@@ -131,6 +131,7 @@ export default function PrivacyPolicy() {
         <section style={page.section}>
           <h2 style={page.h2}>Data retention and deletion</h2>
           <ul style={{ ...page.ul, marginBottom: 0 }}>
+            <li style={page.li}>When you uninstall the app, we attempt to restore your catalog to pre-Apply values before deleting our backups (when Shopify API access is still available).</li>
             <li style={page.li}>When you uninstall the app, we delete your shop&apos;s sessions and stored app data.</li>
             <li style={page.li}>
               Shopify may send a <code style={page.code}>shop/redact</code> webhook 48 hours after uninstall; we

@@ -120,7 +120,7 @@ const MESSAGES = {
     impactTitle: "Why AI can't recommend you",
     planTitle: "What we'll fix",
     rollbackNote:
-      "We save a backup before any change. Uninstall the app to restore your original SEO.",
+      "We save a backup before any change. When you uninstall, we automatically restore your store to pre-Apply values when Shopify still allows API access. For guaranteed rollback, use Restore everything before uninstalling.",
     previewSoon: "Preview changes — coming next",
     priorityTitle: "Products to fix first",
     priorityExplain:
@@ -393,7 +393,7 @@ const MESSAGES = {
     impactTitle: "Por qué las AI no te recomiendan",
     planTitle: "Qué vamos a corregir",
     rollbackNote:
-      "Guardamos una copia antes de cada cambio. Al desinstalar la app, restauras tu SEO original.",
+      "Guardamos una copia antes de cada cambio. Al desinstalar, restauramos automáticamente tu tienda al estado pre-Apply si Shopify aún permite acceso API. Para garantía total, usa Restaurar todo antes de desinstalar.",
     previewSoon: "Vista previa de cambios — próximamente",
     priorityTitle: "Productos prioritarios",
     priorityExplain:
@@ -647,7 +647,7 @@ const MESSAGES = {
     impactTitle: "Pourquoi l'IA ne vous recommande pas",
     planTitle: "Ce que nous allons corriger",
     rollbackNote:
-      "Nous sauvegardons avant chaque modification. Désinstallez l'app pour restaurer votre SEO.",
+      "Sauvegarde avant chaque modification. À la désinstallation, nous restaurons automatiquement si Shopify autorise encore l'API. Pour une garantie totale, utilisez Tout restaurer avant de désinstaller.",
     previewSoon: "Aperçu des modifications — bientôt",
     priorityTitle: "Produits prioritaires",
     priorityExplain:
