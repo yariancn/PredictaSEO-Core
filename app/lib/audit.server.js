@@ -25,7 +25,7 @@ export async function loadAuditData(request) {
   const COPY_KEYS = [
     "title", "subtitle", "heroTitle", "heroBody", "introTitle", "introBody", "introBullet1", "introBullet2", "introBullet3",
     "introNoChanges", "startAuditButton", "monthlyBeforePayTitle", "monthlyBeforePayBody",
-    "generateAiPlan", "skipAiPlan", "previewNotAppliedYet",
+    "generateAiPlan", "skipAiPlan", "step3AiTitle", "step3AiIntro", "generateAiPlanBody", "skipAiPlanBody", "previewNotAppliedYet",
     "scopeNote", "scopeNoteFullCatalog", "scopeNoteFullCatalogExcluded", "selectionNote", "priorityPlanSummary", "priorityScopeSummary", "stepOf",
     "catalogScoreLabel", "foundationScoreLabel", "scoreExplain",
     "scorePlainTitle", "scorePlainBody", "scorePlain1", "scorePlain2", "scorePlain3", "scorePlain4", "scorePlainLow",

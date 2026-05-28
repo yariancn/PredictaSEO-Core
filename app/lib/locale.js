@@ -28,6 +28,13 @@ const MESSAGES = {
       "After the one-time optimization, maintenance keeps you visible as your catalog grows:",
     generateAiPlan: "Generate personalized AI plan",
     skipAiPlan: "Skip AI summary and continue",
+    step3AiTitle: "Optional AI summary (step 3)",
+    step3AiIntro:
+      "This step is optional. It does not change your store, cost money, or affect the optimization in step 4.",
+    generateAiPlanBody:
+      "Uses AI to write a short, plain-language summary of your gaps and priorities — useful if you want a narrative before the preview. Takes about 10–20 seconds.",
+    skipAiPlanBody:
+      "Go straight to step 4. Your fix list from the audit is already complete — skipping does not reduce optimization quality.",
     previewNotAppliedYet: "Nothing has been changed on your store yet — this is a preview only.",
     step4FlowIntro: "When you're ready, pay $35 to unlock Apply. We only write to your store after payment and your confirmation.",
     scopeNote: "Top {{analyzed}} products selected from {{total}} in catalog",
@@ -388,6 +395,13 @@ const MESSAGES = {
     monthlyBeforePayBody: "Después de la optimización única, el mantenimiento te mantiene visible:",
     generateAiPlan: "Generar plan personalizado con IA",
     skipAiPlan: "Omitir resumen IA y continuar",
+    step3AiTitle: "Resumen IA opcional (paso 3)",
+    step3AiIntro:
+      "Este paso es opcional. No cambia tu tienda, no cuesta dinero ni afecta la optimización del paso 4.",
+    generateAiPlanBody:
+      "La IA escribe un resumen breve en lenguaje claro de tus gaps y prioridades — útil si quieres leer un plan narrativo antes del preview. Tarda unos 10–20 segundos.",
+    skipAiPlanBody:
+      "Ve directo al paso 4. La lista de correcciones del audit ya está lista — omitir no reduce la calidad de la optimización.",
     previewNotAppliedYet: "Aún no hemos cambiado nada en tu tienda — esto es solo una vista previa.",
     step4PaidIntro: "Pago confirmado — confirma abajo para publicar los cambios en tu tienda.",
     alreadyOptimizedTitle: "Ya optimizado",
@@ -587,6 +601,13 @@ const MESSAGES = {
     monthlyBeforePayBody: "Après l'optimisation unique, la maintenance vous garde visible :",
     generateAiPlan: "Générer un plan IA personnalisé",
     skipAiPlan: "Ignorer le résumé IA et continuer",
+    step3AiTitle: "Résumé IA optionnel (étape 3)",
+    step3AiIntro:
+      "Cette étape est optionnelle. Elle ne modifie pas votre boutique, ne coûte rien et n'affecte pas l'optimisation à l'étape 4.",
+    generateAiPlanBody:
+      "L'IA rédige un court résumé clair de vos lacunes et priorités — utile si vous voulez un plan narratif avant l'aperçu. Comptez 10–20 secondes.",
+    skipAiPlanBody:
+      "Passez directement à l'étape 4. La liste de corrections de l'audit est déjà complète — ignorer ne réduit pas la qualité de l'optimisation.",
     previewNotAppliedYet: "Rien n'a encore été modifié — ceci est un aperçu uniquement.",
     step4FlowIntro:
       "Quand vous êtes prêt, payez $35 pour débloquer Apply. Nous n'écrivons sur votre boutique qu'après paiement et confirmation.",

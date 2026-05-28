@@ -1168,18 +1168,36 @@ function IndexWizard({
     mirrors: preview.mirrorCount,
   });
   const previewStats = getPreviewChangeStats(preview);
-  const canApply = billing?.canApply ?? false;
+  const setupPaid = billing?.setupPaid ?? false;
+  const pilotMode = billing?.pilotMode ?? false;
   const hasPendingWork = preview.total > 0;
   const showAlreadyOptimized = !applyResult && !hasPendingWork && setupComplete;
-  const showPaymentGate = hasPendingWork && !applyResult && !canApply;
   const applyQuota = billing?.applyQuota;
+  const firstApplyDone = Boolean(applyQuota?.setupDone);
+  const showPaymentGate = hasPendingWork && !applyResult && !setupPaid && !pilotMode;
   const showSetupApplyGate =
-    hasPendingWork && !applyResult && Boolean(applyQuota?.canManualApply && applyQuota?.manualApplyKind === "setup");
+    hasPendingWork &&
+    !applyResult &&
+    !firstApplyDone &&
+    (setupPaid || pilotMode) &&
+    Boolean(applyQuota?.canManualApply && applyQuota?.manualApplyKind === "setup");
+  const showPostSetupBillingUi = firstApplyDone && (setupPaid || pilotMode);
   const showExtraApplyGate =
-    hasPendingWork && !applyResult && Boolean(applyQuota?.canManualApply && applyQuota?.manualApplyKind === "extra");
+    hasPendingWork &&
+    !applyResult &&
+    showPostSetupBillingUi &&
+    Boolean(applyQuota?.canManualApply && applyQuota?.manualApplyKind === "extra");
   const showMonthlyAutoNotice =
-    hasPendingWork && !applyResult && applyQuota?.blockReason === "monthly_auto_scheduled";
-  const showExtraPaymentGate = hasPendingWork && !applyResult && Boolean(applyQuota?.needsExtraPayment);
+    hasPendingWork &&
+    !applyResult &&
+    showPostSetupBillingUi &&
+    applyQuota?.blockReason === "monthly_auto_scheduled";
+  const showExtraPaymentGate =
+    hasPendingWork &&
+    !applyResult &&
+    showPostSetupBillingUi &&
+    Boolean(applyQuota?.needsExtraPayment);
+  const showApplyQuotaCard = hasPendingWork && !applyResult && applyQuota && showPostSetupBillingUi;
   const showApplyGate = showSetupApplyGate || showExtraApplyGate;
   const analysisInProgress = aiRequested && summaryLoading;
   const canContinueFromAnalysis = Boolean(summary) || Boolean(summaryError) || aiSkipped;
@@ -1494,19 +1512,63 @@ function IndexWizard({
 
           {!aiRequested && !aiSkipped && !summary && (
             <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.35)" }}>
-              <p style={{ ...theme.body, marginBottom: "14px", color: "#e8e8ef" }}>
-                {copyText(copy, "loadingHint", "Optional: generate a short AI summary of your store's gaps.")}
+              <h2 style={theme.h2}>{copyText(copy, "step3AiTitle", "Optional AI summary")}</h2>
+              <p style={{ ...theme.body, marginBottom: "14px", color: "#e8e8ef", lineHeight: 1.55 }}>
+                {copyText(
+                  copy,
+                  "step3AiIntro",
+                  "This step is optional. It does not change your store or affect payment.",
+                )}
               </p>
-              <button type="button" style={theme.btnPrimary} onClick={() => setAiRequested(true)}>
-                {copyText(copy, "generateAiPlan", "Generate personalized AI plan")}
-              </button>
-              <button
-                type="button"
-                style={{ ...theme.btnGhost, width: "100%", marginTop: "8px" }}
-                onClick={() => setAiSkipped(true)}
+              <div
+                style={{
+                  marginBottom: "12px",
+                  padding: "12px",
+                  borderRadius: "8px",
+                  background: "rgba(99,102,241,0.08)",
+                  border: "1px solid rgba(99,102,241,0.2)",
+                }}
               >
-                {copyText(copy, "skipAiPlan", "Skip AI summary and continue")}
-              </button>
+                <p style={{ ...theme.body, fontWeight: 600, color: "#a5b4fc", margin: "0 0 6px 0" }}>
+                  {copyText(copy, "generateAiPlan", "Generate personalized AI plan")}
+                </p>
+                <p style={{ ...theme.body, fontSize: "0.82rem", color: "#8b8b9a", margin: "0 0 12px 0", lineHeight: 1.55 }}>
+                  {copyText(
+                    copy,
+                    "generateAiPlanBody",
+                    "Uses AI to write a short, plain-language summary of your gaps and priorities. Takes about 10–20 seconds.",
+                  )}
+                </p>
+                <button type="button" style={theme.btnPrimary} onClick={() => setAiRequested(true)}>
+                  {copyText(copy, "generateAiPlan", "Generate personalized AI plan")}
+                </button>
+              </div>
+              <div
+                style={{
+                  padding: "12px",
+                  borderRadius: "8px",
+                  background: "rgba(255,255,255,0.03)",
+                  border: "1px solid rgba(255,255,255,0.06)",
+                }}
+              >
+                <p style={{ ...theme.body, fontWeight: 600, color: "#e8e8ef", margin: "0 0 6px 0" }}>
+                  {copyText(copy, "skipAiPlan", "Skip AI summary and continue")}
+                </p>
+                <p style={{ ...theme.body, fontSize: "0.82rem", color: "#8b8b9a", margin: "0 0 12px 0", lineHeight: 1.55 }}>
+                  {copyText(
+                    copy,
+                    "skipAiPlanBody",
+                    "Go straight to step 4 preview. Your optimization plan from the audit is already complete — skipping does not reduce quality.",
+                  )}
+                </p>
+                <button
+                  type="button"
+                  style={{ ...theme.btnGhost, width: "100%" }}
+                  onClick={() => setAiSkipped(true)}
+                >
+                  {copyText(copy, "skipAiPlan", "Skip AI summary and continue")}
+                </button>
+              </div>
             </div>
           )}
 
@@ -1690,7 +1752,7 @@ function IndexWizard({
           </div>
           )}
 
-          {hasPendingWork && !applyResult && applyQuota && (
+          {showApplyQuotaCard && (
             <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.35)", background: "rgba(99,102,241,0.08)" }}>
               <h2 style={{ ...theme.h2, color: "#a5b4fc" }}>{copyText(copy, "applyQuotaTitle", "Apply rules")}</h2>
               <p style={{ ...theme.body, fontSize: "0.78rem", color: "#8b8b9a", marginBottom: "10px" }}>

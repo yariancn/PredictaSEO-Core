@@ -22,12 +22,21 @@ export async function hasLegacyApply(shop) {
   return Boolean(snap);
 }
 
+/** True when a setup Apply was recorded (ApplyRun) or legacy snapshot exists — used for restore/dashboard. */
 export async function hasCompletedSetupApply(shop) {
   const run = await prisma.applyRun.findFirst({
     where: { shop, kind: APPLY_KIND.SETUP, status: APPLY_STATUS.COMPLETED },
   });
   if (run) return true;
   return hasLegacyApply(shop);
+}
+
+/** Setup Apply recorded in ApplyRun only — billing/quota must not treat legacy backups as "already applied". */
+export async function hasRecordedSetupApply(shop) {
+  const run = await prisma.applyRun.findFirst({
+    where: { shop, kind: APPLY_KIND.SETUP, status: APPLY_STATUS.COMPLETED },
+  });
+  return Boolean(run);
 }
 
 export async function hasIncludedApplyThisPeriod(shop, period = currentApplyPeriod()) {
@@ -99,7 +108,7 @@ export async function resolveManualApplyPermission(shop, { pilotMode = false, se
     return { allowed: false, reason: "setup_unpaid" };
   }
 
-  const setupDone = await hasCompletedSetupApply(shop);
+  const setupDone = await hasRecordedSetupApply(shop);
   if (!setupDone) {
     return { allowed: true, kind: APPLY_KIND.SETUP, reason: "setup_first" };
   }
@@ -117,10 +126,11 @@ export async function resolveManualApplyPermission(shop, { pilotMode = false, se
     return { allowed: false, reason: "monthly_auto_scheduled", period };
   }
 
-  if (includedUsed) {
+  if (includedUsed || monthlyDone) {
     return { allowed: false, reason: "quota_exhausted", needsExtraPayment: true, period };
   }
 
+  // Post-setup, new month, no active maintenance — manual re-apply requires extra payment.
   return { allowed: false, reason: "quota_exhausted", needsExtraPayment: true, period };
 }
 
@@ -133,7 +143,7 @@ export async function recordApplyRun(shop, { kind, batchId = null, status = APPL
 
 export async function getApplyQuotaStatus(shop, billing = {}) {
   const period = currentApplyPeriod();
-  const setupDone = await hasCompletedSetupApply(shop);
+  const setupDone = await hasRecordedSetupApply(shop);
   const monthlyAutoDone = await hasMonthlyRunThisPeriod(shop, period);
   const includedApplyUsed = await hasIncludedApplyThisPeriod(shop, period);
   const extraApplyCredits = await getExtraApplyCredits(shop);
