@@ -549,13 +549,15 @@ function saveWizardStateForBilling() {
 }
 
 function readBillingReturnState() {
-  if (typeof window === "undefined") return { auditStarted: false, step: 1 };
+  if (typeof window === "undefined") {
+    return { auditStarted: false, step: 1, billingJustReturned: false };
+  }
   try {
     const saved = sessionStorage.getItem(WIZARD_STORAGE_KEY);
     if (saved) {
       sessionStorage.removeItem(WIZARD_STORAGE_KEY);
       const parsed = JSON.parse(saved);
-      return { auditStarted: true, step: parsed.step ?? 4 };
+      return { auditStarted: true, step: parsed.step ?? 4, billingJustReturned: false };
     }
   } catch {
     /* ignore */
@@ -565,6 +567,7 @@ function readBillingReturnState() {
   return {
     auditStarted: billing === "ready",
     step: billing === "ready" ? 4 : 1,
+    billingJustReturned: billing === "ready",
   };
 }
 
@@ -640,13 +643,25 @@ function IntroScreen({ copy, shopName, onStart }) {
   );
 }
 
-function ExpectationsPanel({ copy, priorityCount, productsUpdatedCount = 0, schemaOnlyOutcome = false, schemaWasApplied = false, billing, showMaintenance = true }) {
+function ExpectationsPanel({
+  copy,
+  priorityCount,
+  productsUpdatedCount = 0,
+  schemaOnlyOutcome = false,
+  schemaWasApplied = false,
+  showMaintenance = true,
+  variant = "post",
+}) {
   const count = String(priorityCount);
   const fill = (text) => text.replace("{{count}}", count);
+  const isPreview = variant === "preview";
+  const title = isPreview
+    ? copyText(copy, "expectationsPreviewTitle", copy.expectationsTitle)
+    : copy.expectationsTitle;
 
   return (
     <div style={{ ...theme.card, borderColor: "rgba(163,230,53,0.35)", background: "rgba(163,230,53,0.06)" }}>
-      <h2 style={{ ...theme.h2, color: "#a3e635" }}>{copy.expectationsTitle}</h2>
+      <h2 style={{ ...theme.h2, color: "#a3e635" }}>{title}</h2>
 
       <p style={{ ...theme.h2, marginTop: "16px" }}>{copy.expectationsMeansTitle}</p>
       <p style={theme.bullet("#a3e635")}>{copy.expectationsMeans1}</p>
@@ -660,29 +675,33 @@ function ExpectationsPanel({ copy, priorityCount, productsUpdatedCount = 0, sche
       <p style={theme.bullet("#fbbf24")}>{copy.expectationsNot1}</p>
       <p style={theme.bullet("#fbbf24")}>{copy.expectationsNot2}</p>
 
-      <p style={{ ...theme.h2, marginTop: "16px" }}>{copy.expectationsDoneTitle}</p>
-      <p style={theme.bullet("#a5b4fc")}>
-        {productsUpdatedCount > 0
-          ? fillTemplate(copyText(copy, "expectationsDone1Updated", copy.expectationsDone2), {
-              count: productsUpdatedCount,
-            })
-          : fillTemplate(copyText(copy, "expectationsDone1Verified", copy.expectationsDone2), {
-              count: priorityCount,
-            })}
-      </p>
-      {productsUpdatedCount > 0 && (
-        <p style={theme.bullet("#a5b4fc")}>{copy.expectationsDone2}</p>
+      {!isPreview && (
+        <>
+          <p style={{ ...theme.h2, marginTop: "16px" }}>{copy.expectationsDoneTitle}</p>
+          <p style={theme.bullet("#a5b4fc")}>
+            {productsUpdatedCount > 0
+              ? fillTemplate(copyText(copy, "expectationsDone1Updated", copy.expectationsDone2), {
+                  count: productsUpdatedCount,
+                })
+              : fillTemplate(copyText(copy, "expectationsDone1Verified", copy.expectationsDone2), {
+                  count: priorityCount,
+                })}
+          </p>
+          {productsUpdatedCount > 0 && (
+            <p style={theme.bullet("#a5b4fc")}>{copy.expectationsDone2}</p>
+          )}
+          {schemaWasApplied && (
+            <p style={theme.bullet("#a5b4fc")}>{copy.expectationsDone3}</p>
+          )}
+          <p style={theme.bullet("#a5b4fc")}>{copy.expectationsDone4}</p>
+        </>
       )}
-      {schemaWasApplied && (
-        <p style={theme.bullet("#a5b4fc")}>{copy.expectationsDone3}</p>
-      )}
-      <p style={theme.bullet("#a5b4fc")}>{copy.expectationsDone4}</p>
 
       <p style={{ ...theme.h2, marginTop: "16px" }}>{copy.expectationsTimelineTitle}</p>
       <p style={theme.bullet("#8b8b9a")}>{copy.expectationsTimeline1}</p>
       <p style={theme.bullet("#8b8b9a")}>{copy.expectationsTimeline2}</p>
 
-      {showMaintenance && (
+      {showMaintenance && !isPreview && (
         <>
           <p style={{ ...theme.h2, marginTop: "16px" }}>{copy.maintenancePlanTitle}</p>
           <p style={{ ...theme.body, fontSize: "0.88rem", marginBottom: "8px" }}>{copy.maintenancePlanIntro}</p>
@@ -708,6 +727,7 @@ export default function Index() {
   const [step, setStep] = useState(billingReturn.step);
   const [summaryTimedOut, setSummaryTimedOut] = useState(false);
   const [auditStarted, setAuditStarted] = useState(billingReturn.auditStarted);
+  const [billingJustReturned, setBillingJustReturned] = useState(billingReturn.billingJustReturned);
   const [aiRequested, setAiRequested] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [summaryInvalidated, setSummaryInvalidated] = useState(false);
@@ -788,6 +808,7 @@ export default function Index() {
 
     if (billingParam === "ready") {
       setAuditStarted(true);
+      setBillingJustReturned(true);
       setStep(4);
       auditFetcher.load("/app/audit-data");
       params.delete("billing");
@@ -799,6 +820,7 @@ export default function Index() {
 
   useEffect(() => {
     if (applyFetcher.data?.intent === "apply" && applyFetcher.data?.applyResult) {
+      setBillingJustReturned(false);
       setSummaryInvalidated(true);
       setConfirmed(false);
       setStep(4);
@@ -811,6 +833,7 @@ export default function Index() {
       setSummaryInvalidated(true);
       setConfirmed(false);
       setAiRequested(false);
+      setBillingJustReturned(false);
       summarySubmitStarted.current = false;
       setSummaryTimedOut(false);
       setStep(1);
@@ -961,6 +984,7 @@ export default function Index() {
         resetTestError={resetTestError}
         backupAvailable={backupAvailable}
         uninstallRestorePreference={uninstallRestorePreference}
+        billingJustReturned={billingJustReturned}
         auditReloading={auditReloading}
       />
     </>
@@ -1100,6 +1124,7 @@ function IndexWizard({
   resetTestError,
   backupAvailable,
   uninstallRestorePreference,
+  billingJustReturned,
   auditReloading,
 }) {
   const pilotMode = Boolean(billing?.pilotMode);
@@ -1157,13 +1182,16 @@ function IndexWizard({
   const applyQuota = billing?.applyQuota;
   const firstApplyDone = Boolean(applyQuota?.setupDone);
   const showPaymentGate = hasPendingWork && !applyResult && !billingComplete && !pilotMode;
-  const showPaymentSuccess = hasPendingWork && !applyResult && setupPaid && !pilotMode;
   const showSetupApplyGate =
     hasPendingWork &&
     !applyResult &&
     billingComplete &&
     !firstApplyDone &&
     Boolean(applyQuota?.canManualApply && applyQuota?.manualApplyKind === "setup");
+  const showPaymentSuccess =
+    billingJustReturned && hasPendingWork && !applyResult && setupPaid && !pilotMode;
+  const showStep4Expectations =
+    !applyResult && hasPendingWork && (showPaymentGate || showPaymentSuccess || showSetupApplyGate);
   const showApplyGate = showSetupApplyGate;
   const analysisInProgress = aiRequested && summaryLoading && !summaryTimedOut;
   const displaySummaryError =
@@ -1397,13 +1425,6 @@ function IndexWizard({
                 ))}
               </div>
 
-              <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.25)" }}>
-                <h2 style={theme.h2}>{copy.pricingTitle}</h2>
-                <p style={theme.bullet("#a3e635")}>{copy.pricingFree}</p>
-                <p style={theme.bullet("#a5b4fc")}>{copy.pricingSetup}</p>
-                <p style={theme.bullet("#8b8b9a")}>{copy.pricingMaintenance}</p>
-              </div>
-
               <button type="button" style={theme.btnPrimary} onClick={() => setStep(2)}>
                 {copy.continue}
               </button>
@@ -1599,6 +1620,16 @@ function IndexWizard({
 
           {showPaymentSuccess && !showPaymentGate && <PaymentSuccessBanner copy={copy} />}
 
+          {showStep4Expectations && (
+            <ExpectationsPanel
+              copy={copy}
+              priorityCount={snapSummary.priorityCount}
+              schemaOnlyOutcome={schemaOnlyPreview}
+              variant="preview"
+              showMaintenance={false}
+            />
+          )}
+
           {!applyResult && hasPendingWork && (
           <div style={theme.card}>
             <h2 style={theme.h2}>{copy.previewTitle}</h2>
@@ -1745,17 +1776,8 @@ function IndexWizard({
               productsUpdatedCount={productsUpdatedCount}
               schemaOnlyOutcome={schemaOnlyOutcome}
               schemaWasApplied={schemaWasApplied}
-              billing={billing}
               showMaintenance={false}
             />
-          )}
-
-          {applyResult && setupPaid && (
-            <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.2)" }}>
-              <p style={{ ...theme.body, fontSize: "0.78rem", color: "#a5b4fc", margin: 0, lineHeight: 1.55 }}>
-                {copy.pricingMaintenanceIncluded}
-              </p>
-            </div>
           )}
 
           {applyError && (

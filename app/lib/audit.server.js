@@ -59,7 +59,7 @@ export async function loadAuditData(request) {
     "resultsTimeline", "moreProducts",
     "resultsProductsTitle", "changeSearchTitle", "changeSearchDesc", "changeProductDesc",
     "setupCompleteTitle", "setupCompleteBody", "viewScoreDashboard", "viewSummary",
-    "expectationsTitle", "expectationsMeansTitle", "expectationsMeans1", "expectationsMeans2", "expectationsMeans2ProductsDone",
+    "expectationsTitle", "expectationsPreviewTitle", "expectationsMeansTitle", "expectationsMeans1", "expectationsMeans2", "expectationsMeans2ProductsDone",
     "expectationsNotTitle", "expectationsNot1", "expectationsNot2",
     "expectationsDoneTitle", "expectationsDone1Updated", "expectationsDone1Verified", "expectationsDone2", "expectationsDone3", "expectationsDone4",
     "expectationsTimelineTitle", "expectationsTimeline1", "expectationsTimeline2",

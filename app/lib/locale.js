@@ -104,8 +104,9 @@ const MESSAGES = {
     whyUs4: "Built for AI search visibility — not traditional SEO alone",
     pricingTitle: "Pricing",
     pricingFree: "Free — full audit, AI plan & preview",
-    pricingSetup: "$35 — first month + full optimization (Apply unlock)",
-    pricingMaintenance: "$15/month after that — until you cancel in Shopify",
+    pricingSetup:
+      "$35 — first month + full optimization (Apply unlock). $15/month after for automatic catalog updates.",
+    pricingMaintenance: "",
     billingFootnote:
       "No refunds. Cancel anytime in Shopify Admin — takes effect next billing period; the current month stays paid ($35 first month, then $15/month).",
     pricingMaintenanceIncluded:
@@ -116,10 +117,10 @@ const MESSAGES = {
     applyAlreadyDone:
       "Your initial optimization is already applied. Monthly updates run automatically — no extra action needed.",
     step4FlowTitle: "Apply to your store",
-    step4PaymentBodyFirst: "Continue to pay $35 and unlock Apply on your store.",
-    step4PaymentSuccess: "Payment successful — $35 setup complete.",
-    step4FlowIntro:
-      "One payment of $35 unlocks your first optimization. $15/month starts automatically after the first month.",
+    step4PaymentBodyFirst: "Continue to complete payment in Shopify and unlock Apply.",
+    step4PaymentSuccess: "Payment successful — you can now apply changes to your store.",
+    step4FlowIntro: "Complete payment in Shopify to unlock Apply on your store.",
+    expectationsPreviewTitle: "What to expect after you apply",
     billingBundleStep2:
       "$35 setup is active on this store. Continue to approve the required $15/month subscription.",
     step4PaidIntro: "Payment complete — confirm below to publish changes to your store.",
@@ -293,8 +294,7 @@ const MESSAGES = {
     maintenancePlan1: "Monthly re-scan of your top 50 products",
     maintenancePlan2: "Alerts when new products or gaps lower your score",
     maintenancePlan3: "Optimization for new catalog items as you grow",
-    maintenancePlanNote:
-      "Included with unlock — $15/mo billed by Shopify each month after your first month ($35). Cancel anytime; no refunds.",
+    maintenancePlanNote: "Automatic monthly updates keep your catalog optimized as you add products.",
     applyQuotaTitle: "Apply rules — read before continuing",
     applyQuotaSetup:
       "Your $35 setup includes one Apply now — that counts as this month's included update. After that, one automatic Apply runs each calendar month with your $15/mo plan.",
@@ -393,8 +393,9 @@ const MESSAGES = {
     whyUs4: "Hecho para visibilidad en AI search — no solo SEO tradicional",
     pricingTitle: "Precios",
     pricingFree: "Gratis — auditoría completa, plan AI y preview",
-    pricingSetup: "$35 — primer mes + optimización completa (desbloquea Apply)",
-    pricingMaintenance: "$15/mes después — hasta cancelar en Shopify",
+    pricingSetup:
+      "$35 — primer mes + optimización completa (desbloquea Apply). $15/mes después para actualizaciones automáticas.",
+    pricingMaintenance: "",
     billingFootnote:
       "Sin devoluciones. Cancela en Shopify Admin — aplica al siguiente periodo; el mes en curso ya está pagado ($35 primer mes, luego $15/mes).",
     pricingMaintenanceIncluded:
@@ -405,10 +406,10 @@ const MESSAGES = {
     applyAlreadyDone:
       "Tu optimización inicial ya está aplicada. Las actualizaciones mensuales son automáticas — no necesitas hacer nada más.",
     step4FlowTitle: "Aplicar en tu tienda",
-    step4PaymentBodyFirst: "Continúa para pagar $35 y desbloquear Apply en tu tienda.",
-    step4PaymentSuccess: "Pago exitoso — setup de $35 completado.",
-    step4FlowIntro:
-      "Un pago de $35 desbloquea tu primera optimización. $15/mes empieza automáticamente después del primer mes.",
+    step4PaymentBodyFirst: "Continúa para completar el pago en Shopify y desbloquear Apply.",
+    step4PaymentSuccess: "Pago exitoso — ya puedes aplicar los cambios en tu tienda.",
+    step4FlowIntro: "Completa el pago en Shopify para desbloquear Apply.",
+    expectationsPreviewTitle: "Qué esperar después de aplicar",
     step4PaidIntro: "Pago completado — confirma abajo para publicar los cambios en tu tienda.",
     introTitle: "Analizaremos cómo la IA ve tu tienda",
     introBody:
@@ -709,8 +710,9 @@ const MESSAGES = {
     whyUs4: "Conçu pour le GEO — visibilité IA, pas seulement Google",
     pricingTitle: "Tarifs",
     pricingFree: "Gratuit — audit complet, plan IA et aperçu",
-    pricingSetup: "$35 — premier mois + optimisation complète (débloque Apply)",
-    pricingMaintenance: "$15/mois ensuite — jusqu'à annulation dans Shopify",
+    pricingSetup:
+      "$35 — premier mois + optimisation complète (débloque Apply). $15/mois ensuite pour les mises à jour automatiques.",
+    pricingMaintenance: "",
     billingFootnote:
       "Sans remboursement. Annulez dans Shopify Admin — effet à la période suivante ; le mois en cours reste payé ($35 premier mois, puis $15/mois).",
     pricingMaintenanceIncluded:
@@ -721,10 +723,10 @@ const MESSAGES = {
     applyAlreadyDone:
       "Votre optimisation initiale est déjà appliquée. Les mises à jour mensuelles sont automatiques — aucune action supplémentaire.",
     step4FlowTitle: "Appliquer sur votre boutique",
-    step4PaymentBodyFirst: "Continuer pour payer $35 et débloquer Apply sur votre boutique.",
-    step4PaymentSuccess: "Paiement réussi — setup $35 terminé.",
-    step4FlowIntro:
-      "Un paiement de $35 débloque votre première optimisation. $15/mois démarre automatiquement après le premier mois.",
+    step4PaymentBodyFirst: "Continuer pour finaliser le paiement dans Shopify et débloquer Apply.",
+    step4PaymentSuccess: "Paiement réussi — vous pouvez maintenant appliquer les changements.",
+    step4FlowIntro: "Finalisez le paiement dans Shopify pour débloquer Apply.",
+    expectationsPreviewTitle: "À quoi s'attendre après Apply",
     step4PaidIntro: "Paiement effectué — confirmez ci-dessous pour publier les changements.",
     restoreWarning:
       "La restauration n'annule que la dernière application. Les optimisations précédentes restent en place.",
