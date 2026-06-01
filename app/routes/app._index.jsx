@@ -604,6 +604,73 @@ function PaymentSuccessBanner({ copy }) {
   );
 }
 
+function Step4Actions({
+  copy,
+  showPaymentGate,
+  showApplyGate,
+  showApplyBlocked,
+  confirmed,
+  setConfirmed,
+  applyLoading,
+  applyFetcher,
+  restoreLoading,
+}) {
+  if (showPaymentGate) {
+    return <PaymentGateCard copy={copy} />;
+  }
+
+  if (showApplyGate) {
+    return (
+      <div style={{ ...theme.card, borderColor: "rgba(163,230,53,0.35)", background: "rgba(163,230,53,0.06)" }}>
+        <p style={{ ...theme.body, marginBottom: "14px", color: "#a3e635", fontWeight: 600 }}>
+          {copy.step4PaidIntro}
+        </p>
+        <label style={{ display: "flex", gap: "10px", alignItems: "flex-start", marginBottom: "12px", cursor: "pointer" }}>
+          <input
+            type="checkbox"
+            checked={confirmed}
+            onChange={(e) => setConfirmed(e.target.checked)}
+            style={{ marginTop: "4px" }}
+          />
+          <span style={{ ...theme.body, fontSize: "0.82rem", color: "#8b8b9a" }}>{copy.confirmLabel}</span>
+        </label>
+        <button
+          type="button"
+          style={confirmed && !applyLoading ? theme.btnPrimary : theme.btnDisabled}
+          disabled={!confirmed || applyLoading}
+          onClick={() => applyFetcher.submit({ intent: "apply", confirmed: "1" }, { method: "post" })}
+        >
+          {applyLoading ? copy.applying : copy.apply}
+        </button>
+      </div>
+    );
+  }
+
+  if (showApplyBlocked) {
+    return (
+      <div style={{ ...theme.card, borderColor: "rgba(251,191,36,0.4)", background: "rgba(251,191,36,0.08)" }}>
+        <p style={{ ...theme.body, marginBottom: "12px", color: "#fbbf24", lineHeight: 1.55 }}>
+          {copyText(copy, "step4RestoreToContinue", copy.applyAlreadyDone)}
+        </p>
+        <button
+          type="button"
+          style={{ ...theme.btnPrimary, width: "100%" }}
+          disabled={restoreLoading}
+          onClick={() => {
+            if (window.confirm(copy.restoreAllConfirm)) {
+              applyFetcher.submit({ intent: "restore-all" }, { method: "post" });
+            }
+          }}
+        >
+          {restoreLoading ? copy.restoring : copy.restoreAll}
+        </button>
+      </div>
+    );
+  }
+
+  return null;
+}
+
 function IntroScreen({ copy, shopName, onStart }) {
   return (
     <div style={theme.page}>
@@ -1176,23 +1243,19 @@ function IndexWizard({
   });
   const previewStats = getPreviewChangeStats(preview);
   const setupPaid = billing?.setupPaid ?? false;
-  const billingComplete = pilotMode || setupPaid;
   const hasPendingWork = preview.total > 0;
   const showAlreadyOptimized = !applyResult && !hasPendingWork && setupComplete;
   const applyQuota = billing?.applyQuota;
   const firstApplyDone = Boolean(applyQuota?.setupDone);
-  const showPaymentGate = hasPendingWork && !applyResult && !billingComplete && !pilotMode;
-  const showSetupApplyGate =
-    hasPendingWork &&
-    !applyResult &&
-    billingComplete &&
-    !firstApplyDone &&
-    Boolean(applyQuota?.canManualApply && applyQuota?.manualApplyKind === "setup");
+  const showPaymentGate = hasPendingWork && !applyResult && !setupPaid && !pilotMode;
+  const showApplyGate =
+    hasPendingWork && !applyResult && !firstApplyDone && (pilotMode || setupPaid);
+  const showApplyBlocked =
+    hasPendingWork && !applyResult && !pilotMode && setupPaid && firstApplyDone;
   const showPaymentSuccess =
     billingJustReturned && hasPendingWork && !applyResult && setupPaid && !pilotMode;
-  const showStep4Expectations =
-    !applyResult && hasPendingWork && (showPaymentGate || showPaymentSuccess || showSetupApplyGate);
-  const showApplyGate = showSetupApplyGate;
+  const showStep4Expectations = !applyResult && hasPendingWork;
+  const showStep4Actions = showPaymentGate || showApplyGate || showApplyBlocked;
   const analysisInProgress = aiRequested && summaryLoading && !summaryTimedOut;
   const displaySummaryError =
     summaryError || (summaryTimedOut ? copyText(copy, "aiTimeout", "Our AI did not respond in time.") : null);
@@ -1616,9 +1679,7 @@ function IndexWizard({
             </div>
           )}
 
-          {showPaymentGate && <PaymentGateCard copy={copy} />}
-
-          {showPaymentSuccess && !showPaymentGate && <PaymentSuccessBanner copy={copy} />}
+          {showPaymentSuccess && <PaymentSuccessBanner copy={copy} />}
 
           {showStep4Expectations && (
             <ExpectationsPanel
@@ -1724,31 +1785,18 @@ function IndexWizard({
           </div>
           )}
 
-          {showApplyGate && (
-            <div style={{ ...theme.card, borderColor: "rgba(163,230,53,0.35)", background: "rgba(163,230,53,0.06)" }}>
-              <p style={{ ...theme.body, marginBottom: "14px", color: "#a3e635", fontWeight: 600 }}>
-                {copy.step4PaidIntro}
-              </p>
-              <label style={{ display: "flex", gap: "10px", alignItems: "flex-start", marginBottom: "12px", cursor: "pointer" }}>
-                <input
-                  type="checkbox"
-                  checked={confirmed}
-                  onChange={(e) => setConfirmed(e.target.checked)}
-                  style={{ marginTop: "4px" }}
-                />
-                <span style={{ ...theme.body, fontSize: "0.82rem", color: "#8b8b9a" }}>{copy.confirmLabel}</span>
-              </label>
-              <button
-                type="button"
-                style={confirmed && !applyLoading ? theme.btnPrimary : theme.btnDisabled}
-                disabled={!confirmed || applyLoading}
-                onClick={() =>
-                  applyFetcher.submit({ intent: "apply", confirmed: "1" }, { method: "post" })
-                }
-              >
-                {applyLoading ? copy.applying : copy.apply}
-              </button>
-            </div>
+          {showStep4Actions && (
+            <Step4Actions
+              copy={copy}
+              showPaymentGate={showPaymentGate}
+              showApplyGate={showApplyGate}
+              showApplyBlocked={showApplyBlocked}
+              confirmed={confirmed}
+              setConfirmed={setConfirmed}
+              applyLoading={applyLoading}
+              applyFetcher={applyFetcher}
+              restoreLoading={restoreLoading}
+            />
           )}
 
           {showAlreadyOptimized && (

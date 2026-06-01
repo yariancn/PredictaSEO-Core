@@ -37,7 +37,7 @@ export async function loadAuditData(request) {
     "fixSeoDone", "previewAllDone", "previewProductsDone", "previewSchemaOnlyExplain", "previewSchemaRow", "previewSchemaRowDetail", "seeUpdatedScore",
     "whyUsTitle", "whyUs1", "whyUs2", "whyUs3", "whyUs4",
     "pricingTitle", "pricingFree", "pricingSetup", "pricingMaintenance", "billingFootnote", "pricingMaintenanceIncluded",
-    "step4FlowTitle", "step4FlowIntro", "step4PaymentBodyFirst", "step4PaymentSuccess", "step4PaidIntro", "applyAlreadyDone", "alreadyOptimizedTitle", "alreadyOptimizedBody",
+    "step4FlowTitle", "step4FlowIntro", "step4PaymentBodyFirst", "step4PaymentSuccess", "step4PaidIntro", "step4RestoreToContinue", "applyAlreadyDone", "alreadyOptimizedTitle", "alreadyOptimizedBody",
     "refreshingStore", "confirmingPayment",
     "unlockApply", "subscribeMaintenance", "billingRequired", "restoreWarning",
     "products", "markets", "continue", "back",
@@ -182,7 +182,18 @@ export async function loadAuditData(request) {
         }
       })(),
       BILLING_TIMEOUT_MS,
-      { canApply: false, setupPaid: false, subscriptionActive: false, pilotMode: false, applyQuota: null },
+      (async () => {
+        const record = await prisma.shopBilling.findUnique({ where: { shop: session.shop } });
+        const base = {
+          canApply: record?.setupPaid ?? false,
+          setupPaid: record?.setupPaid ?? false,
+          subscriptionActive: record?.setupPaid ?? record?.subscriptionActive ?? false,
+          pilotMode: false,
+        };
+        const { getApplyQuotaStatus } = await import("./apply-quota.server.js");
+        const applyQuota = await getApplyQuotaStatus(session.shop, base);
+        return { ...base, applyQuota };
+      })(),
     );
   } else {
     const { getApplyQuotaStatus } = await import("./apply-quota.server.js");

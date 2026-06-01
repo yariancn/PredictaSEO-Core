@@ -116,6 +116,8 @@ const MESSAGES = {
     billingRequired: "Complete the $35 setup payment to unlock Apply.",
     applyAlreadyDone:
       "Your initial optimization is already applied. Monthly updates run automatically — no extra action needed.",
+    step4RestoreToContinue:
+      "This store already has a completed Apply on record. Use Restore all below to undo changes and run the full flow again (including payment if needed).",
     step4FlowTitle: "Apply to your store",
     step4PaymentBodyFirst: "Continue to complete payment in Shopify and unlock Apply.",
     step4PaymentSuccess: "Payment successful — you can now apply changes to your store.",
@@ -405,6 +407,8 @@ const MESSAGES = {
     billingRequired: "Completa el pago de $35 para desbloquear Apply.",
     applyAlreadyDone:
       "Tu optimización inicial ya está aplicada. Las actualizaciones mensuales son automáticas — no necesitas hacer nada más.",
+    step4RestoreToContinue:
+      "Esta tienda ya tiene un Apply completado registrado. Usa Restaurar todo abajo para deshacer cambios y volver a correr el flujo completo.",
     step4FlowTitle: "Aplicar en tu tienda",
     step4PaymentBodyFirst: "Continúa para completar el pago en Shopify y desbloquear Apply.",
     step4PaymentSuccess: "Pago exitoso — ya puedes aplicar los cambios en tu tienda.",
@@ -722,6 +726,8 @@ const MESSAGES = {
     billingRequired: "Finalisez le paiement de $35 pour débloquer Apply.",
     applyAlreadyDone:
       "Votre optimisation initiale est déjà appliquée. Les mises à jour mensuelles sont automatiques — aucune action supplémentaire.",
+    step4RestoreToContinue:
+      "Cette boutique a déjà un Apply enregistré. Utilisez Restaurer tout ci-dessous pour annuler et relancer le flux complet.",
     step4FlowTitle: "Appliquer sur votre boutique",
     step4PaymentBodyFirst: "Continuer pour finaliser le paiement dans Shopify et débloquer Apply.",
     step4PaymentSuccess: "Paiement réussi — vous pouvez maintenant appliquer les changements.",
