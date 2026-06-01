@@ -545,7 +545,7 @@ const WIZARD_STORAGE_KEY = "pc_wizard_state";
 
 function saveWizardStateForBilling() {
   if (typeof sessionStorage === "undefined") return;
-  sessionStorage.setItem(WIZARD_STORAGE_KEY, JSON.stringify({ step: 4 }));
+  sessionStorage.setItem(WIZARD_STORAGE_KEY, JSON.stringify({ step: 3 }));
 }
 
 function readBillingReturnState() {
@@ -557,7 +557,7 @@ function readBillingReturnState() {
     if (saved) {
       sessionStorage.removeItem(WIZARD_STORAGE_KEY);
       const parsed = JSON.parse(saved);
-      return { auditStarted: true, step: parsed.step ?? 4, billingJustReturned: false };
+      return { auditStarted: true, step: parsed.step ?? 3, billingJustReturned: false };
     }
   } catch {
     /* ignore */
@@ -566,7 +566,7 @@ function readBillingReturnState() {
   const billing = params.get("billing");
   return {
     auditStarted: billing === "ready",
-    step: billing === "ready" ? 4 : 1,
+    step: billing === "ready" ? 3 : 1,
     billingJustReturned: billing === "ready",
   };
 }
@@ -587,7 +587,7 @@ function PaymentGateCard({ copy }) {
       >
         <input type="hidden" name="intent" value="billing-setup" />
         <button type="submit" style={{ ...theme.btnPrimary, width: "100%" }}>
-          {copy.continue}
+          {copyText(copy, "unlockApply", copy.continue)}
         </button>
       </Form>
     </div>
@@ -609,6 +609,8 @@ function Step4Actions({
   showPaymentGate,
   showApplyGate,
   showApplyBlocked,
+  showContinueToApply = false,
+  onContinueToApply,
   confirmed,
   setConfirmed,
   applyLoading,
@@ -617,6 +619,19 @@ function Step4Actions({
 }) {
   if (showPaymentGate) {
     return <PaymentGateCard copy={copy} />;
+  }
+
+  if (showContinueToApply && onContinueToApply) {
+    return (
+      <div style={{ ...theme.card, borderColor: "rgba(163,230,53,0.35)", background: "rgba(163,230,53,0.06)" }}>
+        <p style={{ ...theme.body, marginBottom: "14px", color: "#a3e635", fontWeight: 600, lineHeight: 1.55 }}>
+          {copy.step4PaidIntro}
+        </p>
+        <button type="button" style={{ ...theme.btnPrimary, width: "100%" }} onClick={onContinueToApply}>
+          {copy.continue}
+        </button>
+      </div>
+    );
   }
 
   if (showApplyGate) {
@@ -798,7 +813,7 @@ export default function Index() {
   const [aiRequested, setAiRequested] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [summaryInvalidated, setSummaryInvalidated] = useState(false);
-  const totalSteps = 4;
+  const totalSteps = 3;
 
   const startAudit = () => {
     setAuditStarted(true);
@@ -876,7 +891,7 @@ export default function Index() {
     if (billingParam === "ready") {
       setAuditStarted(true);
       setBillingJustReturned(true);
-      setStep(4);
+      setStep(3);
       auditFetcher.load("/app/audit-data");
       params.delete("billing");
       params.delete("charge_id");
@@ -890,7 +905,7 @@ export default function Index() {
       setBillingJustReturned(false);
       setSummaryInvalidated(true);
       setConfirmed(false);
-      setStep(4);
+      setStep(3);
       auditFetcher.load("/app/audit-data");
     }
   }, [applyFetcher.data]);
@@ -918,19 +933,20 @@ export default function Index() {
   }, [resetTestResult]);
 
   useEffect(() => {
-    if (setupComplete && step !== 1 && step !== 4) {
-      setStep(4);
+    if (setupComplete && step !== 1 && step !== 3) {
+      setStep(3);
     }
   }, [setupComplete, step]);
 
   useEffect(() => {
-    if (step !== 3 || !aiRequested || summary || summaryError || aiFetcher.state !== "idle") return;
-    if (setupComplete) return;
+    if (auditPending || !aiSummaryAvailable || summaryInvalidated) return;
+    if (summary || summaryError) return;
     if (summarySubmitStarted.current) return;
+    if (aiFetcher.state !== "idle") return;
     summarySubmitStarted.current = true;
     setSummaryTimedOut(false);
     aiFetcher.submit({ intent: "summary" }, { method: "post" });
-  }, [step, aiRequested, summary, summaryError, aiFetcher.state, setupComplete]);
+  }, [auditPending, aiSummaryAvailable, summaryInvalidated, summary, summaryError, aiFetcher.state]);
 
   useEffect(() => {
     if (!summaryLoading) return;
@@ -1247,27 +1263,30 @@ function IndexWizard({
   const showAlreadyOptimized = !applyResult && !hasPendingWork && setupComplete;
   const applyQuota = billing?.applyQuota;
   const firstApplyDone = Boolean(applyQuota?.setupDone);
-  const showPaymentGate = hasPendingWork && !applyResult && !setupPaid && !pilotMode;
+  const showPaymentGate = step === 2 && hasPendingWork && !applyResult && !setupPaid && !pilotMode;
   const showApplyGate =
-    hasPendingWork && !applyResult && !firstApplyDone && (pilotMode || setupPaid);
+    step === 3 && hasPendingWork && !applyResult && !firstApplyDone && (pilotMode || setupPaid);
   const showApplyBlocked =
-    hasPendingWork && !applyResult && !pilotMode && setupPaid && firstApplyDone;
+    (step === 2 || step === 3) &&
+    hasPendingWork &&
+    !applyResult &&
+    !pilotMode &&
+    setupPaid &&
+    firstApplyDone;
   const showPaymentSuccess =
-    billingJustReturned && hasPendingWork && !applyResult && setupPaid && !pilotMode;
-  const showStep4Expectations = !applyResult && hasPendingWork;
-  const showStep4Actions = showPaymentGate || showApplyGate || showApplyBlocked;
-  const analysisInProgress = aiRequested && summaryLoading && !summaryTimedOut;
+    billingJustReturned && step === 3 && hasPendingWork && !applyResult && setupPaid && !pilotMode;
+  const showExpectationsPreview = step === 2 && !applyResult && hasPendingWork;
+  const showPayStepActions =
+    step === 2 && (showPaymentGate || showApplyBlocked || (setupPaid && !firstApplyDone && !showApplyBlocked));
+  const showApplyStepActions = step === 3 && (showApplyGate || showApplyBlocked);
   const displaySummaryError =
     summaryError || (summaryTimedOut ? copyText(copy, "aiTimeout", "Our AI did not respond in time.") : null);
-  const canContinueFromStep3 =
-    Boolean(summary) || Boolean(displaySummaryError) || !aiSummaryAvailable;
   const productsUpdatedCount =
     applyResult?.productCount ?? applyResult?.applied ?? displayAppliedItems.length ?? 0;
   const schemaWasApplied = Boolean(applyResult?.schemaApplied || (setupComplete && executive.foundationScore >= 100));
   const schemaOnlyOutcome = applyResult
     ? Boolean(applyResult.schemaApplied && productsUpdatedCount === 0)
     : Boolean(setupComplete && preview.productCount === 0 && executive.foundationScore >= 100);
-  const whyUsItems = [copy.whyUs1, copy.whyUs2, copy.whyUs3, copy.whyUs4];
 
   const prefSaving =
     applyFetcher.state !== "idle" &&
@@ -1479,26 +1498,58 @@ function IndexWizard({
             </div>
           )}
 
-          {!setupComplete && (
-            <>
-              <div style={theme.card}>
-                <h2 style={theme.h2}>{copy.whyUsTitle}</h2>
-                {whyUsItems.map((item) => (
-                  <p key={item} style={theme.bullet("#6366f1")}>{item}</p>
-                ))}
-              </div>
+          <div style={theme.card}>
+            <h2 style={theme.h2}>{copy.planTitle}</h2>
+            {report.fixes.map((item) => (
+              <p key={item} style={theme.bullet("#a3e635")}>{item}</p>
+            ))}
+          </div>
 
-              <button type="button" style={theme.btnPrimary} onClick={() => setStep(2)}>
-                {copy.continue}
-              </button>
-            </>
+          {(summaryLoading || summary || displaySummaryError) && (
+            <div
+              style={{
+                ...theme.card,
+                borderColor: summaryLoading ? "rgba(99,102,241,0.55)" : "rgba(255,255,255,0.08)",
+                background: summaryLoading ? "rgba(99,102,241,0.12)" : undefined,
+              }}
+            >
+              <h2 style={theme.h2}>{copyText(copy, "step3AiTitle", "AI summary")}</h2>
+              {summaryLoading && (
+                <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "10px" }}>
+                  <div
+                    style={{
+                      width: "18px",
+                      height: "18px",
+                      borderRadius: "50%",
+                      border: "2px solid rgba(165,180,252,0.35)",
+                      borderTopColor: "#a5b4fc",
+                      animation: "pc-spin 0.8s linear infinite",
+                      flexShrink: 0,
+                    }}
+                  />
+                  <p style={{ ...theme.body, color: "#e8e8ff", fontWeight: 600, margin: 0 }}>{copy.loading}</p>
+                </div>
+              )}
+              {summary && !summaryLoading && (
+                <p style={{ ...theme.body, whiteSpace: "pre-wrap", color: "#e8e8ef", margin: 0 }}>{summary}</p>
+              )}
+              {displaySummaryError && (
+                <p style={{ ...theme.body, color: "#f87171", margin: 0 }}>{displaySummaryError}</p>
+              )}
+            </div>
+          )}
+
+          {!setupComplete && (
+            <button type="button" style={theme.btnPrimary} onClick={() => setStep(2)}>
+              {copy.continue}
+            </button>
           )}
 
           {setupComplete && (
             <div style={{ ...theme.card, borderColor: "rgba(163,230,53,0.35)", background: "rgba(163,230,53,0.08)" }}>
               <h2 style={{ ...theme.h2, color: "#a3e635" }}>{copy.setupCompleteTitle}</h2>
               <p style={{ ...theme.body, marginBottom: "14px" }}>{copy.setupCompleteBody}</p>
-              <button type="button" style={theme.btnPrimary} onClick={() => setStep(4)}>
+              <button type="button" style={theme.btnPrimary} onClick={() => setStep(3)}>
                 {copy.viewSummary}
               </button>
             </div>
@@ -1523,139 +1574,107 @@ function IndexWizard({
 
       {step === 2 && (
         <>
-          <p style={{ ...theme.body, marginBottom: "8px", fontSize: "0.82rem", color: "#a5b4fc", textAlign: "center" }}>
-            {scopeLabel}
+          <p style={{ ...theme.body, marginBottom: "14px", fontSize: "0.88rem", color: "#a5b4fc", lineHeight: 1.55 }}>
+            {copyText(copy, "step2PayIntro", copy.step4FlowIntro)}
           </p>
-          <p style={{ ...theme.body, marginBottom: "14px", fontSize: "0.78rem", color: "#8b8b9a", textAlign: "center" }}>
-            {selectionNote}
-          </p>
-          <div style={theme.card}>
-            <h2 style={theme.h2}>{copy.priorityTitle}</h2>
-            <p style={{ ...theme.body, marginBottom: "10px", fontSize: "0.82rem", color: "#8b8b9a" }}>
-              {copy.priorityExplain}
-            </p>
-            <p style={{ ...theme.body, marginBottom: "14px", fontSize: "0.82rem", color: "#a5b4fc" }}>
-              {priorityPlanLine}
-            </p>
-            <p style={{ ...theme.body, marginBottom: "0", fontSize: "0.82rem", color: "#8b8b9a" }}>
-              {fillCopy(copyText(copy, "priorityScopeSummary"), {
-                count: snapSummary?.priorityCount ?? 0,
-                high: snapSummary?.highPriority ?? 0,
-                medium: snapSummary?.mediumPriority ?? 0,
-              })}
-            </p>
-          </div>
 
-          <div style={{ display: "flex", gap: "10px" }}>
+          {showExpectationsPreview && (
+            <ExpectationsPanel
+              copy={copy}
+              priorityCount={snapSummary.priorityCount}
+              schemaOnlyOutcome={schemaOnlyPreview}
+              variant="preview"
+              showMaintenance={false}
+            />
+          )}
+
+          {!applyResult && hasPendingWork && (
+          <div style={theme.card}>
+            <h2 style={theme.h2}>{copy.previewTitle}</h2>
+            <p style={{ ...theme.body, marginBottom: "12px", fontSize: "0.82rem", color: "#a5b4fc" }}>
+              {copy.previewNotAppliedYet}
+            </p>
+            {schemaOnlyPreview ? (
+              <>
+                <p style={{ ...theme.body, marginBottom: "12px", color: "#fbbf24" }}>
+                  {copyText(copy, "previewProductsDone", "Product SEO is already complete.")}
+                </p>
+                <p style={{ ...theme.body, marginBottom: "14px", color: "#e8e8ef" }}>
+                  {copyText(copy, "previewSchemaOnlyExplain", "Brand identity will be saved.")
+                    .replace("{{shop}}", shopName || shop || "your store")}
+                </p>
+              </>
+            ) : (
+              <div
+                style={{
+                  marginBottom: "14px",
+                  padding: "14px 16px",
+                  borderRadius: "10px",
+                  background: "rgba(99,102,241,0.12)",
+                  border: "1px solid rgba(99,102,241,0.25)",
+                }}
+              >
+                <p style={{ ...theme.body, fontWeight: 600, color: "#e8e8ff", marginBottom: "10px" }}>
+                  {copyText(copy, "previewApplyIntro", "What we'll update on your store")}
+                </p>
+                {previewStats.searchTitles > 0 && (
+                  <p style={theme.bullet("#a5b4fc")}>
+                    {fillCopy(copyText(copy, "previewRowTitles"), { count: previewStats.searchTitles })}
+                  </p>
+                )}
+                {previewStats.searchDescs > 0 && (
+                  <p style={theme.bullet("#a5b4fc")}>
+                    {fillCopy(copyText(copy, "previewRowDescs"), { count: previewStats.searchDescs })}
+                  </p>
+                )}
+                {previewStats.productDescs > 0 && (
+                  <p style={theme.bullet("#a5b4fc")}>
+                    {fillCopy(copyText(copy, "previewRowBodies"), { count: previewStats.productDescs })}
+                  </p>
+                )}
+                {previewStats.mirrorCount > 0 && (
+                  <p style={theme.bullet("#a5b4fc")}>
+                    {fillCopy(copyText(copy, "previewRowMirror"), { count: previewStats.mirrorCount })}
+                  </p>
+                )}
+                {previewStats.batchCount > 0 && (
+                  <p style={theme.bullet("#8b8b9a")}>
+                    {fillCopy(copyText(copy, "previewRowBatch"), { count: previewStats.batchCount })}
+                  </p>
+                )}
+                {previewStats.schemaWillApply && (
+                  <p style={theme.bullet("#a3e635")}>
+                    {copyText(copy, "previewRowBrand", "Brand identity for AI search")}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+          )}
+
+          {showPayStepActions && (
+            <Step4Actions
+              copy={copy}
+              showPaymentGate={showPaymentGate}
+              showApplyGate={false}
+              showApplyBlocked={showApplyBlocked}
+              showContinueToApply={setupPaid && !firstApplyDone && !showApplyBlocked}
+              onContinueToApply={() => setStep(3)}
+              confirmed={confirmed}
+              setConfirmed={setConfirmed}
+              applyLoading={applyLoading}
+              applyFetcher={applyFetcher}
+              restoreLoading={restoreLoading}
+            />
+          )}
+
+          <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
             <button type="button" style={theme.btnGhost} onClick={() => setStep(1)}>{copy.back}</button>
-            <button type="button" style={{ ...theme.btnPrimary, flex: 2 }} onClick={() => setStep(3)}>
-              {copy.continue}
-            </button>
           </div>
         </>
       )}
 
       {step === 3 && (
-        <>
-          <div style={theme.card}>
-            <h2 style={theme.h2}>{copy.planTitle}</h2>
-            {report.fixes.map((item) => (
-              <p key={item} style={theme.bullet("#a3e635")}>{item}</p>
-            ))}
-          </div>
-
-          {!summary && !analysisInProgress && (
-            <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.35)" }}>
-              <h2 style={theme.h2}>{copyText(copy, "step3AiTitle", "AI summary")}</h2>
-              <p style={{ ...theme.body, marginBottom: "14px", color: "#8b8b9a", lineHeight: 1.55, fontSize: "0.88rem" }}>
-                {copyText(copy, "step3AiIntro", "")}
-              </p>
-              {aiSummaryAvailable ? (
-                <button type="button" style={{ ...theme.btnPrimary, width: "100%" }} onClick={onRequestAiSummary}>
-                  {copyText(copy, "generateAiPlan", "Generate personalized AI plan")}
-                </button>
-              ) : (
-                <p style={{ ...theme.body, fontSize: "0.82rem", color: "#f87171", margin: 0, lineHeight: 1.55 }}>
-                  {copyText(copy, "aiNotConfigured", "")}
-                </p>
-              )}
-            </div>
-          )}
-
-          {(analysisInProgress || summary) && (
-            <div
-              style={{
-                ...theme.card,
-                borderColor: analysisInProgress ? "rgba(99,102,241,0.55)" : "rgba(255,255,255,0.08)",
-                background: analysisInProgress ? "rgba(99,102,241,0.12)" : undefined,
-              }}
-            >
-              {analysisInProgress && (
-                <>
-                  <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "10px" }}>
-                    <div
-                      style={{
-                        width: "18px",
-                        height: "18px",
-                        borderRadius: "50%",
-                        border: "2px solid rgba(165,180,252,0.35)",
-                        borderTopColor: "#a5b4fc",
-                        animation: "pc-spin 0.8s linear infinite",
-                        flexShrink: 0,
-                      }}
-                    />
-                    <p style={{ ...theme.body, color: "#e8e8ff", fontWeight: 600, margin: 0 }}>
-                      {copy.loading}
-                    </p>
-                  </div>
-                  <p style={{ ...theme.body, fontSize: "0.82rem", color: "#c4c4ff", margin: 0 }}>
-                    {copyText(copy, "loadingHint", "Please wait before continuing.")}
-                  </p>
-                </>
-              )}
-              {summary && !summaryLoading && (
-                <p style={{ ...theme.body, whiteSpace: "pre-wrap", color: "#e8e8ef" }}>{summary}</p>
-              )}
-            </div>
-          )}
-          {displaySummaryError && (
-            <div style={theme.card}>
-              <p style={{ ...theme.body, color: "#f87171", marginBottom: "12px" }}>{displaySummaryError}</p>
-              {aiSummaryAvailable && (
-                <button type="button" style={theme.btnGhost} onClick={onRetryAiSummary}>
-                  {copyText(copy, "retryAiPlan", "Try AI summary again")}
-                </button>
-              )}
-            </div>
-          )}
-
-          <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.2)" }}>
-            <p style={{ ...theme.body, fontSize: "0.82rem", color: "#8b8b9a" }}>{copy.rollbackNote}</p>
-          </div>
-
-          <p style={{ ...theme.body, fontSize: "0.82rem", color: "#8b8b9a", textAlign: "center", margin: "0 0 10px 0" }}>
-            {canContinueFromStep3
-              ? copyText(copy, "step3ContinueReady", copy.continue)
-              : copyText(copy, "step3ContinueWait", "Generate the AI summary above to continue.")}
-          </p>
-
-          <div style={{ display: "flex", gap: "10px" }}>
-            <button type="button" style={theme.btnGhost} onClick={() => setStep(2)}>
-              {copy.back}
-            </button>
-            <button
-              type="button"
-              style={canContinueFromStep3 ? { ...theme.btnPrimary, flex: 2 } : { ...theme.btnDisabled, flex: 2 }}
-              disabled={!canContinueFromStep3}
-              onClick={() => setStep(4)}
-            >
-              {copy.continue}
-            </button>
-          </div>
-        </>
-      )}
-
-      {step === 4 && (
         <>
           {allComplete && backupAvailable && !applyResult && (
             <div style={{ ...theme.card, borderColor: "rgba(251,191,36,0.4)", background: "rgba(251,191,36,0.08)" }}>
@@ -1681,114 +1700,10 @@ function IndexWizard({
 
           {showPaymentSuccess && <PaymentSuccessBanner copy={copy} />}
 
-          {showStep4Expectations && (
-            <ExpectationsPanel
-              copy={copy}
-              priorityCount={snapSummary.priorityCount}
-              schemaOnlyOutcome={schemaOnlyPreview}
-              variant="preview"
-              showMaintenance={false}
-            />
-          )}
-
-          {!applyResult && hasPendingWork && (
-          <div style={theme.card}>
-            <h2 style={theme.h2}>{copy.previewTitle}</h2>
-            {!showPaymentGate && (
-              <p style={{ ...theme.body, marginBottom: "12px", fontSize: "0.82rem", color: "#a5b4fc" }}>
-                {copy.previewNotAppliedYet}
-              </p>
-            )}
-            {schemaOnlyPreview ? (
-              <>
-                <p style={{ ...theme.body, marginBottom: "12px", color: "#fbbf24" }}>
-                  {copyText(copy, "previewProductsDone", "Product SEO is already complete.")}
-                </p>
-                <p style={{ ...theme.body, marginBottom: "14px", color: "#e8e8ef" }}>
-                  {copyText(copy, "previewSchemaOnlyExplain", "Brand identity will be saved.")
-                    .replace("{{shop}}", shopName || shop || "your store")}
-                </p>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.78rem" }}>
-                  <thead>
-                    <tr style={{ color: "#6b6b78", textAlign: "left" }}>
-                      <th style={{ padding: "6px 4px" }}>{copy.product}</th>
-                      <th style={{ padding: "6px 4px" }}>{copy.after}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-                      <td style={{ padding: "10px 4px", color: "#fff", verticalAlign: "top" }}>
-                        {copyText(copy, "previewSchemaRow", "Brand identity (Schema.org)")}
-                      </td>
-                      <td style={{ padding: "10px 4px", color: "#a3e635", verticalAlign: "top" }}>
-                        {copyText(copy, "previewSchemaRowDetail", "Organization JSON-LD metafield")}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-                <p style={{ ...theme.body, marginTop: "14px", color: "#a3e635", fontSize: "0.82rem" }}>
-                  {copy.previewSchema}
-                </p>
-              </>
-            ) : (
-              <>
-                <div
-                  style={{
-                    marginBottom: "14px",
-                    padding: "14px 16px",
-                    borderRadius: "10px",
-                    background: "rgba(99,102,241,0.12)",
-                    border: "1px solid rgba(99,102,241,0.25)",
-                  }}
-                >
-                  <p style={{ ...theme.body, fontWeight: 600, color: "#e8e8ff", marginBottom: "10px" }}>
-                    {copyText(copy, "previewApplyIntro", "What we'll update on your store")}
-                  </p>
-                  {previewStats.searchTitles > 0 && (
-                    <p style={theme.bullet("#a5b4fc")}>
-                      {fillCopy(copyText(copy, "previewRowTitles"), { count: previewStats.searchTitles })}
-                    </p>
-                  )}
-                  {previewStats.searchDescs > 0 && (
-                    <p style={theme.bullet("#a5b4fc")}>
-                      {fillCopy(copyText(copy, "previewRowDescs"), { count: previewStats.searchDescs })}
-                    </p>
-                  )}
-                  {previewStats.productDescs > 0 && (
-                    <p style={theme.bullet("#a5b4fc")}>
-                      {fillCopy(copyText(copy, "previewRowBodies"), { count: previewStats.productDescs })}
-                    </p>
-                  )}
-                  {previewStats.mirrorCount > 0 && (
-                    <p style={theme.bullet("#a5b4fc")}>
-                      {fillCopy(copyText(copy, "previewRowMirror"), { count: previewStats.mirrorCount })}
-                    </p>
-                  )}
-                  {previewStats.batchCount > 0 && (
-                    <p style={theme.bullet("#8b8b9a")}>
-                      {fillCopy(copyText(copy, "previewRowBatch"), { count: previewStats.batchCount })}
-                    </p>
-                  )}
-                  {previewStats.schemaWillApply && (
-                    <p style={theme.bullet("#a3e635")}>
-                      {copyText(copy, "previewRowBrand", "Brand identity for AI search")}
-                    </p>
-                  )}
-                </div>
-                {preview.schema?.willApply && (
-                  <p style={{ ...theme.body, marginBottom: "0", color: "#a3e635", fontSize: "0.82rem" }}>
-                    {copy.previewSchema}
-                  </p>
-                )}
-              </>
-            )}
-          </div>
-          )}
-
-          {showStep4Actions && (
+          {showApplyStepActions && (
             <Step4Actions
               copy={copy}
-              showPaymentGate={showPaymentGate}
+              showPaymentGate={false}
               showApplyGate={showApplyGate}
               showApplyBlocked={showApplyBlocked}
               confirmed={confirmed}
@@ -1824,7 +1739,7 @@ function IndexWizard({
               productsUpdatedCount={productsUpdatedCount}
               schemaOnlyOutcome={schemaOnlyOutcome}
               schemaWasApplied={schemaWasApplied}
-              showMaintenance={false}
+              showMaintenance={true}
             />
           )}
 

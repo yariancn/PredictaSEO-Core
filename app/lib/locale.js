@@ -77,7 +77,7 @@ const MESSAGES = {
     scoreAfterApply: "Your score should increase considerably — typically {{low}}–{{high}} after optimization",
     scoreGainGeneric: "Your score should increase considerably after optimization",
     scoreAlmostComplete:
-      "{{count}} products still need fixes — go to step 4 and Apply to reach ~{{score}}/100",
+      "{{count}} products still need fixes — continue to pay and Apply to reach ~{{score}}/100",
     scoreNow: "Your score: {{score}}/100",
     scoreImproved: "AI readiness score: {{before}} → {{after}}",
     scoreSeoComplete: "Your store is fully optimized for AI search",
@@ -112,6 +112,7 @@ const MESSAGES = {
     pricingMaintenanceIncluded:
       "Included: $15/month updates start automatically after your first month. Cancel anytime in Shopify Admin — takes effect next billing period.",
     unlockApply: "Pay $35 — unlock Apply",
+    step2PayIntro: "Review the preview below, then pay $35 in Shopify to unlock Apply on your store.",
     billingBundleContinue: "Continue — approve $15/month plan (required)",
     billingRequired: "Complete the $35 setup payment to unlock Apply.",
     applyAlreadyDone:
