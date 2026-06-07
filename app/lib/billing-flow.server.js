@@ -25,5 +25,5 @@ export async function runBillingSetupFlow({ billing, session, isTest, SETUP_PLAN
   }
 
   const shopSlug = session.shop.replace(".myshopify.com", "");
-  throw redirect(`https://admin.shopify.com/store/${shopSlug}/apps/predictacore-app`);
+  throw redirect(`https://admin.shopify.com/store/${shopSlug}/apps/predictacore-app?billing=already`);
 }

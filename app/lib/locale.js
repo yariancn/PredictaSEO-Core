@@ -113,6 +113,10 @@ const MESSAGES = {
       "Included: $15/month updates start automatically after your first month. Cancel anytime in Shopify Admin — takes effect next billing period.",
     unlockApply: "Pay $35 — unlock Apply",
     step2PayIntro: "Review the preview below, then pay $35 in Shopify to unlock Apply on your store.",
+    billingAlreadyApproved:
+      "This store already approved the $35 charge in Shopify — you will not see the payment screen again. Use Restore all below to undo changes and run Apply again.",
+    step2NoPendingWork:
+      "No pending product changes detected. If you already applied optimizations, use Restore all to test the full flow again.",
     billingBundleContinue: "Continue — approve $15/month plan (required)",
     billingRequired: "Complete the $35 setup payment to unlock Apply.",
     applyAlreadyDone:
@@ -404,6 +408,11 @@ const MESSAGES = {
     pricingMaintenanceIncluded:
       "Incluido: actualizaciones de $15/mes empiezan automáticamente después del primer mes. Cancela en Shopify Admin cuando quieras.",
     unlockApply: "Pagar $35 — desbloquear Apply",
+    step2PayIntro: "Revisa la vista previa abajo y paga $35 en Shopify para desbloquear Apply en tu tienda.",
+    billingAlreadyApproved:
+      "Esta tienda ya aprobó el cargo de $35 en Shopify — no verás la pantalla de pago otra vez. Usa Restaurar todo abajo para deshacer cambios y volver a probar el flujo.",
+    step2NoPendingWork:
+      "No hay cambios pendientes en productos. Si ya aplicaste optimizaciones, usa Restaurar todo para probar el flujo completo otra vez.",
     billingBundleContinue: "Continuar — aprobar plan $15/mes (obligatorio)",
     billingRequired: "Completa el pago de $35 para desbloquear Apply.",
     applyAlreadyDone:
@@ -723,6 +732,11 @@ const MESSAGES = {
     pricingMaintenanceIncluded:
       "Inclus : mises à jour à $15/mois automatiques après le premier mois. Annulez dans Shopify Admin quand vous voulez.",
     unlockApply: "Payer $35 — débloquer Apply",
+    step2PayIntro: "Consultez l'aperçu ci-dessous, puis payez $35 dans Shopify pour débloquer Apply.",
+    billingAlreadyApproved:
+      "Cette boutique a déjà approuvé les $35 dans Shopify — l'écran de paiement ne réapparaîtra pas. Utilisez Restaurer tout ci-dessous pour annuler et retester le flux.",
+    step2NoPendingWork:
+      "Aucun changement produit en attente. Si vous avez déjà appliqué les optimisations, utilisez Restaurer tout pour retester le flux complet.",
     billingBundleContinue: "Continuer — approuver le plan $15/mois (obligatoire)",
     billingRequired: "Finalisez le paiement de $35 pour débloquer Apply.",
     applyAlreadyDone:

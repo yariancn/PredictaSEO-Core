@@ -564,11 +564,13 @@ function readBillingReturnState() {
   }
   const params = new URLSearchParams(window.location.search);
   const billing = params.get("billing");
-  return {
-    auditStarted: billing === "ready",
-    step: billing === "ready" ? 3 : 1,
-    billingJustReturned: billing === "ready",
-  };
+  if (billing === "ready") {
+    return { auditStarted: true, step: 3, billingJustReturned: true };
+  }
+  if (billing === "already") {
+    return { auditStarted: true, step: 2, billingJustReturned: false };
+  }
+  return { auditStarted: false, step: 1, billingJustReturned: false };
 }
 
 function PaymentGateCard({ copy }) {
@@ -879,8 +881,14 @@ export default function Index() {
     applyFetcher.data?.intent === "reset-test-store" ? applyFetcher.data.resetTestError : null;
 
   const backupAvailable = hasBackup || applyFetcher.data?.hasBackup;
+  const firstApplyDone = Boolean(billing?.applyQuota?.setupDone);
   const setupComplete = Boolean(
-    preview && executive && preview.total === 0 && executive.score >= 85 && backupAvailable,
+    preview &&
+      executive &&
+      preview.total === 0 &&
+      executive.score >= 85 &&
+      backupAvailable &&
+      firstApplyDone,
   );
 
   useEffect(() => {
@@ -895,6 +903,17 @@ export default function Index() {
       auditFetcher.load("/app/audit-data");
       params.delete("billing");
       params.delete("charge_id");
+      const qs = params.toString();
+      window.history.replaceState({}, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
+      return;
+    }
+
+    if (billingParam === "already") {
+      setAuditStarted(true);
+      setBillingJustReturned(false);
+      setStep(2);
+      auditFetcher.load("/app/audit-data");
+      params.delete("billing");
       const qs = params.toString();
       window.history.replaceState({}, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
     }
@@ -931,12 +950,6 @@ export default function Index() {
       auditFetcher.load("/app/audit-data");
     }
   }, [resetTestResult]);
-
-  useEffect(() => {
-    if (setupComplete && step !== 1 && step !== 3) {
-      setStep(3);
-    }
-  }, [setupComplete, step]);
 
   useEffect(() => {
     if (auditPending || !aiSummaryAvailable || summaryInvalidated) return;
@@ -1259,10 +1272,11 @@ function IndexWizard({
   });
   const previewStats = getPreviewChangeStats(preview);
   const setupPaid = billing?.setupPaid ?? false;
-  const hasPendingWork = preview.total > 0;
-  const showAlreadyOptimized = !applyResult && !hasPendingWork && setupComplete;
   const applyQuota = billing?.applyQuota;
   const firstApplyDone = Boolean(applyQuota?.setupDone);
+  const hasPendingWork = preview.total > 0;
+  const showAlreadyOptimized = !applyResult && !hasPendingWork && (firstApplyDone || setupComplete);
+  const showStep1AlreadyDone = !applyResult && !hasPendingWork && (firstApplyDone || (backupAvailable && allComplete));
   const showPaymentGate = step === 2 && hasPendingWork && !applyResult && !setupPaid && !pilotMode;
   const showApplyGate =
     step === 3 && hasPendingWork && !applyResult && !firstApplyDone && (pilotMode || setupPaid);
@@ -1277,8 +1291,13 @@ function IndexWizard({
     billingJustReturned && step === 3 && hasPendingWork && !applyResult && setupPaid && !pilotMode;
   const showExpectationsPreview = step === 2 && !applyResult && hasPendingWork;
   const showPayStepActions =
-    step === 2 && (showPaymentGate || showApplyBlocked || (setupPaid && !firstApplyDone && !showApplyBlocked));
-  const showApplyStepActions = step === 3 && (showApplyGate || showApplyBlocked);
+    step === 2 &&
+    (showPaymentGate ||
+      showApplyBlocked ||
+      (setupPaid && !firstApplyDone && !showApplyBlocked && hasPendingWork));
+  const showApplyStepActions = step === 3 && (showApplyGate || showApplyBlocked || showPaymentGate);
+  const showBillingAlreadyApproved =
+    step === 2 && setupPaid && !pilotMode && hasPendingWork && !firstApplyDone && !showPaymentGate;
   const displaySummaryError =
     summaryError || (summaryTimedOut ? copyText(copy, "aiTimeout", "Our AI did not respond in time.") : null);
   const productsUpdatedCount =
@@ -1287,6 +1306,12 @@ function IndexWizard({
   const schemaOnlyOutcome = applyResult
     ? Boolean(applyResult.schemaApplied && productsUpdatedCount === 0)
     : Boolean(setupComplete && preview.productCount === 0 && executive.foundationScore >= 100);
+
+  useEffect(() => {
+    if (step === 3 && hasPendingWork && !setupPaid && !pilotMode && !applyResult) {
+      setStep(2);
+    }
+  }, [step, hasPendingWork, setupPaid, pilotMode, applyResult, setStep]);
 
   const prefSaving =
     applyFetcher.state !== "idle" &&
@@ -1539,20 +1564,30 @@ function IndexWizard({
             </div>
           )}
 
-          {!setupComplete && (
+          {hasPendingWork && (
             <button type="button" style={theme.btnPrimary} onClick={() => setStep(2)}>
               {copy.continue}
             </button>
           )}
 
-          {setupComplete && (
-            <div style={{ ...theme.card, borderColor: "rgba(163,230,53,0.35)", background: "rgba(163,230,53,0.08)" }}>
-              <h2 style={{ ...theme.h2, color: "#a3e635" }}>{copy.setupCompleteTitle}</h2>
-              <p style={{ ...theme.body, marginBottom: "14px" }}>{copy.setupCompleteBody}</p>
-              <button type="button" style={theme.btnPrimary} onClick={() => setStep(3)}>
-                {copy.viewSummary}
-              </button>
-            </div>
+          {showStep1AlreadyDone && (
+            <>
+              <AlreadyOptimizedCard copy={copy} executive={executive} />
+              {backupAvailable && (
+                <button
+                  type="button"
+                  style={{ ...theme.btnGhost, width: "100%", marginTop: "10px" }}
+                  disabled={restoreLoading}
+                  onClick={() => {
+                    if (window.confirm(copy.restoreAllConfirm)) {
+                      applyFetcher.submit({ intent: "restore-all" }, { method: "post" });
+                    }
+                  }}
+                >
+                  {restoreLoading ? copy.restoring : copy.restoreAll}
+                </button>
+              )}
+            </>
           )}
 
           {setupComplete && backupAvailable && (
@@ -1577,6 +1612,36 @@ function IndexWizard({
           <p style={{ ...theme.body, marginBottom: "14px", fontSize: "0.88rem", color: "#a5b4fc", lineHeight: 1.55 }}>
             {copyText(copy, "step2PayIntro", copy.step4FlowIntro)}
           </p>
+
+          {showBillingAlreadyApproved && (
+            <div style={{ ...theme.card, borderColor: "rgba(251,191,36,0.4)", background: "rgba(251,191,36,0.08)", marginBottom: "14px" }}>
+              <p style={{ ...theme.body, color: "#fbbf24", margin: 0, lineHeight: 1.55 }}>
+                {copyText(copy, "billingAlreadyApproved", "")}
+              </p>
+            </div>
+          )}
+
+          {!hasPendingWork && !applyResult && (
+            <div style={{ ...theme.card, borderColor: "rgba(251,191,36,0.35)", background: "rgba(251,191,36,0.06)", marginBottom: "14px" }}>
+              <p style={{ ...theme.body, color: "#e8e8ef", marginBottom: "14px", lineHeight: 1.55 }}>
+                {copyText(copy, "step2NoPendingWork", "")}
+              </p>
+              {backupAvailable && (
+                <button
+                  type="button"
+                  style={{ ...theme.btnPrimary, width: "100%" }}
+                  disabled={restoreLoading}
+                  onClick={() => {
+                    if (window.confirm(copy.restoreAllConfirm)) {
+                      applyFetcher.submit({ intent: "restore-all" }, { method: "post" });
+                    }
+                  }}
+                >
+                  {restoreLoading ? copy.restoring : copy.restoreAll}
+                </button>
+              )}
+            </div>
+          )}
 
           {showExpectationsPreview && (
             <ExpectationsPanel
@@ -1850,11 +1915,9 @@ function IndexWizard({
             <p style={{ ...theme.body, fontSize: "0.82rem", color: "#8b8b9a", margin: 0 }}>{copy.rollbackNote}</p>
           </div>
 
-          {!setupComplete && (
-            <button type="button" style={{ ...theme.btnGhost, width: "100%" }} onClick={() => setStep(3)}>
-              {copy.back}
-            </button>
-          )}
+          <button type="button" style={{ ...theme.btnGhost, width: "100%" }} onClick={() => setStep(2)}>
+            {copy.back}
+          </button>
         </>
       )}
     </div>
