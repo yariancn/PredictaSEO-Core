@@ -565,6 +565,11 @@ function PreviewChangesPanel({
               {copyText(copy, "previewRowBrand", "Brand identity for AI search")}
             </p>
           )}
+          {previewStats.mirrorCount > 0 && (
+            <p style={{ ...theme.body, fontSize: "0.78rem", color: "#a5b4fc", marginTop: "10px", marginBottom: 0 }}>
+              {copyText(copy, "previewMirrorLegend", "★ = top seller with individual title and description polish")}
+            </p>
+          )}
         </div>
       )}
     </div>
@@ -755,6 +760,9 @@ function PaymentGateCard({ copy }) {
           {copyText(copy, "unlockApply", copy.continue)}
         </button>
       </Form>
+      <p style={{ ...theme.body, fontSize: "0.78rem", color: "#8b8b9a", marginTop: "12px", marginBottom: 0, lineHeight: 1.55 }}>
+        {copyText(copy, "billingFootnote", "")}
+      </p>
     </div>
   );
 }
@@ -851,6 +859,65 @@ function Step4Actions({
   return null;
 }
 
+function PostApplyMerchantPanel({
+  copy,
+  applyFetcher,
+  restoreLoading,
+  backupAvailable,
+  showUndoLast,
+  onViewDashboard,
+}) {
+  return (
+    <div style={{ ...theme.card, borderColor: "rgba(163,230,53,0.35)", background: "rgba(163,230,53,0.06)" }}>
+      <h2 style={{ ...theme.h2, color: "#a3e635" }}>{copyText(copy, "postApplyTitle", "Optimization complete")}</h2>
+      <p style={{ ...theme.body, marginBottom: "14px", color: "#e8e8ef", lineHeight: 1.55 }}>
+        {copyText(copy, "postApplyBody", "")}
+      </p>
+      <button type="button" style={{ ...theme.btnPrimary, width: "100%", marginBottom: "10px" }} onClick={onViewDashboard}>
+        {copyText(copy, "viewDashboard", copy.viewScoreDashboard)}
+      </button>
+      {backupAvailable && (
+        <>
+          <button
+            type="button"
+            style={{ ...theme.btnGhost, width: "100%", marginBottom: "10px" }}
+            disabled={restoreLoading}
+            onClick={() => {
+              if (window.confirm(copy.restoreAllConfirm)) {
+                applyFetcher.submit({ intent: "restore-all" }, { method: "post" });
+              }
+            }}
+          >
+            {restoreLoading ? copy.restoring : copy.restoreAll}
+          </button>
+          {showUndoLast && (
+            <button
+              type="button"
+              style={{ ...theme.btnGhost, width: "100%", marginBottom: "10px" }}
+              disabled={restoreLoading}
+              onClick={() => {
+                if (window.confirm(copyText(copy, "restoreLastConfirm", copy.restoreWarning))) {
+                  applyFetcher.submit({ intent: "restore" }, { method: "post" });
+                }
+              }}
+            >
+              {restoreLoading ? copy.restoring : copy.restore}
+            </button>
+          )}
+        </>
+      )}
+      <p style={{ ...theme.body, fontSize: "0.78rem", color: "#8b8b9a", margin: "8px 0 0 0", lineHeight: 1.55 }}>
+        {copyText(copy, "restoreAllHint", "")}
+      </p>
+      {showUndoLast && (
+        <p style={{ ...theme.body, fontSize: "0.78rem", color: "#8b8b9a", margin: "6px 0 0 0", lineHeight: 1.55 }}>
+          {copyText(copy, "restoreLastHint", copy.restoreWarning)}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function IntroScreen({ copy, shopName, onStart }) {
   return (
     <div style={theme.page}>
@@ -906,21 +973,34 @@ function ExpectationsPanel({
     ? copyText(copy, "expectationsPreviewTitle", copy.expectationsTitle)
     : copy.expectationsTitle;
 
+  const means1 = isPreview
+    ? copyText(copy, "expectationsPreviewMeans1", copy.expectationsMeans1)
+    : copy.expectationsMeans1;
+  const means2 = isPreview
+    ? fill(copyText(copy, "expectationsPreviewMeans2", copy.expectationsMeans2))
+    : schemaOnlyOutcome
+      ? copyText(copy, "expectationsMeans2ProductsDone", copy.expectationsMeans2)
+      : fill(copy.expectationsMeans2);
+  const not1 = isPreview ? copyText(copy, "expectationsPreviewNot1", copy.expectationsNot1) : copy.expectationsNot1;
+  const not2 = isPreview ? copyText(copy, "expectationsPreviewNot2", copy.expectationsNot2) : copy.expectationsNot2;
+  const timeline1 = isPreview
+    ? copyText(copy, "expectationsPreviewTimeline1", copy.expectationsTimeline1)
+    : copy.expectationsTimeline1;
+  const timeline2 = isPreview
+    ? copyText(copy, "expectationsPreviewTimeline2", copy.expectationsTimeline2)
+    : copy.expectationsTimeline2;
+
   return (
     <div style={{ ...theme.card, borderColor: "rgba(163,230,53,0.35)", background: "rgba(163,230,53,0.06)" }}>
       <h2 style={{ ...theme.h2, color: "#a3e635" }}>{title}</h2>
 
       <p style={{ ...theme.h2, marginTop: "16px" }}>{copy.expectationsMeansTitle}</p>
-      <p style={theme.bullet("#a3e635")}>{copy.expectationsMeans1}</p>
-      <p style={theme.bullet("#a3e635")}>
-        {schemaOnlyOutcome
-          ? copyText(copy, "expectationsMeans2ProductsDone", copy.expectationsMeans2)
-          : fill(copy.expectationsMeans2)}
-      </p>
+      <p style={theme.bullet("#a3e635")}>{means1}</p>
+      <p style={theme.bullet("#a3e635")}>{means2}</p>
 
       <p style={{ ...theme.h2, marginTop: "16px" }}>{copy.expectationsNotTitle}</p>
-      <p style={theme.bullet("#fbbf24")}>{copy.expectationsNot1}</p>
-      <p style={theme.bullet("#fbbf24")}>{copy.expectationsNot2}</p>
+      <p style={theme.bullet("#fbbf24")}>{not1}</p>
+      <p style={theme.bullet("#fbbf24")}>{not2}</p>
 
       {!isPreview && (
         <>
@@ -945,8 +1025,19 @@ function ExpectationsPanel({
       )}
 
       <p style={{ ...theme.h2, marginTop: "16px" }}>{copy.expectationsTimelineTitle}</p>
-      <p style={theme.bullet("#8b8b9a")}>{copy.expectationsTimeline1}</p>
-      <p style={theme.bullet("#8b8b9a")}>{copy.expectationsTimeline2}</p>
+      <p style={theme.bullet("#8b8b9a")}>{timeline1}</p>
+      <p style={theme.bullet("#8b8b9a")}>{timeline2}</p>
+
+      {isPreview && (
+        <>
+          <p style={{ ...theme.h2, marginTop: "16px" }}>
+            {copyText(copy, "expectationsPreviewMaintenanceTitle", copy.maintenancePlanTitle)}
+          </p>
+          <p style={theme.bullet("#6366f1")}>{copyText(copy, "expectationsPreviewMaintenance1", "")}</p>
+          <p style={theme.bullet("#6366f1")}>{copyText(copy, "expectationsPreviewMaintenance2", "")}</p>
+          <p style={theme.bullet("#6366f1")}>{copyText(copy, "expectationsPreviewMaintenance3", "")}</p>
+        </>
+      )}
 
       {showMaintenance && !isPreview && (
         <>
@@ -2144,31 +2235,44 @@ function IndexWizard({
 
           {backupAvailable && (
             <>
-              <button
-                type="button"
-                style={{ ...theme.btnPrimary, width: "100%", marginTop: "10px" }}
-                disabled={restoreLoading}
-                onClick={() => {
-                  if (window.confirm(copy.restoreAllConfirm)) {
-                    applyFetcher.submit({ intent: "restore-all" }, { method: "post" });
-                  }
-                }}
-              >
-                {restoreLoading ? copy.restoring : copy.restoreAll}
-              </button>
-              {backupBatchCount > 1 && (
-                <button
-                  type="button"
-                  style={{ ...theme.btnGhost, width: "100%", marginTop: "10px" }}
-                  disabled={restoreLoading}
-                  onClick={() => {
-                    if (window.confirm(copy.restoreWarning)) {
-                      applyFetcher.submit({ intent: "restore" }, { method: "post" });
-                    }
-                  }}
-                >
-                  {restoreLoading ? copy.restoring : copy.restore}
-                </button>
+              {applyResult && !pilotMode ? (
+                <PostApplyMerchantPanel
+                  copy={copy}
+                  applyFetcher={applyFetcher}
+                  restoreLoading={restoreLoading}
+                  backupAvailable={backupAvailable}
+                  showUndoLast={backupBatchCount >= 1}
+                  onViewDashboard={() => setStep(1)}
+                />
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    style={{ ...theme.btnPrimary, width: "100%", marginTop: "10px" }}
+                    disabled={restoreLoading}
+                    onClick={() => {
+                      if (window.confirm(copy.restoreAllConfirm)) {
+                        applyFetcher.submit({ intent: "restore-all" }, { method: "post" });
+                      }
+                    }}
+                  >
+                    {restoreLoading ? copy.restoring : copy.restoreAll}
+                  </button>
+                  {backupBatchCount > 1 && (
+                    <button
+                      type="button"
+                      style={{ ...theme.btnGhost, width: "100%", marginTop: "10px" }}
+                      disabled={restoreLoading}
+                      onClick={() => {
+                        if (window.confirm(copyText(copy, "restoreLastConfirm", copy.restoreWarning))) {
+                          applyFetcher.submit({ intent: "restore" }, { method: "post" });
+                        }
+                      }}
+                    >
+                      {restoreLoading ? copy.restoring : copy.restore}
+                    </button>
+                  )}
+                </>
               )}
             </>
           )}
@@ -2190,7 +2294,7 @@ function IndexWizard({
             </button>
           )}
 
-          {backupAvailable && (
+          {backupAvailable && pilotMode && applyResult && (
             <UninstallPreferencePanel
               copy={copy}
               preference={activeUninstallPref}
@@ -2205,16 +2309,11 @@ function IndexWizard({
             />
           )}
 
-          <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.2)" }}>
-            <p style={{ ...theme.body, fontSize: "0.82rem", color: "#8b8b9a", margin: "0 0 8px 0" }}>
-              {copy.restoreWarning}
-            </p>
-            <p style={{ ...theme.body, fontSize: "0.82rem", color: "#8b8b9a", margin: 0 }}>{copy.rollbackNote}</p>
-          </div>
-
-          <button type="button" style={{ ...theme.btnGhost, width: "100%" }} onClick={() => setStep(2)}>
-            {copy.back}
-          </button>
+          {!applyResult && (
+            <button type="button" style={{ ...theme.btnGhost, width: "100%" }} onClick={() => setStep(2)}>
+              {copy.back}
+            </button>
+          )}
         </>
       )}
     </div>

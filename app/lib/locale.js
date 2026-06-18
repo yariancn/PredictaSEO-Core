@@ -112,7 +112,8 @@ const MESSAGES = {
     pricingMaintenanceIncluded:
       "Included: $15/month updates start automatically after your first month. Cancel anytime in Shopify Admin — takes effect next billing period.",
     unlockApply: "Pay $35 — unlock Apply",
-    step2PayIntro: "Review the preview below, then pay $35 in Shopify to unlock Apply on your store.",
+    step2PayIntro:
+      "Review the preview below. Shopify will charge $35 one-time now (includes month 1). Starting month 2, $15/month maintenance is added automatically for monthly catalog updates — cancel anytime in Shopify Admin.",
     billingAlreadyApproved:
       "This store already approved the $35 charge in Shopify — you will not see the payment screen again. Use Restore all below to undo changes and run Apply again.",
     step2NoPendingWork:
@@ -128,6 +129,22 @@ const MESSAGES = {
     step4PaymentSuccess: "Payment successful — you can now apply changes to your store.",
     step4FlowIntro: "Complete payment in Shopify to unlock Apply on your store.",
     expectationsPreviewTitle: "What to expect after you apply",
+    expectationsPreviewMeans1:
+      "After Apply, AI search will be able to read clear titles, descriptions, and brand identity on your store.",
+    expectationsPreviewMeans2:
+      "We will optimize your top {{count}} priority products (where AI visibility matters most).",
+    expectationsPreviewNot1:
+      "Instant AI mentions the same day — crawlers need time to re-read your store.",
+    expectationsPreviewNot2:
+      "A guaranteed #1 ranking — AI search results change constantly.",
+    expectationsPreviewTimeline1:
+      "2–4 weeks after Apply: AI crawlers typically re-index your store.",
+    expectationsPreviewTimeline2:
+      "4–8 weeks after Apply: better chance of appearing in AI search answers.",
+    expectationsPreviewMaintenanceTitle: "After month 1 — $15/month maintenance",
+    expectationsPreviewMaintenance1: "Monthly re-scan of your top 50 products",
+    expectationsPreviewMaintenance2: "Updates when new products or gaps lower your score",
+    expectationsPreviewMaintenance3: "Polish for new catalog items as you grow",
     billingBundleStep2:
       "$35 setup is active on this store. Continue to approve the required $15/month subscription.",
     step4PaidIntro: "Payment complete — confirm below to publish changes to your store.",
@@ -146,7 +163,21 @@ const MESSAGES = {
     refreshingStore: "Updating your store…",
     confirmingPayment: "Confirming payment…",
     restoreWarning:
-      "Restore only undoes the last Apply. Earlier optimizations stay in place.",
+      "Undo last change reverts only the most recent Apply (including a monthly update). Your store will not return to the original pre-PredictaCore state.",
+    restoreLastConfirm:
+      "Undo only the last Apply? This keeps earlier changes and does not restore your original store.",
+    restoreAllConfirm:
+      "Restore everything to how it was before PredictaCore? This uses your saved original baseline and removes all optimizations (including monthly updates).",
+    restoreAllHint:
+      "Restore all returns your store to the original first-scan baseline — as if PredictaCore had never run.",
+    restoreLastHint:
+      "Undo last change only reverses the most recent Apply batch (e.g. a monthly re-scan). Use Restore all for the full original store.",
+    rollbackNote:
+      "Before uninstalling in Shopify Admin, choose below whether to restore your original store or keep optimized data.",
+    postApplyTitle: "Optimization complete",
+    postApplyBody: "Your store is updated. View your score anytime by reopening PredictaCore.",
+    viewDashboard: "View score dashboard",
+    exitApp: "Close",
     products: "Products",
     markets: "Markets",
     continue: "Continue",
@@ -154,8 +185,6 @@ const MESSAGES = {
     stateTitle: "Current state",
     impactTitle: "Why AI can't recommend you",
     planTitle: "What we'll fix",
-    rollbackNote:
-      "We save a backup before any change. Before uninstalling, choose below whether to restore your store or keep optimized data.",
     uninstallPrefTitle: "If you uninstall PredictaCore",
     uninstallPrefIntro:
       "Choose what happens to your product SEO and brand data when you remove the app from Shopify Admin. You can change this anytime before uninstalling.",
@@ -270,10 +299,8 @@ const MESSAGES = {
     noChanges: "All products already have SEO metadata",
     noChangesAlreadyApplied:
       "These changes were already applied — reload the app to see your updated score, or use Restore / Reset demo store to run the wizard again.",
-    restore: "Restore last change",
+    restore: "Undo last change",
     restoreAll: "Restore everything to original",
-    restoreAllConfirm:
-      "This will undo ALL PredictaCore backups — products we changed and brand identity. Continue?",
     restoring: "Restoring…",
     restoreSuccess: "Restored {{products}} products from the last backup.",
     restoreAllSuccess:
@@ -300,8 +327,6 @@ const MESSAGES = {
     resetTestSuccessStripped:
       "Demo reset complete — cleared SEO on {{count}} priority products (no baseline existed). Reload step 1 to see gaps again.",
     resetTestNoSchema: "schema cleared",
-    restoreAllHint:
-      "Restore all returns your store to the original first-scan baseline — products, SEO, and brand identity exactly as before PredictaCore.",
     resetTestTitle: "Undo all PredictaCore changes (pilot)",
     resetTestBody:
       "Same as Restore everything, plus restores the first-scan baseline from Railway (or clears product SEO if no baseline). Resets Apply quota so you can run the full wizard again.",
