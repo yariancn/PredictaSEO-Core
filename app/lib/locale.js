@@ -282,11 +282,24 @@ const MESSAGES = {
       "Brand identity restored. No product SEO was in the backup — only schema was applied last time.",
     restoreNothingFound:
       "Nothing to restore — no PredictaCore backup found for this store. If you used Restore before, backups were already cleared. Run Apply once to create a new backup.",
+    backupStatusTitle: "Backup status",
+    backupStatusApply:
+      "Apply backup: {{products}} products in {{batches}} batch(es){{schema}} — Restore all uses this.",
+    backupStatusBaseline:
+      "First-scan baseline: {{products}} products saved on Railway — Undo all (pilot) restores this.",
+    backupStatusNone:
+      "No Apply backup right now. Next audit saves a first-scan baseline for pilot reset.",
+    backupStatusSchema: " + brand identity",
+    resetTestSuccessBaseline:
+      "Demo reset complete — restored {{products}} products from first-scan baseline ({{schema}}). Reload step 1 to see gaps again.",
+    resetTestSuccessStripped:
+      "Demo reset complete — cleared SEO on {{count}} priority products (no baseline existed). Reload step 1 to see gaps again.",
+    resetTestNoSchema: "schema cleared",
     restoreAllHint:
       "Restore and Undo use the same backup — products and brand identity return to how they were before Apply. Your score should match that moment, not zero.",
     resetTestTitle: "Undo all PredictaCore changes (pilot)",
     resetTestBody:
-      "Same as Restore everything: puts your store back to how it was before Apply, using the backup we saved. Your score should go back up if you had applied changes.",
+      "Same as Restore everything, plus restores the first-scan baseline from Railway (or clears product SEO if no baseline). Resets Apply quota so you can run the full wizard again.",
     resetTestConfirm:
       "Undo all PredictaCore changes on this store? Products and brand identity will return to the pre-Apply backup.",
     resetTestSuccess:

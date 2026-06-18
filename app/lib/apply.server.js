@@ -396,8 +396,9 @@ export async function rollbackBatch(admin, shop, batchId) {
 }
 
 export async function rollbackLatestBatch(admin, shop) {
+  const { BASELINE_BATCH } = await import("./shop-baseline.server.js");
   const latest = await prisma.optimizationSnapshot.findFirst({
-    where: { shop },
+    where: { shop, batchId: { not: BASELINE_BATCH } },
     orderBy: { appliedAt: "desc" },
     select: { batchId: true },
   });
@@ -408,8 +409,9 @@ export async function rollbackLatestBatch(admin, shop) {
 }
 
 export async function rollbackAllBatches(admin, shop) {
+  const { BASELINE_BATCH } = await import("./shop-baseline.server.js");
   const batches = await prisma.optimizationSnapshot.findMany({
-    where: { shop },
+    where: { shop, batchId: { not: BASELINE_BATCH } },
     distinct: ["batchId"],
     select: { batchId: true },
     orderBy: { appliedAt: "desc" },
@@ -435,9 +437,89 @@ export async function rollbackAllBatches(admin, shop) {
   };
 }
 
-/** Pilot only — restores the store to pre-Apply values using PredictaCore backups (same as Restore all). */
-export async function resetTestStoreForDemo(admin, shop) {
-  return rollbackAllBatches(admin, shop);
+async function stripPriorityProductsForDemo(admin, products = []) {
+  let stripped = 0;
+  const errors = [];
+
+  for (const product of products) {
+    const title = (product.title ?? "Product").trim().slice(0, 70) || "Product";
+    try {
+      const response = await admin.graphql(PRODUCT_UPDATE, {
+        variables: {
+          input: {
+            id: product.id,
+            seo: { title, description: "" },
+            descriptionHtml: "",
+          },
+        },
+      });
+      const { data, errors: gqlErrors } = await response.json();
+      if (gqlErrors?.length) throw new Error(gqlErrors.map((e) => e.message).join("; "));
+      const userErrors = data?.productUpdate?.userErrors ?? [];
+      if (userErrors.length) throw new Error(userErrors.map((e) => e.message).join("; "));
+      stripped += 1;
+    } catch (err) {
+      errors.push(`${product.title ?? product.id}: ${err.message ?? "Strip failed"}`);
+    }
+  }
+
+  if (errors.length && stripped === 0) {
+    throw new Error(errors.join("; "));
+  }
+
+  return { stripped, errors };
+}
+
+/**
+ * Pilot / test-store reset: undo apply backups, restore first-scan baseline, or strip SEO for demo.
+ */
+export async function resetTestStoreForDemo(admin, shop, options = {}) {
+  const { priorityProducts = [] } = options;
+  const { restoreShopFromBaseline } = await import("./shop-baseline.server.js");
+  const { deactivateSchemaForShop } = await import("./schema.server.js");
+  const { resetApplyQuotaAfterRestore } = await import("./apply-quota.server.js");
+
+  const applyRollback = await rollbackAllBatches(admin, shop);
+
+  let baselineResult = { restored: false, reason: "no_baseline", productCount: 0, schemaRestored: false };
+  try {
+    baselineResult = await restoreShopFromBaseline(admin, shop, rollbackSchemaFromTheme);
+  } catch (err) {
+    baselineResult = { restored: false, reason: "baseline_failed", error: err.message, productCount: 0 };
+  }
+
+  let stripped = 0;
+  if (!baselineResult.restored && priorityProducts.length > 0) {
+    const stripResult = await stripPriorityProductsForDemo(admin, priorityProducts);
+    stripped = stripResult.stripped;
+  }
+
+  if (!baselineResult.schemaRestored) {
+    await deactivateSchemaForShop(admin, shop).catch(() => {});
+  }
+
+  await resetApplyQuotaAfterRestore(shop);
+
+  await prisma.shopSettings.updateMany({
+    where: { shop },
+    data: { marketsConfirmed: false },
+  });
+
+  await prisma.entityProfile.updateMany({
+    where: { shop },
+    data: { schemaActive: false, schemaThemeId: null },
+  });
+
+  return {
+    ...applyRollback,
+    baselineRestored: baselineResult.restored,
+    baselineReason: baselineResult.reason,
+    baselineProductCount: baselineResult.productCount ?? 0,
+    strippedForDemo: stripped,
+    schemaRestored: applyRollback.schemaRestored || baselineResult.schemaRestored,
+    productCount: Math.max(applyRollback.productCount ?? 0, baselineResult.productCount ?? 0, stripped),
+    batches: applyRollback.batches ?? 0,
+  };
 }
 
 export function buildAppliedItemsFromPreview(items = []) {
@@ -454,8 +536,9 @@ const SNAPSHOT_FIELD_LABELS = {
 };
 
 export async function getAppliedCatalogSummary(shop, products = [], tr = (key) => key) {
+  const { BASELINE_BATCH } = await import("./shop-baseline.server.js");
   const rows = await prisma.optimizationSnapshot.findMany({
-    where: { shop, resourceType: "product" },
+    where: { shop, resourceType: "product", batchId: { not: BASELINE_BATCH } },
     orderBy: { createdAt: "desc" },
   });
   if (!rows.length) return [];

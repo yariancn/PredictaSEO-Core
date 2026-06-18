@@ -69,7 +69,15 @@ export async function action({ request }) {
       return json({ intent: "reset-test-store", resetTestError: "Not available in production billing mode" });
     }
     try {
-      const result = await resetTestStoreForDemo(admin, session.shop);
+      const response = await admin.graphql(CATALOG_QUERY);
+      const { data, errors } = await response.json();
+      if (errors?.length) {
+        return json({ intent: "reset-test-store", resetTestError: errors.map((e) => e.message).join("; ") });
+      }
+      const catalogData = await prepareCatalogData(admin, data);
+      const snapshot = analyzeSnapshot(catalogData, "en");
+      const priorityProducts = getPriorityProducts(catalogData.products?.nodes ?? [], snapshot.matrix);
+      const result = await resetTestStoreForDemo(admin, session.shop, { priorityProducts });
       return json({ intent: "reset-test-store", resetTestResult: result });
     } catch (err) {
       return json({ intent: "reset-test-store", resetTestError: err.message ?? "Reset failed" });
@@ -405,6 +413,24 @@ function fillTemplate(text, vars = {}) {
     out = out.replaceAll(`{{${key}}}`, String(value));
   }
   return out;
+}
+
+function formatResetTestMessage(copy, result) {
+  if (!result) return "";
+  if (result.baselineRestored) {
+    return fillTemplate(copyText(copy, "resetTestSuccessBaseline", ""), {
+      products: String(result.baselineProductCount ?? result.productCount ?? 0),
+      schema: result.schemaRestored
+        ? copyText(copy, "previewSchemaRow", "brand identity")
+        : copyText(copy, "resetTestNoSchema", "no brand identity"),
+    });
+  }
+  if (result.strippedForDemo > 0) {
+    return fillTemplate(copyText(copy, "resetTestSuccessStripped", ""), {
+      count: String(result.strippedForDemo),
+    });
+  }
+  return formatRestoreMessage(copy, "restore-all", result);
 }
 
 function formatRestoreMessage(copy, intent, result) {
@@ -977,6 +1003,7 @@ export default function Index() {
     appliedCatalog = [],
     hasBackup,
     backupBatchCount,
+    backupSummary,
     billing,
     uninstallRestorePreference = "restore",
     aiSummaryAvailable = false,
@@ -1194,6 +1221,7 @@ export default function Index() {
         setupComplete={setupComplete}
         hasBackup={hasBackup}
         backupBatchCount={backupBatchCount}
+        backupSummary={backupSummary}
         billing={billing}
         step={step}
         setStep={setStep}
@@ -1324,6 +1352,36 @@ function AppliedProductsList({ items, copy, titleKey = "resultsProductsTitle" })
   );
 }
 
+function BackupStatusPanel({ copy, backupSummary }) {
+  if (!backupSummary) return null;
+
+  const schemaSuffix = backupSummary.hasSchemaBackup
+    ? copyText(copy, "backupStatusSchema", " + brand identity")
+    : "";
+
+  let bodyKey = "backupStatusNone";
+  const vars = { products: "0", batches: "0", schema: schemaSuffix };
+
+  if (backupSummary.hasActiveBackup) {
+    bodyKey = "backupStatusApply";
+    vars.products = String(backupSummary.applyProductCount ?? 0);
+    vars.batches = String(backupSummary.applyBatchCount ?? 0);
+    vars.schema = schemaSuffix;
+  } else if (backupSummary.hasBaseline) {
+    bodyKey = "backupStatusBaseline";
+    vars.products = String(backupSummary.baselineProductCount ?? 0);
+  }
+
+  return (
+    <div style={{ ...theme.card, borderColor: "rgba(255,255,255,0.08)" }}>
+      <h2 style={{ ...theme.h2, fontSize: "0.95rem" }}>{copyText(copy, "backupStatusTitle", "Backup status")}</h2>
+      <p style={{ ...theme.body, fontSize: "0.82rem", color: "#8b8b9a", margin: 0, lineHeight: 1.55 }}>
+        {fillCopy(copyText(copy, bodyKey, ""), vars)}
+      </p>
+    </div>
+  );
+}
+
 function MarketsPanel({ copy, marketContext, applyFetcher }) {
   const confirming =
     applyFetcher.state !== "idle" && applyFetcher.formData?.get("intent") === "confirm-markets";
@@ -1416,6 +1474,7 @@ function IndexWizard({
   setupComplete,
   hasBackup,
   backupBatchCount,
+  backupSummary,
   billing,
   step,
   setStep,
@@ -1722,6 +1781,8 @@ function IndexWizard({
           </div>
 
           {pilotMode && (
+            <>
+              <BackupStatusPanel copy={copy} backupSummary={backupSummary} />
             <div style={{ ...theme.card, borderColor: "rgba(251,191,36,0.45)", background: "rgba(251,191,36,0.08)" }}>
               <h2 style={{ ...theme.h2, color: "#fbbf24" }}>
                 {copyText(copy, "restoreVsResetTitle", "Undo vs reset")}
@@ -1740,7 +1801,7 @@ function IndexWizard({
               </p>
               {resetTestResult && (
                 <p style={{ ...theme.body, color: "#a3e635", marginBottom: "12px" }}>
-                  {formatRestoreMessage(copy, "restore-all", resetTestResult)}
+                  {formatResetTestMessage(copy, resetTestResult)}
                 </p>
               )}
               {resetTestError && (
@@ -1771,6 +1832,7 @@ function IndexWizard({
                   : copyText(copy, "resetTestTitle", "Reset demo store")}
               </button>
             </div>
+            </>
           )}
 
           <div style={theme.card}>
@@ -2049,7 +2111,7 @@ function IndexWizard({
           {resetTestResult && (
             <div style={theme.card}>
               <p style={{ ...theme.body, color: "#a3e635" }}>
-                {formatRestoreMessage(copy, "restore-all", resetTestResult)}
+                {formatResetTestMessage(copy, resetTestResult)}
               </p>
             </div>
           )}

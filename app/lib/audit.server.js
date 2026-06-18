@@ -163,18 +163,19 @@ export async function loadAuditData(request) {
 
   let hasBackup = false;
   let backupBatchCount = 0;
+  let backupSummary = null;
   try {
-    hasBackup =
-      (await prisma.optimizationSnapshot.count({ where: { shop: session.shop } })) > 0;
-    backupBatchCount = (
-      await prisma.optimizationSnapshot.groupBy({
-        by: ["batchId"],
-        where: { shop: session.shop },
-      })
-    ).length;
+    const { ensureShopBaseline, getBackupSummary } = await import(
+      "./shop-baseline.server.js"
+    );
+    await ensureShopBaseline(session.shop, priorityProducts, "", data.shop?.id);
+    backupSummary = await getBackupSummary(session.shop);
+    hasBackup = backupSummary.hasActiveBackup;
+    backupBatchCount = backupSummary.applyBatchCount;
   } catch {
     hasBackup = false;
     backupBatchCount = 0;
+    backupSummary = null;
   }
 
   let uninstallRestorePreference = "restore";
@@ -260,6 +261,7 @@ export async function loadAuditData(request) {
     appliedCatalog,
     hasBackup,
     backupBatchCount,
+    backupSummary,
     billing: billingStatus,
     uninstallRestorePreference,
     aiSummaryAvailable: Boolean(process.env.GEMINI_API_KEY?.trim()),

@@ -18,7 +18,10 @@ export function currentApplyPeriod(date = new Date()) {
 }
 
 export async function hasLegacyApply(shop) {
-  const snap = await prisma.optimizationSnapshot.findFirst({ where: { shop } });
+  const { BASELINE_BATCH } = await import("./shop-baseline.server.js");
+  const snap = await prisma.optimizationSnapshot.findFirst({
+    where: { shop, batchId: { not: BASELINE_BATCH } },
+  });
   return Boolean(snap);
 }
 
