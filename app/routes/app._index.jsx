@@ -410,10 +410,23 @@ function fillTemplate(text, vars = {}) {
 function formatRestoreMessage(copy, intent, result) {
   if (!result) return "";
   const products = String(result.productCount ?? 0);
-  const batches = String(result.batches ?? 1);
+  const batches = String(result.batches ?? 0);
+  const snapshotCount = result.snapshotCount ?? result.restored ?? 0;
   const schema = result.schemaRestored
-    ? copyText(copy, "resultsAppliedBrand", "brand identity")
+    ? copyText(copy, "previewSchemaRow", "Brand identity (Schema.org)")
     : copyText(copy, "previewSchemaRow", "brand identity");
+
+  if (
+    (intent === "restore-all" || intent === "reset-test-store") &&
+    snapshotCount === 0 &&
+    batches === "0"
+  ) {
+    return copyText(
+      copy,
+      "restoreNothingFound",
+      "Nothing to restore — no PredictaCore backup found for this store.",
+    );
+  }
 
   if (
     (intent === "restore-all" || intent === "reset-test-store") &&
@@ -449,6 +462,85 @@ function ScoreBreakdownRow({ label, before, after }) {
   );
 }
 
+function PreviewChangesPanel({
+  copy,
+  preview,
+  previewStats,
+  schemaOnlyPreview,
+  shopName,
+  shop,
+  region,
+}) {
+  return (
+    <div style={theme.card}>
+      <h2 style={theme.h2}>{copy.previewTitle}</h2>
+      <p style={{ ...theme.body, marginBottom: "12px", fontSize: "0.82rem", color: "#a5b4fc" }}>
+        {copy.previewNotAppliedYet}
+      </p>
+      {schemaOnlyPreview ? (
+        <>
+          <p style={{ ...theme.body, marginBottom: "12px", color: "#fbbf24" }}>
+            {copyText(copy, "previewProductsDone", "Product SEO is already complete.")}
+          </p>
+          <p style={{ ...theme.body, marginBottom: "14px", color: "#e8e8ef" }}>
+            {fillCopy(copyText(copy, "previewSchemaOnlyExplain", "Brand identity will be saved."), {
+              shop: shopName || shop?.replace(".myshopify.com", "") || "your store",
+              region: region || "your markets",
+            })}
+          </p>
+          <p style={theme.bullet("#a3e635")}>
+            {copyText(copy, "previewRowBrand", "Brand identity for AI search (Schema.org JSON-LD)")}
+          </p>
+        </>
+      ) : (
+        <div
+          style={{
+            marginBottom: "14px",
+            padding: "14px 16px",
+            borderRadius: "10px",
+            background: "rgba(99,102,241,0.12)",
+            border: "1px solid rgba(99,102,241,0.25)",
+          }}
+        >
+          <p style={{ ...theme.body, fontWeight: 600, color: "#e8e8ff", marginBottom: "10px" }}>
+            {copyText(copy, "previewApplyIntro", "What we'll update on your store")}
+          </p>
+          {previewStats.searchTitles > 0 && (
+            <p style={theme.bullet("#a5b4fc")}>
+              {fillCopy(copyText(copy, "previewRowTitles"), { count: previewStats.searchTitles })}
+            </p>
+          )}
+          {previewStats.searchDescs > 0 && (
+            <p style={theme.bullet("#a5b4fc")}>
+              {fillCopy(copyText(copy, "previewRowDescs"), { count: previewStats.searchDescs })}
+            </p>
+          )}
+          {previewStats.productDescs > 0 && (
+            <p style={theme.bullet("#a5b4fc")}>
+              {fillCopy(copyText(copy, "previewRowBodies"), { count: previewStats.productDescs })}
+            </p>
+          )}
+          {previewStats.mirrorCount > 0 && (
+            <p style={theme.bullet("#a5b4fc")}>
+              {fillCopy(copyText(copy, "previewRowMirror"), { count: previewStats.mirrorCount })}
+            </p>
+          )}
+          {previewStats.batchCount > 0 && (
+            <p style={theme.bullet("#8b8b9a")}>
+              {fillCopy(copyText(copy, "previewRowBatch"), { count: previewStats.batchCount })}
+            </p>
+          )}
+          {previewStats.schemaWillApply && (
+            <p style={theme.bullet("#a3e635")}>
+              {copyText(copy, "previewRowBrand", "Brand identity for AI search")}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ApplyResultsCard({
   copy,
   applyResult,
@@ -459,6 +551,7 @@ function ApplyResultsCard({
   schemaWasApplied,
   schemaOnlyOutcome,
   priorityCount,
+  marketRegion,
 }) {
   if (!applyResult) return null;
 
@@ -519,7 +612,11 @@ function ApplyResultsCard({
         {copyText(copy, "resultsAppliedTitle", "What we applied")}
       </p>
       {schemaWasApplied && (
-        <p style={theme.bullet("#a3e635")}>{copyText(copy, "resultsAppliedBrand", "Brand identity saved")}</p>
+        <p style={theme.bullet("#a3e635")}>
+          {fillTemplate(copyText(copy, "resultsAppliedBrand", "Brand identity saved"), {
+            region: marketRegion || applyResult?.marketRegion || "your markets",
+          })}
+        </p>
       )}
       {productsUpdatedCount > 0 ? (
         <p style={theme.bullet("#a3e635")}>
@@ -1807,67 +1904,15 @@ function IndexWizard({
           )}
 
           {!applyResult && hasPendingWork && (
-          <div style={theme.card}>
-            <h2 style={theme.h2}>{copy.previewTitle}</h2>
-            <p style={{ ...theme.body, marginBottom: "12px", fontSize: "0.82rem", color: "#a5b4fc" }}>
-              {copy.previewNotAppliedYet}
-            </p>
-            {schemaOnlyPreview ? (
-              <>
-                <p style={{ ...theme.body, marginBottom: "12px", color: "#fbbf24" }}>
-                  {copyText(copy, "previewProductsDone", "Product SEO is already complete.")}
-                </p>
-                <p style={{ ...theme.body, marginBottom: "14px", color: "#e8e8ef" }}>
-                  {copyText(copy, "previewSchemaOnlyExplain", "Brand identity will be saved.")
-                    .replace("{{shop}}", shopName || shop || "your store")}
-                </p>
-              </>
-            ) : (
-              <div
-                style={{
-                  marginBottom: "14px",
-                  padding: "14px 16px",
-                  borderRadius: "10px",
-                  background: "rgba(99,102,241,0.12)",
-                  border: "1px solid rgba(99,102,241,0.25)",
-                }}
-              >
-                <p style={{ ...theme.body, fontWeight: 600, color: "#e8e8ff", marginBottom: "10px" }}>
-                  {copyText(copy, "previewApplyIntro", "What we'll update on your store")}
-                </p>
-                {previewStats.searchTitles > 0 && (
-                  <p style={theme.bullet("#a5b4fc")}>
-                    {fillCopy(copyText(copy, "previewRowTitles"), { count: previewStats.searchTitles })}
-                  </p>
-                )}
-                {previewStats.searchDescs > 0 && (
-                  <p style={theme.bullet("#a5b4fc")}>
-                    {fillCopy(copyText(copy, "previewRowDescs"), { count: previewStats.searchDescs })}
-                  </p>
-                )}
-                {previewStats.productDescs > 0 && (
-                  <p style={theme.bullet("#a5b4fc")}>
-                    {fillCopy(copyText(copy, "previewRowBodies"), { count: previewStats.productDescs })}
-                  </p>
-                )}
-                {previewStats.mirrorCount > 0 && (
-                  <p style={theme.bullet("#a5b4fc")}>
-                    {fillCopy(copyText(copy, "previewRowMirror"), { count: previewStats.mirrorCount })}
-                  </p>
-                )}
-                {previewStats.batchCount > 0 && (
-                  <p style={theme.bullet("#8b8b9a")}>
-                    {fillCopy(copyText(copy, "previewRowBatch"), { count: previewStats.batchCount })}
-                  </p>
-                )}
-                {previewStats.schemaWillApply && (
-                  <p style={theme.bullet("#a3e635")}>
-                    {copyText(copy, "previewRowBrand", "Brand identity for AI search")}
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
+            <PreviewChangesPanel
+              copy={copy}
+              preview={preview}
+              previewStats={previewStats}
+              schemaOnlyPreview={schemaOnlyPreview}
+              shopName={shopName}
+              shop={shop}
+              region={marketContext?.regionLabel}
+            />
           )}
 
           {showPayStepActions && (
@@ -1918,6 +1963,18 @@ function IndexWizard({
 
           {showPaymentSuccess && <PaymentSuccessBanner copy={copy} />}
 
+          {!applyResult && hasPendingWork && (
+            <PreviewChangesPanel
+              copy={copy}
+              preview={preview}
+              previewStats={previewStats}
+              schemaOnlyPreview={schemaOnlyPreview}
+              shopName={shopName}
+              shop={shop}
+              region={marketContext?.regionLabel}
+            />
+          )}
+
           {!marketsReady && hasPendingWork && step >= 2 && (
             <div style={{ ...theme.card, borderColor: "rgba(251,191,36,0.4)", background: "rgba(251,191,36,0.08)" }}>
               <p style={{ ...theme.body, color: "#fbbf24", margin: 0 }}>
@@ -1955,6 +2012,7 @@ function IndexWizard({
               schemaWasApplied={schemaWasApplied}
               schemaOnlyOutcome={schemaOnlyOutcome}
               priorityCount={snapSummary.priorityCount}
+              marketRegion={marketContext?.regionLabel ?? applyResult?.marketRegion}
             />
           )}
 

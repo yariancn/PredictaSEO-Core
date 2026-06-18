@@ -280,6 +280,8 @@ const MESSAGES = {
       "Restored {{products}} products and {{schema}} brand identity from {{batches}} backup(s).",
     restoreAllSchemaOnly:
       "Brand identity restored. No product SEO was in the backup — only schema was applied last time.",
+    restoreNothingFound:
+      "Nothing to restore — no PredictaCore backup found for this store. If you used Restore before, backups were already cleared. Run Apply once to create a new backup.",
     restoreAllHint:
       "Restore and Undo use the same backup — products and brand identity return to how they were before Apply. Your score should match that moment, not zero.",
     resetTestTitle: "Undo all PredictaCore changes (pilot)",
