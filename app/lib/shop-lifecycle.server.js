@@ -1,6 +1,6 @@
 import prisma from "../db.server.js";
 import { unauthenticated } from "../shopify.server";
-import { rollbackAllBatches } from "./apply.server.js";
+import { fullRestoreShopToOriginal } from "./shop-baseline.server.js";
 
 export const UNINSTALL_PREF = {
   RESTORE: "restore",
@@ -39,6 +39,8 @@ function normalizeProductGid(id) {
 }
 
 export async function shopHasRestoreBackups(shop) {
+  const { hasShopBaseline } = await import("./shop-baseline.server.js");
+  if (await hasShopBaseline(shop)) return true;
   const count = await prisma.optimizationSnapshot.count({ where: { shop } });
   return count > 0;
 }
@@ -60,7 +62,7 @@ export async function attemptAutomaticRestore(shop, trigger = "unknown") {
 
   try {
     const { admin } = await unauthenticated.admin(shop);
-    const result = await rollbackAllBatches(admin, shop);
+    const result = await fullRestoreShopToOriginal(admin, shop, { resetQuota: false });
     return {
       shop,
       trigger,

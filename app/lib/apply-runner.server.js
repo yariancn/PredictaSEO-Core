@@ -73,11 +73,13 @@ export async function buildApplyContext(admin, shop) {
     preview,
     beforeExec,
     marketContext,
+    priorityProducts,
   };
 }
 
 export async function runStoreApply(admin, shop, { applyKind = APPLY_KIND.SETUP } = {}) {
-  const { locale, preview, jsonLd, beforeExec, marketContext, data } = await buildApplyContext(admin, shop);
+  const { locale, preview, jsonLd, beforeExec, marketContext, data, priorityProducts } =
+    await buildApplyContext(admin, shop);
 
   if (preview.productCount === 0 && !preview.schema?.willApply) {
     return { skipped: true, reason: "no_changes", preview, beforeExec };
@@ -92,6 +94,7 @@ export async function runStoreApply(admin, shop, { applyKind = APPLY_KIND.SETUP 
     jsonLd,
     shop: data.shop,
     marketContext,
+    priorityProducts,
   });
 
   if (result.applied === 0 && !result.schemaApplied) {

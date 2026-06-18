@@ -6,6 +6,21 @@ export function isBillingBypassed() {
   return process.env.BILLING_DISABLED === "true";
 }
 
+/** Dev/test stores that may use pilot reset without BILLING_DISABLED. Comma-separated myshopify domains. */
+export function isPilotTestShop(shop) {
+  const defaults = "ai-entity-test-yarian-daelj76i.myshopify.com";
+  const raw = process.env.PILOT_TEST_SHOPS?.trim() || defaults;
+  return raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .includes(shop);
+}
+
+export function canUsePilotReset(shop) {
+  return isBillingBypassed() || isPilotTestShop(shop);
+}
+
 export function isBillingTest() {
   return process.env.SHOPIFY_BILLING_TEST === "true" || process.env.NODE_ENV !== "production";
 }

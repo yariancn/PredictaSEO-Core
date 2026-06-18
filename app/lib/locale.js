@@ -281,14 +281,19 @@ const MESSAGES = {
     restoreAllSchemaOnly:
       "Brand identity restored. No product SEO was in the backup — only schema was applied last time.",
     restoreNothingFound:
-      "Nothing to restore — no PredictaCore backup found for this store. If you used Restore before, backups were already cleared. Run Apply once to create a new backup.",
+      "Nothing to restore — no PredictaCore backup found for this store. If you used Restore before, apply backups were cleared. Use Restore all when a first-scan baseline exists.",
+    baselineMissingTitle: "Original backup missing (legacy session)",
+    baselineMissingBody:
+      "This store was optimized before we saved the immutable first-scan baseline. Restore all cannot return to the true pre-PredictaCore state. For your test store: create a fresh development store or use Undo all (pilot). New installs are protected automatically.",
+    restoreBaselineSuccess:
+      "Restored {{products}} products and brand settings to the original first-scan baseline — as if PredictaCore had never run.",
     backupStatusTitle: "Backup status",
     backupStatusApply:
-      "Apply backup: {{products}} products in {{batches}} batch(es){{schema}} — Restore all uses this.",
+      "Apply backup: {{products}} products in {{batches}} batch(es){{schema}}. Restore all reverts to the immutable first-scan baseline.",
     backupStatusBaseline:
-      "First-scan baseline: {{products}} products saved on Railway — Undo all (pilot) restores this.",
+      "Original baseline: {{products}} products locked on first scan (Railway). Restore all always returns to this — never deleted.",
     backupStatusNone:
-      "No Apply backup right now. Next audit saves a first-scan baseline for pilot reset.",
+      "Original baseline will be saved on your first scan before any Apply. Required for safe Restore.",
     backupStatusSchema: " + brand identity",
     resetTestSuccessBaseline:
       "Demo reset complete — restored {{products}} products from first-scan baseline ({{schema}}). Reload step 1 to see gaps again.",
@@ -296,7 +301,7 @@ const MESSAGES = {
       "Demo reset complete — cleared SEO on {{count}} priority products (no baseline existed). Reload step 1 to see gaps again.",
     resetTestNoSchema: "schema cleared",
     restoreAllHint:
-      "Restore and Undo use the same backup — products and brand identity return to how they were before Apply. Your score should match that moment, not zero.",
+      "Restore all returns your store to the original first-scan baseline — products, SEO, and brand identity exactly as before PredictaCore.",
     resetTestTitle: "Undo all PredictaCore changes (pilot)",
     resetTestBody:
       "Same as Restore everything, plus restores the first-scan baseline from Railway (or clears product SEO if no baseline). Resets Apply quota so you can run the full wizard again.",

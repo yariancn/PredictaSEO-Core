@@ -165,10 +165,14 @@ export async function loadAuditData(request) {
   let backupBatchCount = 0;
   let backupSummary = null;
   try {
-    const { ensureShopBaseline, getBackupSummary } = await import(
+    const { ensureShopBaseline, getBackupSummary, captureBaselineFromCatalog } = await import(
       "./shop-baseline.server.js"
     );
-    await ensureShopBaseline(session.shop, priorityProducts, "", data.shop?.id);
+    const { hasRecordedSetupApply } = await import("./apply-quota.server.js");
+    const alreadyApplied = await hasRecordedSetupApply(session.shop);
+    if (!alreadyApplied) {
+      await captureBaselineFromCatalog(admin, session.shop, priorityProducts, data.shop?.id);
+    }
     backupSummary = await getBackupSummary(session.shop);
     hasBackup = backupSummary.hasActiveBackup;
     backupBatchCount = backupSummary.applyBatchCount;

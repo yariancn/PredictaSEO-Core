@@ -119,6 +119,69 @@ async function deleteSchemaMetafield(admin) {
   if (userErrors.length) throw new Error(userErrors.map((e) => e.message).join("; "));
 }
 
+export async function readOrganizationSchemaMetafield(admin) {
+  return readSchemaMetafield(admin);
+}
+
+export async function readWebsiteJsonLdMetafield(admin) {
+  const { WEBSITE_JSON_LD_KEY } = await import("./product-schema.server.js");
+  const response = await admin.graphql(`#graphql
+    query PredictaCoreWebsiteSchema {
+      shop {
+        id
+        metafield(namespace: "${METAFIELD_NAMESPACE}", key: "${WEBSITE_JSON_LD_KEY}") {
+          value
+        }
+      }
+    }
+  `);
+  const { data, errors } = await response.json();
+  if (errors?.length) throw new Error(errors.map((e) => e.message).join("; "));
+  return data?.shop?.metafield?.value ?? "";
+}
+
+export async function deleteWebsiteJsonLd(admin) {
+  const { WEBSITE_JSON_LD_KEY } = await import("./product-schema.server.js");
+  const response = await admin.graphql(METAFIELDS_DELETE, {
+    variables: {
+      metafields: [
+        {
+          ownerId: await getShopGid(admin),
+          namespace: METAFIELD_NAMESPACE,
+          key: WEBSITE_JSON_LD_KEY,
+        },
+      ],
+    },
+  });
+  await response.json();
+}
+
+export async function restoreWebsiteJsonLdFromValue(admin, value) {
+  if (!value?.trim()) {
+    await deleteWebsiteJsonLd(admin);
+    return;
+  }
+  const { WEBSITE_JSON_LD_KEY } = await import("./product-schema.server.js");
+  const shopId = await getShopGid(admin);
+  const response = await admin.graphql(METAFIELDS_SET, {
+    variables: {
+      metafields: [
+        {
+          ownerId: shopId,
+          namespace: METAFIELD_NAMESPACE,
+          key: WEBSITE_JSON_LD_KEY,
+          type: "json",
+          value,
+        },
+      ],
+    },
+  });
+  const { data, errors } = await response.json();
+  if (errors?.length) throw new Error(errors.map((e) => e.message).join("; "));
+  const userErrors = data?.metafieldsSet?.userErrors ?? [];
+  if (userErrors.length) throw new Error(userErrors.map((e) => e.message).join("; "));
+}
+
 export async function getSchemaStatus(shop) {
   try {
     const prisma = (await import("../db.server.js")).default;

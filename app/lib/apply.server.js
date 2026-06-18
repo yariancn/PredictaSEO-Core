@@ -210,7 +210,13 @@ async function saveProductSnapshots(shop, batchId, item) {
 }
 
 export async function applyPreviewPlan(admin, shop, preview, batchId, options = {}) {
-  const { jsonLd, shop: shopRecord, marketContext } = options;
+  const { jsonLd, shop: shopRecord, marketContext, priorityProducts = [] } = options;
+
+  const { captureBaselineBeforeApply } = await import("./shop-baseline.server.js");
+  if (priorityProducts.length > 0) {
+    await captureBaselineBeforeApply(admin, shop, priorityProducts, shopRecord);
+  }
+
   let applied = 0;
   let failedCount = 0;
   const errors = [];
@@ -437,7 +443,7 @@ export async function rollbackAllBatches(admin, shop) {
   };
 }
 
-async function stripPriorityProductsForDemo(admin, products = []) {
+export async function stripPriorityProductsForDemo(admin, products = []) {
   let stripped = 0;
   const errors = [];
 
@@ -475,51 +481,20 @@ async function stripPriorityProductsForDemo(admin, products = []) {
  */
 export async function resetTestStoreForDemo(admin, shop, options = {}) {
   const { priorityProducts = [] } = options;
-  const { restoreShopFromBaseline } = await import("./shop-baseline.server.js");
-  const { deactivateSchemaForShop } = await import("./schema.server.js");
-  const { resetApplyQuotaAfterRestore } = await import("./apply-quota.server.js");
+  const { fullRestoreShopToOriginal } = await import("./shop-baseline.server.js");
 
-  const applyRollback = await rollbackAllBatches(admin, shop);
-
-  let baselineResult = { restored: false, reason: "no_baseline", productCount: 0, schemaRestored: false };
-  try {
-    baselineResult = await restoreShopFromBaseline(admin, shop, rollbackSchemaFromTheme);
-  } catch (err) {
-    baselineResult = { restored: false, reason: "baseline_failed", error: err.message, productCount: 0 };
-  }
-
-  let stripped = 0;
-  if (!baselineResult.restored && priorityProducts.length > 0) {
-    const stripResult = await stripPriorityProductsForDemo(admin, priorityProducts);
-    stripped = stripResult.stripped;
-  }
-
-  if (!baselineResult.schemaRestored) {
-    await deactivateSchemaForShop(admin, shop).catch(() => {});
-  }
-
-  await resetApplyQuotaAfterRestore(shop);
+  const result = await fullRestoreShopToOriginal(admin, shop, {
+    resetQuota: true,
+    priorityProductsForStrip: priorityProducts,
+    allowPilotStrip: true,
+  });
 
   await prisma.shopSettings.updateMany({
     where: { shop },
     data: { marketsConfirmed: false },
   });
 
-  await prisma.entityProfile.updateMany({
-    where: { shop },
-    data: { schemaActive: false, schemaThemeId: null },
-  });
-
-  return {
-    ...applyRollback,
-    baselineRestored: baselineResult.restored,
-    baselineReason: baselineResult.reason,
-    baselineProductCount: baselineResult.productCount ?? 0,
-    strippedForDemo: stripped,
-    schemaRestored: applyRollback.schemaRestored || baselineResult.schemaRestored,
-    productCount: Math.max(applyRollback.productCount ?? 0, baselineResult.productCount ?? 0, stripped),
-    batches: applyRollback.batches ?? 0,
-  };
+  return result;
 }
 
 export function buildAppliedItemsFromPreview(items = []) {

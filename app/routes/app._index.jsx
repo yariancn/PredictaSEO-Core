@@ -36,7 +36,7 @@ export async function action({ request }) {
   );
   const { getSchemaStatus } = await import("../lib/schema.server.js");
   const { getStoreLocale, t } = await import("../lib/locale.js");
-  const { isBillingBypassed, isBillingTest } = await import("../lib/billing.server.js");
+  const { isBillingBypassed, isBillingTest, canUsePilotReset } = await import("../lib/billing.server.js");
 
   const { admin, session, billing } = await authenticate.admin(request);
   const form = await request.formData();
@@ -55,9 +55,8 @@ export async function action({ request }) {
 
   if (intent === "restore-all") {
     try {
-      const result = await rollbackAllBatches(admin, session.shop);
-      const { resetApplyQuotaAfterRestore } = await import("../lib/apply-quota.server.js");
-      await resetApplyQuotaAfterRestore(session.shop);
+      const { fullRestoreShopToOriginal } = await import("../lib/shop-baseline.server.js");
+      const result = await fullRestoreShopToOriginal(admin, session.shop, { resetQuota: true });
       return json({ intent: "restore-all", restoreResult: result });
     } catch (err) {
       return json({ intent: "restore-all", restoreError: err.message ?? "Restore failed" });
@@ -65,7 +64,7 @@ export async function action({ request }) {
   }
 
   if (intent === "reset-test-store") {
-    if (!isBillingBypassed()) {
+    if (!canUsePilotReset(session.shop)) {
       return json({ intent: "reset-test-store", resetTestError: "Not available in production billing mode" });
     }
     try {
@@ -435,6 +434,11 @@ function formatResetTestMessage(copy, result) {
 
 function formatRestoreMessage(copy, intent, result) {
   if (!result) return "";
+  if (result.method === "baseline" || result.baselineRestored) {
+    return fillTemplate(copyText(copy, "restoreBaselineSuccess", ""), {
+      products: String(result.baselineProductCount ?? result.productCount ?? 0),
+    });
+  }
   const products = String(result.productCount ?? 0);
   const batches = String(result.batches ?? 0);
   const snapshotCount = result.snapshotCount ?? result.restored ?? 0;
@@ -1373,12 +1377,24 @@ function BackupStatusPanel({ copy, backupSummary }) {
   }
 
   return (
-    <div style={{ ...theme.card, borderColor: "rgba(255,255,255,0.08)" }}>
-      <h2 style={{ ...theme.h2, fontSize: "0.95rem" }}>{copyText(copy, "backupStatusTitle", "Backup status")}</h2>
-      <p style={{ ...theme.body, fontSize: "0.82rem", color: "#8b8b9a", margin: 0, lineHeight: 1.55 }}>
-        {fillCopy(copyText(copy, bodyKey, ""), vars)}
-      </p>
-    </div>
+    <>
+      {backupSummary.baselineMissing && (
+        <div style={{ ...theme.card, borderColor: "rgba(251,191,36,0.45)", background: "rgba(251,191,36,0.08)", marginBottom: "14px" }}>
+          <h2 style={{ ...theme.h2, color: "#fbbf24", fontSize: "0.95rem" }}>
+            {copyText(copy, "baselineMissingTitle", "Original backup missing")}
+          </h2>
+          <p style={{ ...theme.body, fontSize: "0.82rem", color: "#e8e8ef", margin: 0, lineHeight: 1.55 }}>
+            {copyText(copy, "baselineMissingBody", "")}
+          </p>
+        </div>
+      )}
+      <div style={{ ...theme.card, borderColor: "rgba(255,255,255,0.08)" }}>
+        <h2 style={{ ...theme.h2, fontSize: "0.95rem" }}>{copyText(copy, "backupStatusTitle", "Backup status")}</h2>
+        <p style={{ ...theme.body, fontSize: "0.82rem", color: "#8b8b9a", margin: 0, lineHeight: 1.55 }}>
+          {fillCopy(copyText(copy, bodyKey, ""), vars)}
+        </p>
+      </div>
+    </>
   );
 }
 
@@ -1780,7 +1796,7 @@ function IndexWizard({
             ))}
           </div>
 
-          {pilotMode && (
+          {(pilotMode || backupSummary?.baselineMissing) && (
             <>
               <BackupStatusPanel copy={copy} backupSummary={backupSummary} />
             <div style={{ ...theme.card, borderColor: "rgba(251,191,36,0.45)", background: "rgba(251,191,36,0.08)" }}>
@@ -2157,7 +2173,7 @@ function IndexWizard({
             </>
           )}
 
-          {pilotMode && (
+          {(pilotMode || backupSummary?.baselineMissing) && (
             <button
               type="button"
               style={{ ...theme.btnGhost, width: "100%", marginTop: "10px", borderColor: "rgba(251,191,36,0.5)", color: "#fbbf24" }}

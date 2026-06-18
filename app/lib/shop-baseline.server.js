@@ -1,6 +1,6 @@
 import prisma from "../db.server.js";
 
-/** Immutable first-scan snapshot — never deleted by Restore all. Used for pilot/demo reset. */
+/** Immutable original state — NEVER deleted by Restore. Required for merchant-safe rollback. */
 export const BASELINE_BATCH = "__baseline__";
 
 const PRODUCT_UPDATE = `#graphql
@@ -19,26 +19,7 @@ export async function hasShopBaseline(shop) {
   return count > 0;
 }
 
-/**
- * Save priority product SEO as it was on first audit (once per shop).
- * Lets pilot reset return to pre-PredictaCore state even after Restore all consumed apply backups.
- */
-export async function ensureShopBaseline(shop, products = [], schemaOriginal = null, shopId = null) {
-  if (!shop || products.length === 0) return { created: false, reason: "no_products" };
-
-  const existing = await prisma.optimizationSnapshot.count({
-    where: { shop, batchId: BASELINE_BATCH },
-  });
-  if (existing > 0) return { created: false, reason: "exists", count: existing };
-
-  const applyRunCount = await prisma.applyRun.count({ where: { shop } });
-  const applySnapshotCount = await prisma.optimizationSnapshot.count({
-    where: { shop, batchId: { not: BASELINE_BATCH } },
-  });
-  if (applyRunCount > 0 || applySnapshotCount > 0) {
-    return { created: false, reason: "after_apply" };
-  }
-
+async function writeBaselineRows(shop, products, schemaOriginal, websiteOriginal, shopId) {
   const appliedAt = new Date();
   let rows = 0;
 
@@ -81,10 +62,58 @@ export async function ensureShopBaseline(shop, products = [], schemaOriginal = n
         appliedAt,
       },
     });
-    rows += 1;
+    await prisma.optimizationSnapshot.create({
+      data: {
+        batchId: BASELINE_BATCH,
+        shop,
+        resourceType: "shop",
+        resourceId: shopId,
+        field: "metafield.predictacore.website_json_ld",
+        originalValue: websiteOriginal ?? "",
+        optimizedValue: null,
+        appliedAt,
+      },
+    });
+    rows += 2;
   }
 
-  return { created: true, count: rows, productCount: products.length };
+  return { count: rows, productCount: products.length };
+}
+
+/**
+ * Capture the store exactly as it was before PredictaCore's first Apply.
+ * Called on first audit (pre-apply) and again immediately before Apply if still missing.
+ */
+export async function captureBaselineFromCatalog(admin, shop, products = [], shopId = null) {
+  if (!shop || products.length === 0) return { created: false, reason: "no_products" };
+  if (await hasShopBaseline(shop)) return { created: false, reason: "exists" };
+
+  let schemaOriginal = "";
+  let websiteOriginal = "";
+  if (admin) {
+    try {
+      const { readOrganizationSchemaMetafield, readWebsiteJsonLdMetafield } = await import("./schema.server.js");
+      schemaOriginal = await readOrganizationSchemaMetafield(admin);
+      websiteOriginal = await readWebsiteJsonLdMetafield(admin);
+    } catch {
+      schemaOriginal = "";
+      websiteOriginal = "";
+    }
+  }
+
+  const written = await writeBaselineRows(shop, products, schemaOriginal, websiteOriginal, shopId);
+  return { created: true, ...written };
+}
+
+/** @deprecated use captureBaselineFromCatalog */
+export async function ensureShopBaseline(shop, products = [], schemaOriginal = null, shopId = null) {
+  if (await hasShopBaseline(shop)) return { created: false, reason: "exists" };
+  const written = await writeBaselineRows(shop, products, schemaOriginal ?? "", "", shopId);
+  return { created: true, ...written };
+}
+
+export async function captureBaselineBeforeApply(admin, shop, products, shopRecord) {
+  return captureBaselineFromCatalog(admin, shop, products, shopRecord?.id ?? null);
 }
 
 export async function getBackupSummary(shop) {
@@ -107,9 +136,12 @@ export async function getBackupSummary(shop) {
     applyRows.some((r) => r.resourceType === "shop" || r.resourceType === "theme") ||
     baselineRows.some((r) => r.resourceType === "shop" || r.resourceType === "theme");
 
+  const applyRunCount = await prisma.applyRun.count({ where: { shop } });
+
   return {
     hasActiveBackup: applyRows.length > 0,
     hasBaseline: baselineRows.length > 0,
+    baselineMissing: applyRunCount > 0 && baselineRows.length === 0,
     applyProductCount: applyProductIds.size,
     baselineProductCount: baselineProductIds.size,
     applyBatchCount: applyBatchIds.size,
@@ -156,6 +188,15 @@ export async function restoreProductsFromSnapshots(admin, snapshots) {
   return { productsRestored, productCount: byProduct.size };
 }
 
+async function restoreWebsiteFromBaseline(admin, snapshots) {
+  const websiteSnap = snapshots.find((s) => s.field?.includes("website_json_ld"));
+  if (!websiteSnap) return false;
+
+  const { restoreWebsiteJsonLdFromValue } = await import("./schema.server.js");
+  await restoreWebsiteJsonLdFromValue(admin, websiteSnap.originalValue ?? "");
+  return true;
+}
+
 export async function restoreShopFromBaseline(admin, shop, rollbackSchemaFromTheme) {
   const snapshots = await prisma.optimizationSnapshot.findMany({
     where: { shop, batchId: BASELINE_BATCH },
@@ -165,11 +206,22 @@ export async function restoreShopFromBaseline(admin, shop, rollbackSchemaFromThe
     return { restored: false, reason: "no_baseline", productCount: 0, schemaRestored: false };
   }
 
-  const schemaSnaps = snapshots.filter((s) => s.resourceType === "shop" || s.resourceType === "theme");
+  const schemaSnaps = snapshots.filter(
+    (s) =>
+      s.resourceType === "shop" &&
+      (s.field?.includes("organization_json_ld") || s.field?.includes("theme")),
+  );
   const productSnaps = snapshots.filter((s) => s.resourceType === "product");
+  const productIds = [...new Set(productSnaps.map((s) => s.resourceId))];
 
   if (schemaSnaps.length && rollbackSchemaFromTheme) {
     await rollbackSchemaFromTheme(admin, shop, schemaSnaps);
+  }
+  await restoreWebsiteFromBaseline(admin, snapshots);
+
+  const { deleteProductJsonLd } = await import("./product-schema.server.js");
+  for (const productId of productIds) {
+    await deleteProductJsonLd(admin, productId).catch(() => {});
   }
 
   const productOutcome = productSnaps.length
@@ -183,5 +235,72 @@ export async function restoreShopFromBaseline(admin, shop, rollbackSchemaFromThe
     baselineProductCount: productOutcome.productCount,
     schemaRestored: schemaSnaps.length > 0,
     snapshotCount: snapshots.length,
+    productIds,
+  };
+}
+
+/**
+ * Full restore for any merchant: revert Shopify to immutable baseline, then clear apply backups.
+ * Falls back to apply-batch rollback only when baseline was never captured (legacy stores).
+ */
+export async function fullRestoreShopToOriginal(admin, shop, options = {}) {
+  const { resetQuota = true, priorityProductsForStrip = [], allowPilotStrip = false } = options;
+  const { rollbackSchemaFromTheme } = await import("./schema.server.js");
+  const { resetApplyQuotaAfterRestore } = await import("./apply-quota.server.js");
+
+  if (await hasShopBaseline(shop)) {
+    const baselineResult = await restoreShopFromBaseline(admin, shop, rollbackSchemaFromTheme);
+
+    await prisma.optimizationSnapshot.deleteMany({
+      where: { shop, batchId: { not: BASELINE_BATCH } },
+    });
+
+    await prisma.entityProfile.updateMany({
+      where: { shop },
+      data: { schemaActive: false, schemaThemeId: null },
+    });
+
+    if (resetQuota) {
+      await resetApplyQuotaAfterRestore(shop);
+    }
+
+    return {
+      method: "baseline",
+      baselineRestored: true,
+      ...baselineResult,
+      batches: 0,
+    };
+  }
+
+  const { rollbackAllBatches, stripPriorityProductsForDemo } = await import("./apply.server.js");
+  const applyRollback = await rollbackAllBatches(admin, shop);
+
+  let stripped = 0;
+  if (
+    allowPilotStrip &&
+    (applyRollback.snapshotCount ?? 0) === 0 &&
+    applyRollback.batches === 0 &&
+    priorityProductsForStrip.length > 0
+  ) {
+    const stripResult = await stripPriorityProductsForDemo(admin, priorityProductsForStrip);
+    stripped = stripResult.stripped;
+  }
+
+  const { deactivateSchemaForShop } = await import("./schema.server.js");
+  if (!applyRollback.schemaRestored) {
+    await deactivateSchemaForShop(admin, shop).catch(() => {});
+  }
+
+  if (resetQuota) {
+    await resetApplyQuotaAfterRestore(shop);
+  }
+
+  return {
+    method: applyRollback.snapshotCount > 0 ? "apply_snapshots" : stripped > 0 ? "pilot_strip" : "none",
+    baselineRestored: false,
+    baselineReason: "no_baseline",
+    strippedForDemo: stripped,
+    ...applyRollback,
+    productCount: Math.max(applyRollback.productCount ?? 0, stripped),
   };
 }
