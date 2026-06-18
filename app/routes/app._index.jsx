@@ -371,6 +371,19 @@ const theme = {
     fontSize: "0.9rem",
     cursor: "not-allowed",
   },
+  btnRestore: {
+    width: "100%",
+    padding: "14px 20px",
+    marginTop: "12px",
+    background: "rgba(251,191,36,0.15)",
+    color: "#fde68a",
+    border: "1px solid rgba(251,191,36,0.6)",
+    borderRadius: "10px",
+    fontSize: "0.95rem",
+    fontWeight: 600,
+    cursor: "pointer",
+    boxShadow: "0 2px 12px rgba(251,191,36,0.2)",
+  },
   bullet: (color) => ({
     margin: "0 0 8px 0",
     paddingLeft: "14px",
@@ -690,7 +703,31 @@ function ApplyResultsCard({
   );
 }
 
-function AlreadyOptimizedCard({ copy, executive, onViewDashboard }) {
+function RestoreAllButton({ copy, restoreLoading, applyFetcher, style }) {
+  return (
+    <button
+      type="button"
+      style={style ?? theme.btnRestore}
+      disabled={restoreLoading}
+      onClick={() => {
+        if (window.confirm(copy.restoreAllConfirm)) {
+          applyFetcher.submit({ intent: "restore-all" }, { method: "post" });
+        }
+      }}
+    >
+      {restoreLoading ? copy.restoring : copy.restoreAll}
+    </button>
+  );
+}
+
+function AlreadyOptimizedCard({
+  copy,
+  executive,
+  onViewDashboard,
+  showRestore,
+  restoreLoading,
+  applyFetcher,
+}) {
   return (
     <div style={{ ...theme.card, borderColor: "rgba(163,230,53,0.35)", background: "rgba(163,230,53,0.08)" }}>
       <h2 style={{ ...theme.h2, color: "#a3e635" }}>{copy.alreadyOptimizedTitle}</h2>
@@ -700,8 +737,11 @@ function AlreadyOptimizedCard({ copy, executive, onViewDashboard }) {
       <p style={{ ...theme.body, marginBottom: "14px", color: "#e8e8ef", lineHeight: 1.55 }}>
         {copy.alreadyOptimizedBody}
       </p>
+      {showRestore && applyFetcher && (
+        <RestoreAllButton copy={copy} restoreLoading={restoreLoading} applyFetcher={applyFetcher} />
+      )}
       {onViewDashboard && (
-        <button type="button" style={{ ...theme.btnGhost, width: "100%" }} onClick={onViewDashboard}>
+        <button type="button" style={{ ...theme.btnGhost, width: "100%", color: "#c8c8d0" }} onClick={onViewDashboard}>
           {copy.viewScoreDashboard}
         </button>
       )}
@@ -842,7 +882,7 @@ function Step4Actions({
         </p>
         <button
           type="button"
-          style={{ ...theme.btnPrimary, width: "100%" }}
+          style={{ ...theme.btnRestore }}
           disabled={restoreLoading}
           onClick={() => {
             if (window.confirm(copy.restoreAllConfirm)) {
@@ -878,18 +918,12 @@ function PostApplyMerchantPanel({
       </button>
       {backupAvailable && (
         <>
-          <button
-            type="button"
-            style={{ ...theme.btnGhost, width: "100%", marginBottom: "10px" }}
-            disabled={restoreLoading}
-            onClick={() => {
-              if (window.confirm(copy.restoreAllConfirm)) {
-                applyFetcher.submit({ intent: "restore-all" }, { method: "post" });
-              }
-            }}
-          >
-            {restoreLoading ? copy.restoring : copy.restoreAll}
-          </button>
+          <RestoreAllButton
+            copy={copy}
+            restoreLoading={restoreLoading}
+            applyFetcher={applyFetcher}
+            style={{ ...theme.btnRestore, marginBottom: "10px" }}
+          />
           {showUndoLast && (
             <button
               type="button"
@@ -1139,6 +1173,8 @@ export default function Index() {
 
   const backupAvailable = hasBackup || applyFetcher.data?.hasBackup;
   const firstApplyDone = Boolean(billing?.applyQuota?.setupDone);
+  const restoreAvailable =
+    backupAvailable || Boolean(backupSummary?.hasBaseline) || Boolean(backupSummary?.hasActiveBackup) || firstApplyDone;
   const setupComplete = Boolean(
     preview &&
       executive &&
@@ -1343,6 +1379,7 @@ export default function Index() {
         resetTestResult={resetTestResult}
         resetTestError={resetTestError}
         backupAvailable={backupAvailable}
+        restoreAvailable={restoreAvailable}
         uninstallRestorePreference={uninstallRestorePreference}
         billingJustReturned={billingJustReturned}
         auditReloading={auditReloading}
@@ -1608,6 +1645,7 @@ function IndexWizard({
   resetTestResult,
   resetTestError,
   backupAvailable,
+  restoreAvailable,
   uninstallRestorePreference,
   billingJustReturned,
   auditReloading,
@@ -1990,23 +2028,13 @@ function IndexWizard({
           )}
 
           {showStep1AlreadyDone && (
-            <>
-              <AlreadyOptimizedCard copy={copy} executive={executive} />
-              {backupAvailable && (
-                <button
-                  type="button"
-                  style={{ ...theme.btnGhost, width: "100%", marginTop: "10px" }}
-                  disabled={restoreLoading}
-                  onClick={() => {
-                    if (window.confirm(copy.restoreAllConfirm)) {
-                      applyFetcher.submit({ intent: "restore-all" }, { method: "post" });
-                    }
-                  }}
-                >
-                  {restoreLoading ? copy.restoring : copy.restoreAll}
-                </button>
-              )}
-            </>
+            <AlreadyOptimizedCard
+              copy={copy}
+              executive={executive}
+              showRestore={restoreAvailable}
+              restoreLoading={restoreLoading}
+              applyFetcher={applyFetcher}
+            />
           )}
 
           {setupComplete && backupAvailable && (
@@ -2045,19 +2073,8 @@ function IndexWizard({
               <p style={{ ...theme.body, color: "#e8e8ef", marginBottom: "14px", lineHeight: 1.55 }}>
                 {copyText(copy, "step2NoPendingWork", "")}
               </p>
-              {backupAvailable && (
-                <button
-                  type="button"
-                  style={{ ...theme.btnPrimary, width: "100%" }}
-                  disabled={restoreLoading}
-                  onClick={() => {
-                    if (window.confirm(copy.restoreAllConfirm)) {
-                      applyFetcher.submit({ intent: "restore-all" }, { method: "post" });
-                    }
-                  }}
-                >
-                  {restoreLoading ? copy.restoring : copy.restoreAll}
-                </button>
+              {restoreAvailable && (
+                <RestoreAllButton copy={copy} restoreLoading={restoreLoading} applyFetcher={applyFetcher} />
               )}
             </div>
           )}
@@ -2108,7 +2125,7 @@ function IndexWizard({
 
       {step === 3 && (
         <>
-          {allComplete && backupAvailable && !applyResult && (
+          {allComplete && restoreAvailable && !applyResult && (
             <div style={{ ...theme.card, borderColor: "rgba(251,191,36,0.4)", background: "rgba(251,191,36,0.08)" }}>
               <h2 style={{ ...theme.h2, color: "#fbbf24" }}>{copy.resetTitle}</h2>
               <p style={{ ...theme.body, marginBottom: "10px" }}>{copy.resetBody}</p>
@@ -2117,7 +2134,7 @@ function IndexWizard({
               </p>
               <button
                 type="button"
-                style={{ ...theme.btnPrimary, width: "100%" }}
+                style={{ ...theme.btnRestore }}
                 disabled={restoreLoading}
                 onClick={() => {
                   if (window.confirm(copy.restoreAllConfirm)) {
@@ -2167,7 +2184,14 @@ function IndexWizard({
           )}
 
           {showAlreadyOptimized && (
-            <AlreadyOptimizedCard copy={copy} executive={executive} onViewDashboard={() => setStep(1)} />
+            <AlreadyOptimizedCard
+              copy={copy}
+              executive={executive}
+              onViewDashboard={() => setStep(1)}
+              showRestore={restoreAvailable}
+              restoreLoading={restoreLoading}
+              applyFetcher={applyFetcher}
+            />
           )}
 
           {applyResult && (
@@ -2233,35 +2257,24 @@ function IndexWizard({
             </div>
           )}
 
-          {backupAvailable && (
+          {restoreAvailable && (
             <>
               {applyResult && !pilotMode ? (
                 <PostApplyMerchantPanel
                   copy={copy}
                   applyFetcher={applyFetcher}
                   restoreLoading={restoreLoading}
-                  backupAvailable={backupAvailable}
+                  backupAvailable={restoreAvailable}
                   showUndoLast={backupBatchCount >= 1}
                   onViewDashboard={() => setStep(1)}
                 />
               ) : (
                 <>
-                  <button
-                    type="button"
-                    style={{ ...theme.btnPrimary, width: "100%", marginTop: "10px" }}
-                    disabled={restoreLoading}
-                    onClick={() => {
-                      if (window.confirm(copy.restoreAllConfirm)) {
-                        applyFetcher.submit({ intent: "restore-all" }, { method: "post" });
-                      }
-                    }}
-                  >
-                    {restoreLoading ? copy.restoring : copy.restoreAll}
-                  </button>
+                  <RestoreAllButton copy={copy} restoreLoading={restoreLoading} applyFetcher={applyFetcher} />
                   {backupBatchCount > 1 && (
                     <button
                       type="button"
-                      style={{ ...theme.btnGhost, width: "100%", marginTop: "10px" }}
+                      style={{ ...theme.btnGhost, width: "100%", marginTop: "10px", color: "#c8c8d0" }}
                       disabled={restoreLoading}
                       onClick={() => {
                         if (window.confirm(copyText(copy, "restoreLastConfirm", copy.restoreWarning))) {

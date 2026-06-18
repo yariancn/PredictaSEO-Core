@@ -159,7 +159,7 @@ const MESSAGES = {
       "To verify charges: Shopify Admin → Settings → Apps and sales channels → PredictaCore → View charges. Test stores may show $0 test charges.",
     alreadyOptimizedTitle: "Already optimized",
     alreadyOptimizedBody:
-      "No pending changes right now — your store was optimized in a previous session. Use Restore below to undo and run the wizard again.",
+      "No pending changes right now — your store was optimized in a previous session. Click the yellow Restore button below to undo and run the wizard again.",
     refreshingStore: "Updating your store…",
     confirmingPayment: "Confirming payment…",
     restoreWarning:

@@ -178,7 +178,7 @@ export async function loadAuditData(request) {
       await captureBaselineFromCatalog(admin, session.shop, priorityProducts, data.shop?.id);
     }
     backupSummary = await getBackupSummary(session.shop);
-    hasBackup = backupSummary.hasActiveBackup;
+    hasBackup = backupSummary.hasActiveBackup || backupSummary.hasBaseline;
     backupBatchCount = backupSummary.applyBatchCount;
   } catch {
     hasBackup = false;
