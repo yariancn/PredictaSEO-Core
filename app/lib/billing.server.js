@@ -8,7 +8,8 @@ export function isBillingBypassed() {
 
 /** Dev/test stores that may use pilot reset without BILLING_DISABLED. Comma-separated myshopify domains. */
 export function isPilotTestShop(shop) {
-  const defaults = "ai-entity-test-yarian-daelj76i.myshopify.com";
+  const defaults =
+    "regen1-ml0q1sil.myshopify.com,ai-entity-test-yarian-daelj76i.myshopify.com";
   const raw = process.env.PILOT_TEST_SHOPS?.trim() || defaults;
   return raw
     .split(",")
