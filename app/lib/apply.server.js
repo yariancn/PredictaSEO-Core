@@ -1,7 +1,13 @@
 import prisma from "../db.server.js";
 import { describePreviewChanges } from "./preview.js";
 import { inferProductCategory } from "./forense.server.js";
-import { applySchemaToTheme, rollbackSchemaFromTheme } from "./schema.server.js";
+import { applySchemaToTheme, rollbackSchemaFromTheme, saveWebsiteJsonLd } from "./schema.server.js";
+import {
+  buildSeoForProduct,
+  buildProductDescriptionHtml,
+} from "./content-engine.server.js";
+import { buildProductJsonLd, saveProductJsonLd } from "./product-schema.server.js";
+import { detectGeoMismatch } from "./markets.server.js";
 
 const PRODUCT_UPDATE = `#graphql
   mutation PredictaCoreProductUpdate($input: ProductInput!) {
@@ -19,63 +25,25 @@ function stripHtml(html) {
   return (html ?? "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
 
-function renderPattern(pattern, vars) {
-  return pattern.replace(/\{(\w+)\}/g, (_, key) => vars[key] ?? "");
+function needsGeoFix(product, marketContext) {
+  const blob = `${product.seo?.title ?? ""} ${product.seo?.description ?? ""}`;
+  return detectGeoMismatch(blob, marketContext?.countryCodes ?? []);
 }
 
-function buildSeoProposal(product, shopName, categoryName) {
-  const vars = {
-    product_title: product.title,
-    category: categoryName,
-    category_lower: categoryName.toLowerCase(),
-    shop_name: shopName,
-  };
-  const titlePattern = "{product_title} | Premium {category} — US & Canada";
-  const descPattern =
-    "Shop {product_title} at {shop_name}. Premium {category_lower} for US & Canada riders. Fast shipping.";
-  return {
-    seoTitle: renderPattern(titlePattern, vars).slice(0, 70),
-    seoDescription: renderPattern(descPattern, vars).slice(0, 160),
-  };
+function needsSeoTitle(product, marketContext) {
+  return (product.seo?.title ?? "").trim().length < 10 || needsGeoFix(product, marketContext);
 }
 
-function buildProductDescriptionHtml(product, shopName) {
-  const title = product.title?.trim() || "Product";
-  const vendor = product.vendor?.trim();
-  const type = product.productType?.trim();
-  const tags = (product.tags ?? []).slice(0, 5).join(", ");
-  const intro = vendor
-    ? `${title} from ${vendor}${type ? ` — ${type}` : ""}.`
-    : `${title}${type ? ` — ${type}` : ""}.`;
-
-  const bullets = [];
-  if (type) bullets.push(`Category: ${type}`);
-  if (tags) bullets.push(`Tags: ${tags}`);
-  bullets.push(`Available at ${shopName}`);
-
-  const body = stripHtml(product.descriptionHtml ?? product.description);
-  const existing = body.length > 40 ? `<p>${body.slice(0, 500)}</p>` : "";
-
-  return `<p>${intro}</p>
-${existing}
-<ul>${bullets.map((b) => `<li>${b}</li>`).join("")}</ul>
-<p>Shop with confidence at ${shopName}.</p>`;
-}
-
-function needsSeoTitle(product) {
-  return (product.seo?.title ?? "").trim().length < 10;
-}
-
-function needsSeoDescription(product) {
-  return (product.seo?.description ?? "").trim().length < 50;
+function needsSeoDescription(product, marketContext) {
+  return (product.seo?.description ?? "").trim().length < 50 || needsGeoFix(product, marketContext);
 }
 
 function needsBodyDescription(product) {
   return stripHtml(product.descriptionHtml ?? product.description).length < 40;
 }
 
-export function buildPreviewPlan(products, shopName, matrix, options = {}) {
-  const { jsonLd, schemaActive = false } = options;
+export async function buildPreviewPlan(products, shopName, matrix, options = {}) {
+  const { jsonLd, schemaActive = false, marketContext, shop } = options;
   const mirrorIds = new Set(
     matrix.filter((r) => r.viability === "ALTA").slice(0, 3).map((r) => r.product.id),
   );
@@ -84,7 +52,9 @@ export function buildPreviewPlan(products, shopName, matrix, options = {}) {
   for (const product of products) {
     const category = inferProductCategory(product);
     const isMirror = mirrorIds.has(product.id);
-    const proposed = buildSeoProposal(product, shopName, category);
+    const proposed = await buildSeoForProduct(product, shopName, category, marketContext, {
+      useAi: isMirror,
+    });
     const changes = {};
     const before = {
       seoTitle: product.seo?.title?.trim() || "",
@@ -93,16 +63,16 @@ export function buildPreviewPlan(products, shopName, matrix, options = {}) {
     };
     const after = { ...before };
 
-    if (needsSeoTitle(product)) {
+    if (needsSeoTitle(product, marketContext)) {
       changes.seoTitle = proposed.seoTitle;
       after.seoTitle = proposed.seoTitle;
     }
-    if (needsSeoDescription(product)) {
+    if (needsSeoDescription(product, marketContext)) {
       changes.seoDescription = proposed.seoDescription;
       after.seoDescription = proposed.seoDescription;
     }
     if (needsBodyDescription(product)) {
-      changes.descriptionHtml = buildProductDescriptionHtml(product, shopName);
+      changes.descriptionHtml = buildProductDescriptionHtml(product, shopName, marketContext);
       after.descriptionHtml = changes.descriptionHtml;
     }
 
@@ -110,9 +80,11 @@ export function buildPreviewPlan(products, shopName, matrix, options = {}) {
 
     items.push({
       id: product.id,
+      handle: product.handle,
       title: product.title,
       category,
       isMirror,
+      aiGenerated: Boolean(proposed.aiGenerated),
       before: {
         seoTitle: before.seoTitle || "—",
         seoDescription: before.seoDescription || "—",
@@ -121,12 +93,14 @@ export function buildPreviewPlan(products, shopName, matrix, options = {}) {
       after,
       changes,
       originals: before,
+      productSnapshot: product,
     });
   }
 
   const schema = {
     willApply: !schemaActive && !!jsonLd,
     jsonLd: jsonLd ?? null,
+    websiteWillApply: Boolean(shop && !schemaActive),
   };
 
   return {
@@ -136,6 +110,7 @@ export function buildPreviewPlan(products, shopName, matrix, options = {}) {
     mirrorCount: items.filter((i) => i.isMirror).length,
     batchCount: new Set(items.map((i) => i.category)).size,
     schema,
+    marketContext,
   };
 }
 
@@ -235,16 +210,33 @@ async function saveProductSnapshots(shop, batchId, item) {
 }
 
 export async function applyPreviewPlan(admin, shop, preview, batchId, options = {}) {
-  const { jsonLd } = options;
+  const { jsonLd, shop: shopRecord, marketContext } = options;
   let applied = 0;
   let failedCount = 0;
   const errors = [];
   let schemaApplied = false;
   let schemaError = null;
+  let productSchemasApplied = 0;
 
   for (const item of preview.items) {
     try {
       await applyProductChange(admin, item);
+      if (shopRecord && marketContext) {
+        const productForSchema = {
+          ...(item.productSnapshot ?? {}),
+          id: item.id,
+          handle: item.handle,
+          title: item.title,
+          seo: {
+            title: item.after?.seoTitle ?? item.changes?.seoTitle,
+            description: item.after?.seoDescription ?? item.changes?.seoDescription,
+          },
+          descriptionHtml: item.after?.descriptionHtml ?? item.changes?.descriptionHtml,
+        };
+        const productLd = buildProductJsonLd(productForSchema, shopRecord, marketContext);
+        await saveProductJsonLd(admin, productForSchema, productLd);
+        productSchemasApplied += 1;
+      }
       await saveProductSnapshots(shop, batchId, item);
       applied += 1;
     } catch (err) {
@@ -256,6 +248,9 @@ export async function applyPreviewPlan(admin, shop, preview, batchId, options = 
   if (preview.schema?.willApply && jsonLd) {
     try {
       const schemaResult = await applySchemaToTheme(admin, shop, jsonLd);
+      if (shopRecord) {
+        await saveWebsiteJsonLd(admin, shopRecord).catch(() => {});
+      }
       const { shopId, originals } = schemaResult;
 
       await prisma.optimizationSnapshot.create({
@@ -277,7 +272,16 @@ export async function applyPreviewPlan(admin, shop, preview, batchId, options = 
     }
   }
 
-  return { applied, failedCount, errors, partial: failedCount > 0, batchId, schemaApplied, schemaError };
+  return {
+    applied,
+    failedCount,
+    errors,
+    partial: failedCount > 0,
+    batchId,
+    schemaApplied,
+    schemaError,
+    productSchemasApplied,
+  };
 }
 
 async function rollbackProductSnapshots(admin, snapshots) {

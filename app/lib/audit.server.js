@@ -69,6 +69,11 @@ export async function loadAuditData(request) {
     "extraApplySuccess", "applyQuotaPeriod",
     "uninstallPrefTitle", "uninstallPrefIntro", "uninstallPrefRestoreLabel", "uninstallPrefRestoreBody",
     "uninstallPrefKeepLabel", "uninstallPrefKeepBody", "uninstallPrefSaved", "uninstallPrefSteps",
+    "marketsPanelTitle", "marketsPanelBody", "marketsDetected", "marketsCountries", "marketsConfirmButton",
+    "marketsConfirmed", "marketsNotConfigured", "marketsConfirmRequired", "scoreProjectionLabel",
+    "scoreConfidenceHigh", "scoreConfidenceModerate", "validationTitle", "validationSummaryPass",
+    "validationSummaryReview", "factorMarketAlignment", "factorCatalogCompleteness", "factorBrandEntity",
+    "factorSemanticRichness", "factorCommercialSignals",
   ];
 
   const buildCopy = (locale) =>
@@ -89,24 +94,66 @@ export async function loadAuditData(request) {
   const locale = getStoreLocale(data);
   const catalogData = await prepareCatalogData(admin, data);
   const snapshot = analyzeSnapshot(catalogData, locale);
-  const categories = groupProductsByCategory(catalogData.products?.nodes ?? [], snapshot.matrix);
+
+  const { getShopMarketSettings } = await import("./shop-market.server.js");
+  const { buildMarketContext } = await import("./markets.server.js");
+  const { computeProbabilisticScore, attachProbabilisticToExecutive } = await import(
+    "./score-probability.server.js"
+  );
+  const { buildValidationReport } = await import("./validation.server.js");
+
+  const marketOverrides = await getShopMarketSettings(session.shop);
+  const marketContext = buildMarketContext(data, marketOverrides);
+  const priorityProducts = getPriorityProducts(catalogData.products?.nodes ?? [], snapshot.matrix);
+  const categories = groupProductsByCategory(
+    catalogData.products?.nodes ?? [],
+    snapshot.matrix,
+    marketContext,
+    data.shop.name,
+  );
   const jsonLd = buildOrganizationJsonLd(
     data.shop,
-    snapshot.markets,
+    marketContext,
     data.locations?.nodes ?? [],
+    categories,
+    priorityProducts,
   );
   const { active: schemaActive } = await getSchemaStatus(session.shop);
-  const priorityProducts = getPriorityProducts(catalogData.products?.nodes ?? [], snapshot.matrix);
-  const preview = buildPreviewPlan(priorityProducts, data.shop.name, snapshot.matrix, {
+  const preview = await buildPreviewPlan(priorityProducts, data.shop.name, snapshot.matrix, {
     jsonLd,
     schemaActive,
+    marketContext,
+    shop: data.shop,
   });
-  const executive = analyzeExecutive(catalogData, locale, {
+  const executiveBase = analyzeExecutive(catalogData, locale, {
     previewItems: preview.items,
     schemaActive,
     schemaPending: preview.schema?.willApply,
   });
-  const report = buildForenseReport(data, executive, snapshot, categories, locale, preview);
+  const probabilistic = computeProbabilisticScore({
+    priorityProducts,
+    marketContext,
+    schemaActive,
+    schemaPending: preview.schema?.willApply,
+    previewItems: preview.items,
+    salesRanking: catalogData.salesRanking ?? null,
+  });
+  const executive = attachProbabilisticToExecutive(executiveBase, probabilistic);
+  const report = buildForenseReport(
+    data,
+    executive,
+    snapshot,
+    categories,
+    locale,
+    preview,
+    marketContext,
+  );
+  const validation = buildValidationReport({
+    executive,
+    marketContext,
+    preview,
+    schemaActive,
+  });
 
   const appliedCatalog = await getAppliedCatalogSummary(
     session.shop,
@@ -216,5 +263,7 @@ export async function loadAuditData(request) {
     billing: billingStatus,
     uninstallRestorePreference,
     aiSummaryAvailable: Boolean(process.env.GEMINI_API_KEY?.trim()),
+    marketContext,
+    validation,
   };
 }

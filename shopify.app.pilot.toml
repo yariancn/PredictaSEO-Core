@@ -1,0 +1,59 @@
+# PredictaCore PILOT — Custom distribution (one store, no App Store review)
+#
+# 1. Create app in Dev Dashboard → Custom distribution → enter store *.myshopify.com
+# 2. Replace client_id below with the pilot app's Client ID from Partners
+# 3. Replace handle if Partners assigned a different slug
+# 4. npm run deploy:pilot
+#
+# Railway env for pilot (same service URL is OK while public app is not in production):
+#   APP_DISTRIBUTION=single_merchant
+#   SHOPIFY_CLIENT_ID=<pilot client id>
+#   SHOPIFY_CLIENT_SECRET=<pilot secret>
+#   SHOPIFY_APP_HANDLE=<handle below>
+#   BILLING_DISABLED=true
+
+client_id = "REPLACE_WITH_PILOT_CLIENT_ID"
+name = "PredictaCore-Pilot"
+application_url = "https://predictaseo-core-production.up.railway.app"
+embedded = true
+handle = "predictacore-pilot"
+
+[build]
+automatically_update_urls_on_dev = true
+
+[webhooks]
+api_version = "2026-07"
+
+  [[webhooks.subscriptions]]
+  topics = ["app/uninstalled"]
+  uri = "/webhooks/app/uninstalled"
+
+  [[webhooks.subscriptions]]
+  topics = ["app/scopes_update"]
+  uri = "/webhooks/app/scopes_update"
+
+  [[webhooks.subscriptions]]
+  topics = ["shop/update"]
+  uri = "/webhooks/shop/update"
+
+  [[webhooks.subscriptions]]
+  topics = ["app_subscriptions/update"]
+  uri = "/webhooks/app/subscriptions_update"
+
+  [[webhooks.subscriptions]]
+  topics = ["products/delete"]
+  uri = "/webhooks/products/delete"
+
+  [[webhooks.subscriptions]]
+  compliance_topics = ["customers/data_request", "customers/redact", "shop/redact"]
+  uri = "/webhooks/compliance"
+
+[access_scopes]
+scopes = "read_products,write_products,read_content,write_content,read_locales,read_markets,read_themes,write_themes,read_locations,read_metaobject_definitions,write_metaobject_definitions,read_metaobjects,write_metaobjects,read_reports"
+
+[auth]
+redirect_urls = [
+  "https://predictaseo-core-production.up.railway.app/auth/callback",
+  "https://predictaseo-core-production.up.railway.app/auth/shopify/callback",
+  "https://predictaseo-core-production.up.railway.app/api/auth/callback"
+]

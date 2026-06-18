@@ -9,6 +9,8 @@
     "config:link": "shopify app config link",
     "generate": "shopify app generate",
     "deploy": "shopify app deploy",
+    "deploy:pilot": "shopify app deploy --config shopify.app.pilot.toml",
+    "config:pilot": "shopify app config use --config shopify.app.pilot.toml",
     "config:use": "shopify app config use",
     "env": "shopify app env",
     "start": "node scripts/start-production.mjs",

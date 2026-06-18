@@ -54,8 +54,21 @@ export const CATALOG_QUERY = `#graphql
     ) {
       nodes { ${PRODUCT_FIELDS} }
     }
-    markets(first: 10) {
-      nodes { name enabled primary }
+    markets(first: 25) {
+      nodes {
+        id
+        name
+        enabled
+        primary
+        regions(first: 50) {
+          nodes {
+            ... on MarketRegionCountry {
+              code
+              name
+            }
+          }
+        }
+      }
     }
     shopLocales {
       locale name primary published
@@ -271,6 +284,7 @@ export async function prepareCatalogData(admin, rawData) {
     ...enrichedData,
     products: { nodes: selection.products },
     catalogSelection: selection.meta,
+    salesRanking,
   };
 }
 

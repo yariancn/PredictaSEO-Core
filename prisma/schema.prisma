@@ -38,6 +38,8 @@ model ShopSettings {
   manufacturing              String?
   customization              String?
   uninstallRestorePreference String   @default("restore")
+  targetMarketsJson          String?
+  marketsConfirmed           Boolean  @default(false)
   lastAiAnalysis             DateTime @default(now())
 }
 

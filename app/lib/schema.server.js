@@ -211,3 +211,26 @@ export async function rollbackSchemaFromTheme(admin, shop, snapshots) {
     data: { schemaActive: false, schemaThemeId: null },
   });
 }
+
+export async function saveWebsiteJsonLd(admin, shop) {
+  const { buildWebsiteJsonLd, WEBSITE_JSON_LD_KEY } = await import("./product-schema.server.js");
+  const websiteLd = buildWebsiteJsonLd(shop);
+  const shopId = await getShopGid(admin);
+  const response = await admin.graphql(METAFIELDS_SET, {
+    variables: {
+      metafields: [
+        {
+          ownerId: shopId,
+          namespace: METAFIELD_NAMESPACE,
+          key: WEBSITE_JSON_LD_KEY,
+          type: "json",
+          value: JSON.stringify(websiteLd),
+        },
+      ],
+    },
+  });
+  const { data, errors } = await response.json();
+  if (errors?.length) throw new Error(errors.map((e) => e.message).join("; "));
+  const userErrors = data?.metafieldsSet?.userErrors ?? [];
+  if (userErrors.length) throw new Error(userErrors.map((e) => e.message).join("; "));
+}

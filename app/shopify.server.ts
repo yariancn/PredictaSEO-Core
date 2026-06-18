@@ -7,10 +7,18 @@ import {
 } from "@shopify/shopify-app-remix/server";
 import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
 import prisma from "./db.server";
-import { getShopifyApiKey, getShopifyAppUrl, getShopifyApiSecret, getShopifyScopes } from "./lib/env.server";
+import {
+  getAppDistribution,
+  getShopifyApiKey,
+  getShopifyAppUrl,
+  getShopifyApiSecret,
+  getShopifyScopes,
+} from "./lib/env.server";
 
 export const SETUP_PLAN = "SETUP";
 export const MAINTENANCE_PLAN = "PredictaCore monthly";
+
+const distribution = getAppDistribution();
 
 const shopify = shopifyApp({
   apiKey: getShopifyApiKey(),
@@ -20,23 +28,27 @@ const shopify = shopifyApp({
   appUrl: getShopifyAppUrl(),
   authPathPrefix: "/auth",
   sessionStorage: new PrismaSessionStorage(prisma),
-  distribution: AppDistribution.AppStore,
-  billing: {
-    [SETUP_PLAN]: {
-      amount: 35,
-      currencyCode: "USD",
-      interval: BillingInterval.OneTime,
-    },
-    [MAINTENANCE_PLAN]: {
-      lineItems: [
-        {
-          amount: 15,
-          currencyCode: "USD",
-          interval: BillingInterval.Every30Days,
+  distribution,
+  ...(distribution === AppDistribution.AppStore
+    ? {
+        billing: {
+          [SETUP_PLAN]: {
+            amount: 35,
+            currencyCode: "USD",
+            interval: BillingInterval.OneTime,
+          },
+          [MAINTENANCE_PLAN]: {
+            lineItems: [
+              {
+                amount: 15,
+                currencyCode: "USD",
+                interval: BillingInterval.Every30Days,
+              },
+            ],
+          },
         },
-      ],
-    },
-  },
+      }
+    : {}),
   future: {
     unstable_newEmbeddedAuthStrategy: true,
     expiringOfflineAccessTokens: true,

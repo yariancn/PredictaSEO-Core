@@ -1,18 +1,38 @@
+import { AppDistribution } from "@shopify/shopify-app-remix/server";
+
 const DEFAULT_SCOPES =
   "read_products,write_products,read_content,write_content,read_locales,read_markets,read_themes,write_themes,read_locations,read_metaobject_definitions,write_metaobject_definitions,read_metaobjects,write_metaobjects,read_reports";
 
 const PRODUCTION_APP_URL =
   "https://predictaseo-core-production.up.railway.app";
 
-// Public client id from shopify.app.toml — safe to ship as fallback
-const DEFAULT_API_KEY = "08747e1aee44008f3206d0e0d4c1b130";
+// Public client id from shopify.app.toml — safe to ship as fallback for App Store app only
+const DEFAULT_APP_STORE_API_KEY = "08747e1aee44008f3206d0e0d4c1b130";
+
+const DEFAULT_APP_STORE_HANDLE = "predictacore-app";
+
+/** Pilot / custom-distribution apps use APP_DISTRIBUTION=single_merchant on Railway. */
+export function getAppDistribution(): AppDistribution {
+  const raw = process.env.APP_DISTRIBUTION?.trim().toLowerCase();
+  if (raw === "single_merchant" || raw === "pilot" || raw === "custom") {
+    return AppDistribution.SingleMerchant;
+  }
+  if (raw === "shopify_admin") {
+    return AppDistribution.ShopifyAdmin;
+  }
+  return AppDistribution.AppStore;
+}
+
+export function isPilotApp() {
+  return getAppDistribution() === AppDistribution.SingleMerchant;
+}
 
 export function getShopifyApiKey() {
-  return (
-    process.env.SHOPIFY_API_KEY?.trim() ||
-    process.env.SHOPIFY_CLIENT_ID?.trim() ||
-    DEFAULT_API_KEY
-  );
+  const fromEnv =
+    process.env.SHOPIFY_API_KEY?.trim() || process.env.SHOPIFY_CLIENT_ID?.trim();
+  if (fromEnv) return fromEnv;
+  if (getAppDistribution() === AppDistribution.AppStore) return DEFAULT_APP_STORE_API_KEY;
+  return "";
 }
 
 export function getShopifyApiSecret() {
@@ -41,4 +61,9 @@ export function getShopifyScopes() {
     .split(",")
     .map((scope) => scope.trim())
     .filter(Boolean);
+}
+
+/** Shopify Admin app path slug, e.g. predictacore-app or predictacore-pilot. */
+export function getShopifyAppHandle() {
+  return process.env.SHOPIFY_APP_HANDLE?.trim() || DEFAULT_APP_STORE_HANDLE;
 }

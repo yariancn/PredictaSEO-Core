@@ -1,8 +1,12 @@
 import { CATALOG_QUERY, analyzeExecutive, analyzeSnapshot, getPriorityProducts, prepareCatalogData } from "./diagnostic.server.js";
-import { buildOrganizationJsonLd } from "./forense.server.js";
+import { buildOrganizationJsonLd, groupProductsByCategory } from "./forense.server.js";
 import { buildPreviewPlan, applyPreviewPlan, buildAppliedItemsFromPreview } from "./apply.server.js";
 import { getSchemaStatus } from "./schema.server.js";
 import { getStoreLocale } from "./locale.js";
+import { buildMarketContext } from "./markets.server.js";
+import { getShopMarketSettings } from "./shop-market.server.js";
+import { computeProbabilisticScore, attachProbabilisticToExecutive } from "./score-probability.server.js";
+import { buildValidationReport } from "./validation.server.js";
 import {
   APPLY_KIND,
   APPLY_STATUS,
@@ -20,29 +24,75 @@ export async function buildApplyContext(admin, shop) {
   const locale = getStoreLocale(data);
   const catalogData = await prepareCatalogData(admin, data);
   const snapshot = analyzeSnapshot(catalogData, locale);
-  const jsonLd = buildOrganizationJsonLd(data.shop, snapshot.markets, data.locations?.nodes ?? []);
-  const { active: schemaActive } = await getSchemaStatus(shop);
+  const marketOverrides = await getShopMarketSettings(shop);
+  const marketContext = buildMarketContext(data, marketOverrides);
   const priorityProducts = getPriorityProducts(catalogData.products?.nodes ?? [], snapshot.matrix);
-  const preview = buildPreviewPlan(priorityProducts, data.shop.name, snapshot.matrix, { jsonLd, schemaActive });
+  const categories = groupProductsByCategory(
+    catalogData.products?.nodes ?? [],
+    snapshot.matrix,
+    marketContext,
+    data.shop.name,
+  );
+  const jsonLd = buildOrganizationJsonLd(
+    data.shop,
+    marketContext,
+    data.locations?.nodes ?? [],
+    categories,
+    priorityProducts,
+  );
+  const { active: schemaActive } = await getSchemaStatus(shop);
+  const preview = await buildPreviewPlan(priorityProducts, data.shop.name, snapshot.matrix, {
+    jsonLd,
+    schemaActive,
+    marketContext,
+    shop: data.shop,
+  });
 
-  const beforeExec = analyzeExecutive(catalogData, locale, {
+  const beforeExecBase = analyzeExecutive(catalogData, locale, {
     previewItems: preview.items,
     schemaActive,
     schemaPending: preview.schema?.willApply,
   });
+  const probabilistic = computeProbabilisticScore({
+    priorityProducts,
+    marketContext,
+    schemaActive,
+    schemaPending: preview.schema?.willApply,
+    previewItems: preview.items,
+    salesRanking: catalogData.salesRanking ?? null,
+  });
+  const beforeExec = attachProbabilisticToExecutive(beforeExecBase, probabilistic);
 
-  return { data, locale, catalogData, snapshot, jsonLd, schemaActive, preview, beforeExec };
+  return {
+    data,
+    locale,
+    catalogData,
+    snapshot,
+    jsonLd,
+    schemaActive,
+    preview,
+    beforeExec,
+    marketContext,
+  };
 }
 
 export async function runStoreApply(admin, shop, { applyKind = APPLY_KIND.SETUP } = {}) {
-  const { locale, preview, jsonLd, beforeExec } = await buildApplyContext(admin, shop);
+  const { locale, preview, jsonLd, beforeExec, marketContext, data } = await buildApplyContext(admin, shop);
 
   if (preview.productCount === 0 && !preview.schema?.willApply) {
     return { skipped: true, reason: "no_changes", preview, beforeExec };
   }
 
+  if (!marketContext?.configured) {
+    return { skipped: true, reason: "markets_not_configured", preview, beforeExec };
+  }
+
   const batchId = `batch_${Date.now()}`;
-  const result = await applyPreviewPlan(admin, shop, preview, batchId, { jsonLd });
+  const result = await applyPreviewPlan(admin, shop, preview, batchId, {
+    jsonLd,
+    shop: data.shop,
+    marketContext,
+  });
 
   if (result.applied === 0 && !result.schemaApplied) {
     return {
@@ -59,10 +109,22 @@ export async function runStoreApply(admin, shop, { applyKind = APPLY_KIND.SETUP 
   let afterExec = beforeExec;
   if (!errorsAfter?.length && dataAfter) {
     const catalogAfter = await prepareCatalogData(admin, dataAfter);
-    afterExec = analyzeExecutive(catalogAfter, locale, {
+    const marketOverrides = await getShopMarketSettings(shop);
+    const marketContextAfter = buildMarketContext(dataAfter, marketOverrides);
+    const snapshotAfter = analyzeSnapshot(catalogAfter, locale);
+    const priorityAfter = getPriorityProducts(catalogAfter.products?.nodes ?? [], snapshotAfter.matrix);
+    const afterBase = analyzeExecutive(catalogAfter, locale, {
       previewItems: [],
       schemaActive: result.schemaApplied || (await getSchemaStatus(shop)).active,
     });
+    const afterProb = computeProbabilisticScore({
+      priorityProducts: priorityAfter,
+      marketContext: marketContextAfter,
+      schemaActive: result.schemaApplied || (await getSchemaStatus(shop)).active,
+      previewItems: [],
+      salesRanking: catalogAfter.salesRanking ?? null,
+    });
+    afterExec = attachProbabilisticToExecutive(afterBase, afterProb);
   }
 
   if (applyKind === APPLY_KIND.EXTRA) {
@@ -76,6 +138,14 @@ export async function runStoreApply(admin, shop, { applyKind = APPLY_KIND.SETUP 
     note: result.partial ? `partial:${result.failedCount}` : null,
   });
 
+  const validation = buildValidationReport({
+    executive: afterExec,
+    marketContext,
+    preview,
+    applyResult: result,
+    schemaActive: result.schemaApplied,
+  });
+
   const applyResult = {
     ...result,
     productCount: preview.productCount,
@@ -83,12 +153,15 @@ export async function runStoreApply(admin, shop, { applyKind = APPLY_KIND.SETUP 
     appliedItems: buildAppliedItemsFromPreview(preview.items),
     scoreBefore: beforeExec.score,
     scoreAfter: afterExec.score,
+    scoreProjection: afterExec.scoreProjection,
     catalogScoreBefore: beforeExec.catalogScore,
     foundationScoreBefore: beforeExec.foundationScore,
     catalogScoreAfter: afterExec.catalogScore,
     foundationScoreAfter: afterExec.foundationScore,
     priorityCount: beforeExec.priorityCount,
     applyKind,
+    validation,
+    marketRegion: marketContext.regionLabel,
   };
 
   return { skipped: false, applyResult, preview, batchId };

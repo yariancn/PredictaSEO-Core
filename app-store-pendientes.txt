@@ -96,6 +96,26 @@ PENDIENTE — CÓDIGO / INFRA (detectado en revisión)
     - BILLING_DISABLED según fase (piloto vs submit)
 
 ================================================================================
+REBUILD MERCADOS + GEO (2026-06-07) — IMPLEMENTADO EN CÓDIGO (pendiente deploy/commit)
+================================================================================
+[✓] A Mercados: markets.server.js — países desde Shopify Markets + fallback
+[✓] B Contenido: content-engine.server.js — SEO por región/idioma + IA top 3
+[✓] C Schema: Organization + WebSite + Product JSON-LD + theme blocks
+[✓] D Score probabilístico: score-probability.server.js + rango estimado en UI
+[✓] E Priorización ventas + gaps geo (detectGeoMismatch re-optimiza)
+[✓] F Validación post-apply: validation.server.js
+[✓] G Salvaguardas: confirmar mercados antes de Apply + bloqueo sin Markets
+[ ] Deploy Railway + npm run deploy + migración Postgres market_settings
+[ ] Commit + push
+[ ] Opcional v2: Google Search Console / Bing (requiere credenciales del merchant)
+
+================================================================================
+POST-APROBACIÓN — MEJORAS FUTURAS
+================================================================================
+[ ] Integración Search Console para medir tráfico real post-Apply
+[ ] Traducciones ES/FR de nuevas claves de mercados/score
+
+================================================================================
 FALLAS DE APLICACIÓN (reportadas en última prueba — detalle por merchant)
 ================================================================================
 [ ] (Pendiente — merchant compartirá lista de fallas en siguiente mensaje)

@@ -1,7 +1,13 @@
 {%- assign brand_ld = shop.metafields.predictacore.organization_json_ld -%}
+{%- assign website_ld = shop.metafields.predictacore.website_json_ld -%}
 {%- if brand_ld != blank -%}
 <script type="application/ld+json">
 {{- brand_ld.value | json -}}
+</script>
+{%- endif -%}
+{%- if website_ld != blank -%}
+<script type="application/ld+json">
+{{- website_ld.value | json -}}
 </script>
 {%- endif -%}
 

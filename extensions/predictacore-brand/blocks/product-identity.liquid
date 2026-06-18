@@ -1,0 +1,15 @@
+{%- assign product_ld = product.metafields.predictacore.product_json_ld -%}
+{%- if product_ld != blank -%}
+<script type="application/ld+json">
+{{- product_ld.value | json -}}
+</script>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "PredictaCore Product",
+  "target": "section",
+  "templates": ["product"],
+  "settings": []
+}
+{% endschema %}

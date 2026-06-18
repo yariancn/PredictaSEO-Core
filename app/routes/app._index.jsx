@@ -77,6 +77,12 @@ export async function action({ request }) {
   }
 
   if (intent === "billing-setup") {
+    if (isBillingBypassed()) {
+      return json({
+        intent: "billing-setup",
+        billingError: "Billing is disabled in pilot mode — you can Apply without payment.",
+      });
+    }
     const { runBillingSetupFlow } = await import("../lib/billing-flow.server.js");
     return runBillingSetupFlow({
       billing,
@@ -99,6 +105,23 @@ export async function action({ request }) {
       });
     } catch (err) {
       return json({ intent: "set-uninstall-preference", preferenceError: err.message ?? "Could not save" });
+    }
+  }
+
+  if (intent === "confirm-markets") {
+    try {
+      const response = await admin.graphql(CATALOG_QUERY);
+      const { data, errors } = await response.json();
+      if (errors?.length) {
+        return json({ intent: "confirm-markets", marketError: errors.map((e) => e.message).join("; ") });
+      }
+      const { buildMarketContext } = await import("../lib/markets.server.js");
+      const { saveShopMarketConfirmation } = await import("../lib/shop-market.server.js");
+      const marketContext = buildMarketContext(data, { confirmed: true });
+      await saveShopMarketConfirmation(session.shop, marketContext);
+      return json({ intent: "confirm-markets", marketConfirmed: true, regionLabel: marketContext.regionLabel });
+    } catch (err) {
+      return json({ intent: "confirm-markets", marketError: err.message ?? "Could not save markets" });
     }
   }
 
@@ -152,7 +175,9 @@ export async function action({ request }) {
         const locale = "en";
         const { t: tr } = await import("../lib/locale.js");
         const msg =
-          outcome.reason === "all_failed"
+          outcome.reason === "markets_not_configured"
+            ? tr(locale, "marketsNotConfigured")
+            : outcome.reason === "all_failed"
             ? outcome.errors?.slice(0, 2).join("; ") || tr(locale, "applyError")
             : tr(locale, "noChangesAlreadyApplied");
         return json({ intent: "apply", applyError: msg });
@@ -193,33 +218,44 @@ export async function action({ request }) {
     const locale = getStoreLocale(data);
     const catalogData = await prepareCatalogData(admin, data);
     const snapshot = analyzeSnapshot(catalogData, locale);
-    const categories = groupProductsByCategory(catalogData.products?.nodes ?? [], snapshot.matrix);
+    const { buildMarketContext } = await import("../lib/markets.server.js");
+    const { getShopMarketSettings } = await import("../lib/shop-market.server.js");
+    const marketOverrides = await getShopMarketSettings(session.shop);
+    const marketContext = buildMarketContext(data, marketOverrides);
+    const priorityProducts = getPriorityProducts(catalogData.products?.nodes ?? [], snapshot.matrix);
+    const categories = groupProductsByCategory(
+      catalogData.products?.nodes ?? [],
+      snapshot.matrix,
+      marketContext,
+      data.shop.name,
+    );
     const jsonLd = buildOrganizationJsonLd(
       data.shop,
-      snapshot.markets,
+      marketContext,
       data.locations?.nodes ?? [],
+      categories,
+      priorityProducts,
     );
     const { active: schemaActive } = await getSchemaStatus(session.shop);
-    const priorityProducts = getPriorityProducts(catalogData.products?.nodes ?? [], snapshot.matrix);
-    const preview = buildPreviewPlan(
-      priorityProducts,
-      data.shop.name,
-      snapshot.matrix,
-      { jsonLd, schemaActive },
-    );
+    const preview = await buildPreviewPlan(priorityProducts, data.shop.name, snapshot.matrix, {
+      jsonLd,
+      schemaActive,
+      marketContext,
+      shop: data.shop,
+    });
     const executive = analyzeExecutive(catalogData, locale, {
       previewItems: preview.items,
       schemaActive,
       schemaPending: preview.schema?.willApply,
     });
-    const report = buildForenseReport(data, executive, snapshot, categories, locale, preview);
+    const report = buildForenseReport(data, executive, snapshot, categories, locale, preview, marketContext);
 
-    const summary = await generateForenseBrief(data.shop, snapshot.markets, report, locale);
+    const summary = await generateForenseBrief(data.shop, marketContext, report, locale);
 
     await saveEntityProfile(session.shop, {
       entityName: data.shop.name,
       specialization: report.fixes[0],
-      areaServed: snapshot.summary.marketsLabel,
+      areaServed: marketContext.regionLabel,
       entityHook: null,
       jsonLdDraft: JSON.stringify(jsonLd, null, 2),
       aiVerdict: summary,
@@ -847,6 +883,8 @@ export default function Index() {
     billing,
     uninstallRestorePreference = "restore",
     aiSummaryAvailable = false,
+    marketContext,
+    validation,
   } = audit ?? {};
 
   const summary = aiFetcher.data?.intent === "summary" && !summaryInvalidated
@@ -918,6 +956,12 @@ export default function Index() {
       window.history.replaceState({}, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
     }
   }, [auditFetcher]);
+
+  useEffect(() => {
+    if (applyFetcher.data?.intent === "confirm-markets" && applyFetcher.data?.marketConfirmed) {
+      auditFetcher.load("/app/audit-data");
+    }
+  }, [applyFetcher.data?.intent, applyFetcher.data?.marketConfirmed]);
 
   useEffect(() => {
     if (applyFetcher.data?.intent === "apply" && applyFetcher.data?.applyResult) {
@@ -1082,6 +1126,8 @@ export default function Index() {
         uninstallRestorePreference={uninstallRestorePreference}
         billingJustReturned={billingJustReturned}
         auditReloading={auditReloading}
+        marketContext={marketContext}
+        validation={validation}
       />
     </>
   );
@@ -1181,6 +1227,86 @@ function AppliedProductsList({ items, copy, titleKey = "resultsProductsTitle" })
   );
 }
 
+function MarketsPanel({ copy, marketContext, applyFetcher }) {
+  const confirming =
+    applyFetcher.state !== "idle" && applyFetcher.formData?.get("intent") === "confirm-markets";
+  const confirmed =
+    marketContext?.confirmed ||
+    (applyFetcher.data?.intent === "confirm-markets" && applyFetcher.data?.marketConfirmed);
+  const region =
+    applyFetcher.data?.regionLabel ?? marketContext?.regionLabel ?? copyText(copy, "marketsNotConfigured");
+
+  return (
+    <div
+      style={{
+        ...theme.card,
+        borderColor: confirmed ? "rgba(163,230,53,0.35)" : "rgba(99,102,241,0.35)",
+        background: confirmed ? "rgba(163,230,53,0.06)" : "rgba(99,102,241,0.08)",
+      }}
+    >
+      <h2 style={{ ...theme.h2, color: confirmed ? "#a3e635" : "#a5b4fc" }}>
+        {copyText(copy, "marketsPanelTitle", "Where you sell")}
+      </h2>
+      <p style={{ ...theme.body, marginBottom: "10px" }}>
+        {copyText(copy, "marketsPanelBody", "")}
+      </p>
+      {marketContext?.configured ? (
+        <>
+          <p style={{ ...theme.body, color: "#e8e8ff", fontWeight: 600, marginBottom: "6px" }}>
+            {fillCopy(copyText(copy, "marketsDetected", ""), { region })}
+          </p>
+          {marketContext.countryNames?.length > 0 && (
+            <p style={{ ...theme.body, fontSize: "0.82rem", color: "#8b8b9a", marginBottom: "12px" }}>
+              {fillCopy(copyText(copy, "marketsCountries", ""), {
+                countries: marketContext.countryNames.join(", "),
+              })}
+            </p>
+          )}
+        </>
+      ) : (
+        <p style={{ ...theme.body, color: "#fbbf24", marginBottom: "12px" }}>
+          {copyText(copy, "marketsNotConfigured", "")}
+        </p>
+      )}
+      {(marketContext?.warnings ?? []).map((w) => (
+        <p key={w} style={{ ...theme.body, fontSize: "0.82rem", color: "#fbbf24", marginBottom: "8px" }}>
+          {w}
+        </p>
+      ))}
+      {confirmed ? (
+        <p style={{ ...theme.body, color: "#a3e635", margin: 0 }}>
+          {fillCopy(copyText(copy, "marketsConfirmed", ""), { region })}
+        </p>
+      ) : (
+        <button
+          type="button"
+          style={{ ...theme.btnPrimary, marginTop: "4px" }}
+          disabled={confirming || !marketContext?.configured}
+          onClick={() => applyFetcher.submit({ intent: "confirm-markets" }, { method: "post" })}
+        >
+          {confirming ? copyText(copy, "loading", "…") : copyText(copy, "marketsConfirmButton", "Confirm")}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function ValidationPanel({ copy, validation, marketContext }) {
+  if (!validation) return null;
+  const summaryKey = validation.summaryKey ?? "validationSummaryReview";
+  return (
+    <div style={{ ...theme.card, borderColor: "rgba(255,255,255,0.08)" }}>
+      <h2 style={theme.h2}>{copyText(copy, "validationTitle", "Readiness validation")}</h2>
+      <p style={{ ...theme.body, marginBottom: "10px" }}>{copyText(copy, summaryKey, "")}</p>
+      {marketContext?.regionLabel && (
+        <p style={{ ...theme.body, fontSize: "0.82rem", color: "#8b8b9a" }}>
+          {marketContext.regionLabel} · {validation.countryCount ?? 0} countries
+        </p>
+      )}
+    </div>
+  );
+}
+
 function IndexWizard({
   shop,
   shopName,
@@ -1222,6 +1348,8 @@ function IndexWizard({
   uninstallRestorePreference,
   billingJustReturned,
   auditReloading,
+  marketContext,
+  validation,
 }) {
   const pilotMode = Boolean(billing?.pilotMode);
   const { matrix, summary: snapSummary } = snapshot;
@@ -1233,7 +1361,10 @@ function IndexWizard({
   const gapsRemain = preview.total > 0 || catalogGaps > 0;
   const pendingOptimization = applyGain > 0 && gapsRemain;
   const nearlyComplete = executive.score >= 85 && gapsRemain && applyGain > 0 && applyGain <= 10;
-  const scoreRange = formatProjectedScoreRange(executive.score, executive.scoreAfterApply);
+  const scoreRange =
+    executive.scoreProjection ??
+    formatProjectedScoreRange(executive.score, executive.scoreAfterApply, executive.scoreProjection);
+  const marketsReady = Boolean(marketContext?.confirmed && marketContext?.configured);
   const isOptimized = setupComplete;
   const displayAppliedItems = applyResult?.appliedItems?.length
     ? applyResult.appliedItems
@@ -1279,7 +1410,7 @@ function IndexWizard({
   const showStep1AlreadyDone = !applyResult && !hasPendingWork && (firstApplyDone || (backupAvailable && allComplete));
   const showPaymentGate = step === 2 && hasPendingWork && !applyResult && !setupPaid && !pilotMode;
   const showApplyGate =
-    step === 3 && hasPendingWork && !applyResult && !firstApplyDone && (pilotMode || setupPaid);
+    step === 3 && hasPendingWork && !applyResult && !firstApplyDone && (pilotMode || setupPaid) && marketsReady;
   const showApplyBlocked =
     (step === 2 || step === 3) &&
     hasPendingWork &&
@@ -1368,6 +1499,24 @@ function IndexWizard({
             </div>
           )}
 
+          <MarketsPanel copy={copy} marketContext={marketContext} applyFetcher={applyFetcher} />
+
+          <ValidationPanel copy={copy} validation={validation} marketContext={marketContext} />
+
+          {executive.probabilistic?.projection && (
+            <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.25)" }}>
+              <p style={{ ...theme.body, margin: 0, color: "#a5b4fc" }}>
+                {fillCopy(copyText(copy, "scoreProjectionLabel", ""), {
+                  low: String(executive.probabilistic.projection.low),
+                  high: String(executive.probabilistic.projection.high),
+                })}
+              </p>
+              <p style={{ ...theme.body, margin: "8px 0 0 0", fontSize: "0.82rem", color: "#8b8b9a" }}>
+                {copyText(copy, executive.probabilistic.confidenceLabelKey ?? "scoreConfidenceModerate", "")}
+              </p>
+            </div>
+          )}
+
           <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.35)", background: "rgba(99,102,241,0.08)" }}>
             <h2 style={{ ...theme.h2, color: "#a5b4fc" }}>{copy.heroTitle}</h2>
             <p style={theme.body}>{copy.heroBody}</p>
@@ -1433,7 +1582,11 @@ function IndexWizard({
             <p style={theme.bullet("#6366f1")}>{copyText(copy, "scorePlain1", "")}</p>
             <p style={theme.bullet("#6366f1")}>{copyText(copy, "scorePlain2", "")}</p>
             <p style={theme.bullet("#6366f1")}>{copyText(copy, "scorePlain3", "")}</p>
-            <p style={theme.bullet("#6366f1")}>{copyText(copy, "scorePlain4", "")}</p>
+            <p style={theme.bullet("#6366f1")}>
+              {fillCopy(copyText(copy, "scorePlain4", ""), {
+                region: marketContext?.regionLabel ?? snapSummary?.marketsLabel ?? "your markets",
+              })}
+            </p>
             <p style={{ ...theme.body, marginTop: "12px", fontSize: "0.82rem", color: "#8b8b9a" }}>
               {copyText(copy, "scorePlainLow", "")}
             </p>
@@ -1764,6 +1917,14 @@ function IndexWizard({
           )}
 
           {showPaymentSuccess && <PaymentSuccessBanner copy={copy} />}
+
+          {!marketsReady && hasPendingWork && step >= 2 && (
+            <div style={{ ...theme.card, borderColor: "rgba(251,191,36,0.4)", background: "rgba(251,191,36,0.08)" }}>
+              <p style={{ ...theme.body, color: "#fbbf24", margin: 0 }}>
+                {copyText(copy, "marketsConfirmRequired", "")}
+              </p>
+            </div>
+          )}
 
           {showApplyStepActions && (
             <Step4Actions

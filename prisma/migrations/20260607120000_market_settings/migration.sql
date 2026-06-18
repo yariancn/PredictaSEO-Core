@@ -1,0 +1,2 @@
+ALTER TABLE "ShopSettings" ADD COLUMN IF NOT EXISTS "targetMarketsJson" TEXT;
+ALTER TABLE "ShopSettings" ADD COLUMN IF NOT EXISTS "marketsConfirmed" BOOLEAN NOT NULL DEFAULT false;

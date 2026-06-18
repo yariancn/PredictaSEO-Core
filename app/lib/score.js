@@ -1,4 +1,7 @@
-export function formatProjectedScoreRange(current, projected) {
+export function formatProjectedScoreRange(current, projected, projection = null) {
+  if (projection?.low != null && projection?.high != null) {
+    return { low: projection.low, high: projection.high };
+  }
   const gain = projected - current;
   if (gain < 5) return null;
   const low = Math.min(Math.round(current + gain * 0.65), 88);
