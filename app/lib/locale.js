@@ -160,6 +160,9 @@ const MESSAGES = {
     alreadyOptimizedTitle: "Already optimized",
     alreadyOptimizedBody:
       "No pending changes right now — your store was optimized in a previous session. Click the yellow Restore button below to undo and run the wizard again.",
+    dashboardActionsTitle: "Restore or run the wizard again",
+    dashboardActionsBody:
+      "Your store is already optimized. Use Restore now to return to the original baseline and see pending changes in the wizard again.",
     refreshingStore: "Updating your store…",
     confirmingPayment: "Confirming payment…",
     restoreWarning:
@@ -188,6 +191,8 @@ const MESSAGES = {
     uninstallPrefTitle: "If you uninstall PredictaCore",
     uninstallPrefIntro:
       "Choose what happens to your product SEO and brand data when you remove the app from Shopify Admin. You can change this anytime before uninstalling.",
+    uninstallPrefNotNowNote:
+      "These options apply only when you uninstall the app — they do not restore your store now. To restore immediately, use the Restore button below.",
     uninstallPrefRestoreLabel: "Restore my original store data (recommended)",
     uninstallPrefRestoreBody:
       "On uninstall we try to put titles, descriptions, and brand data back to how they were before PredictaCore. Best if you are leaving the app.",

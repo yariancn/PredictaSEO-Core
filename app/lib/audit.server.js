@@ -17,7 +17,7 @@ export async function loadAuditData(request) {
   const { buildPreviewPlan, getAppliedCatalogSummary } = await import("./apply.server.js");
   const { getSchemaStatus } = await import("./schema.server.js");
   const { getStoreLocale, t } = await import("./locale.js");
-  const { isBillingBypassed, isBillingTest, syncBillingFromShopify } = await import(
+  const { isBillingBypassed, isBillingTest, syncBillingFromShopify, canUsePilotReset } = await import(
     "./billing.server.js"
   );
   const prisma = (await import("../db.server.js")).default;
@@ -275,5 +275,6 @@ export async function loadAuditData(request) {
     aiSummaryAvailable: Boolean(process.env.GEMINI_API_KEY?.trim()),
     marketContext,
     validation,
+    canPilotReset: canUsePilotReset(session.shop),
   };
 }

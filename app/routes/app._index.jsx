@@ -1138,6 +1138,7 @@ export default function Index() {
     aiSummaryAvailable = false,
     marketContext,
     validation,
+    canPilotReset = false,
   } = audit ?? {};
 
   const summary = aiFetcher.data?.intent === "summary" && !summaryInvalidated
@@ -1385,8 +1386,68 @@ export default function Index() {
         auditReloading={auditReloading}
         marketContext={marketContext}
         validation={validation}
+        canPilotReset={canPilotReset}
       />
     </>
+  );
+}
+
+function OptimizedDashboardActions({
+  copy,
+  applyFetcher,
+  restoreLoading,
+  backupBatchCount,
+  canPilotReset,
+  restoreResult,
+  restoreError,
+  applyFetcherIntent,
+}) {
+  return (
+    <div style={{ ...theme.card, borderColor: "rgba(251,191,36,0.55)", background: "rgba(251,191,36,0.1)" }}>
+      <h2 style={{ ...theme.h2, color: "#fbbf24" }}>{copyText(copy, "dashboardActionsTitle", "Restore or re-test")}</h2>
+      <p style={{ ...theme.body, marginBottom: "14px", fontSize: "0.88rem", lineHeight: 1.55 }}>
+        {copyText(copy, "dashboardActionsBody", "")}
+      </p>
+      <RestoreAllButton copy={copy} restoreLoading={restoreLoading} applyFetcher={applyFetcher} />
+      {backupBatchCount > 1 && (
+        <button
+          type="button"
+          style={{ ...theme.btnGhost, width: "100%", marginTop: "10px", color: "#c8c8d0" }}
+          disabled={restoreLoading}
+          onClick={() => {
+            if (window.confirm(copyText(copy, "restoreLastConfirm", copy.restoreWarning))) {
+              applyFetcher.submit({ intent: "restore" }, { method: "post" });
+            }
+          }}
+        >
+          {restoreLoading ? copy.restoring : copy.restore}
+        </button>
+      )}
+      {canPilotReset && (
+        <button
+          type="button"
+          style={{ ...theme.btnGhost, width: "100%", marginTop: "10px", borderColor: "rgba(251,191,36,0.5)", color: "#fbbf24" }}
+          disabled={restoreLoading}
+          onClick={() => {
+            if (window.confirm(copyText(copy, "resetTestConfirm", "Reset test store?"))) {
+              applyFetcher.submit({ intent: "reset-test-store" }, { method: "post" });
+            }
+          }}
+        >
+          {restoreLoading
+            ? copyText(copy, "resetTestLoading", "Resetting…")
+            : copyText(copy, "resetTestTitle", "Reset demo store")}
+        </button>
+      )}
+      {restoreResult && (
+        <p style={{ ...theme.body, color: "#a3e635", marginTop: "12px", marginBottom: 0 }}>
+          {formatRestoreMessage(copy, applyFetcherIntent, restoreResult)}
+        </p>
+      )}
+      {restoreError && (
+        <p style={{ ...theme.body, color: "#f87171", marginTop: "12px", marginBottom: 0 }}>{restoreError}</p>
+      )}
+    </div>
   );
 }
 
@@ -1416,8 +1477,11 @@ function UninstallPreferencePanel({
   return (
     <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.35)", background: "rgba(99,102,241,0.06)" }}>
       <h2 style={{ ...theme.h2, color: "#a5b4fc" }}>{copyText(copy, "uninstallPrefTitle", "If you uninstall")}</h2>
-      <p style={{ ...theme.body, fontSize: "0.88rem", marginBottom: "14px" }}>
+      <p style={{ ...theme.body, fontSize: "0.88rem", marginBottom: "10px" }}>
         {copyText(copy, "uninstallPrefIntro", "")}
+      </p>
+      <p style={{ ...theme.body, fontSize: "0.82rem", color: "#fbbf24", marginBottom: "14px", lineHeight: 1.5 }}>
+        {copyText(copy, "uninstallPrefNotNowNote", "")}
       </p>
       <label style={optionStyle(preference === "restore")}>
         <input
@@ -1651,6 +1715,7 @@ function IndexWizard({
   auditReloading,
   marketContext,
   validation,
+  canPilotReset,
 }) {
   const pilotMode = Boolean(billing?.pilotMode);
   const { matrix, summary: snapSummary } = snapshot;
@@ -1709,6 +1774,8 @@ function IndexWizard({
   const hasPendingWork = preview.total > 0;
   const showAlreadyOptimized = !applyResult && !hasPendingWork && (firstApplyDone || setupComplete);
   const showStep1AlreadyDone = !applyResult && !hasPendingWork && (firstApplyDone || (backupAvailable && allComplete));
+  const showOptimizedDashboardActions = step === 1 && !applyResult && (firstApplyDone || setupComplete);
+  const canRestoreNow = firstApplyDone || setupComplete || restoreAvailable;
   const showPaymentGate = step === 2 && hasPendingWork && !applyResult && !setupPaid && !pilotMode;
   const showApplyGate =
     step === 3 && hasPendingWork && !applyResult && !firstApplyDone && (pilotMode || setupPaid) && marketsReady;
@@ -2031,13 +2098,13 @@ function IndexWizard({
             <AlreadyOptimizedCard
               copy={copy}
               executive={executive}
-              showRestore={restoreAvailable}
+              showRestore={canRestoreNow}
               restoreLoading={restoreLoading}
               applyFetcher={applyFetcher}
             />
           )}
 
-          {setupComplete && backupAvailable && (
+          {(setupComplete || firstApplyDone) && backupAvailable && (
             <UninstallPreferencePanel
               copy={copy}
               preference={activeUninstallPref}
@@ -2049,6 +2116,19 @@ function IndexWizard({
                   ? applyFetcher.data?.preferenceError
                   : null
               }
+            />
+          )}
+
+          {showOptimizedDashboardActions && (
+            <OptimizedDashboardActions
+              copy={copy}
+              applyFetcher={applyFetcher}
+              restoreLoading={restoreLoading}
+              backupBatchCount={backupBatchCount}
+              canPilotReset={canPilotReset || pilotMode}
+              restoreResult={restoreResult}
+              restoreError={restoreError}
+              applyFetcherIntent={applyFetcher.data?.intent}
             />
           )}
         </>
