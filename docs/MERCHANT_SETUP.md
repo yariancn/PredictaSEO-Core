@@ -28,10 +28,20 @@
 
 5. **Confirm markets in app** — Step 1 → “Confirm target markets” before Apply.
 
-## Optional (validation layer v2 — not blocking submit)
+## Medición de resultados (sin Google)
 
-- **Google Search Console** OAuth — future integration for measured traffic (requires Google Cloud project + credentials from you).
-- **Bing Webmaster Tools** — same, optional.
+PredictaCore **no usa Google ni Shopify Analytics** para medir tráfico. La validación es **interna**:
+
+- Score de preparación para IA (probabilístico)
+- Alineación de mercados (países donde vendes)
+- Completitud de catálogo + schema JSON-LD
+- Reporte pre/post Apply en la app
+
+Los cambios en tráfico real tardan semanas y dependen de Google/ChatGPT/Perplexity — no los controlamos ni los medimos con APIs externas en v1.
+
+## Optional (not planned for v1)
+
+- Integraciones externas (Search Console, Bing) — **no necesarias** para la app ni para Shopify App Store review.
 
 ## Shopify compliance (already in code)
 
