@@ -142,7 +142,7 @@ const MESSAGES = {
     expectationsPreviewTimeline2:
       "4–8 weeks after Apply: better chance of appearing in AI search answers.",
     expectationsPreviewMaintenanceTitle: "After month 1 — $15/month maintenance",
-    expectationsPreviewMaintenance1: "Monthly re-scan of your top 50 products",
+    expectationsPreviewMaintenance1: "Monthly re-scan of up to {{limit}} top-selling products",
     expectationsPreviewMaintenance2: "Updates when new products or gaps lower your score",
     expectationsPreviewMaintenance3: "Polish for new catalog items as you grow",
     billingBundleStep2:
@@ -163,6 +163,62 @@ const MESSAGES = {
     dashboardActionsTitle: "Restore or run the wizard again",
     dashboardActionsBody:
       "Your store is already optimized. Use Restore now to return to the original baseline and see pending changes in the wizard again.",
+    productTierTitle: "Product scope",
+    productTierBody:
+      "Included: up to {{base}} top sellers (currently {{limit}} in scope). Top {{ai}} get full AI-written SEO; the rest get market-aware templates for your regions.",
+    productTierUpgrade: "Add {{size}} more products — ${{price}} one-time",
+    themeOnboardingTitle: "Activate storefront blocks (required for AI crawlers)",
+    themeOnboardingBody:
+      "After Apply, enable these theme app embeds so JSON-LD and llms.txt reach ChatGPT, Perplexity, and Google AI:",
+    themeOnboardingBrand: "PredictaCore Brand — injects organization + website schema in <head>",
+    themeOnboardingProduct: "PredictaCore Product — product JSON-LD on product pages",
+    themeOnboardingLlms:
+      "Optional: add a redirect from yourstore.com/llms.txt to /apps/predictacore/llms.txt (app proxy).",
+    themeOnboardingCta: "Open theme editor",
+    benchmarkTitle: "Category readiness benchmark",
+    benchmarkAhead: "Your score {{your}} is ahead of typical stores ({{typical}}) — strong GEO foundation.",
+    benchmarkBehind: "Your score {{your}} is below typical ({{typical}}) — Apply closes the biggest gaps.",
+    benchmarkOnPar: "Your score {{your}} is close to typical stores ({{typical}}) — Apply can push you ahead.",
+    applyImpactTitle: "Last optimization impact",
+    impactScore: "Readiness score: {{before}} → {{after}} (internal model, same formula).",
+    impactProducts: "{{count}} products updated in last Apply ({{scope}} in scope).",
+    gscTitle: "Google organic traffic (optional)",
+    gscWhyShopify:
+      "Shopify Analytics shows sessions, orders, and sales channels — but Shopify does not give third-party apps Google's official organic search report (impressions and clicks from Google Search results).",
+    gscWhyGoogle:
+      "Those numbers live in Google Search Console — how Google sees your store in Search. Connecting is optional, read-only, and does not change your SEO or Apply.",
+    gscNotConfigured:
+      "Google connection is not enabled on this PredictaCore server yet. Once enabled, merchants see a Connect button here — no API keys required from them.",
+    gscConnectHint:
+      "Connect with the Google account that owns this store in Search Console (same email you use at search.google.com). One Google account per Shopify store.",
+    gscSkipOk: "You can skip this entirely — optimization, schema, markets, and scores work without Google.",
+    gscConnect: "Connect Google Search Console (optional)",
+    gscConnected: "Search Console connected.",
+    gscSummary: "Last 28 days: {{impressions}} impressions · {{clicks}} clicks (organic Google).",
+    gscBeforeAfterTitle: "Google organic — before vs after Apply",
+    gscBaseline: "Baseline (at Apply): {{impressions}} impressions · {{clicks}} clicks",
+    gscLatest: "Latest (28 days): {{impressions}} impressions · {{clicks}} clicks",
+    gscDeltaImpressions: "Impressions change since Apply: {{delta}}",
+    gscDeltaClicks: "Clicks change since Apply: {{delta}}",
+    gscAwaitingBaseline: "Connect Search Console and run Apply to capture your before/after baseline.",
+    deliveryTitle: "Crawler delivery checklist",
+    deliveryIntro:
+      "Verifies that AI crawlers can actually see your schema — theme blocks, live JSON-LD, and llms.txt. Green = visible on your storefront.",
+    deliveryReady: "Crawler-ready — {{passed}}/{{total}} checks passed.",
+    deliveryNotReady: "Action needed — {{passed}}/{{total}} checks passed. Enable theme blocks to deliver results.",
+    deliveryScore: "{{pct}}% delivery score",
+    deliveryThemeBrand: "PredictaCore Brand block enabled in theme",
+    deliveryThemeProduct: "PredictaCore Product block enabled in theme",
+    deliveryShopSchema: "Organization schema saved (shop metafield)",
+    deliveryProductSchema: "Product schema saved (sample product metafield)",
+    deliveryLlmsLive: "llms.txt live at /apps/predictacore/llms.txt",
+    deliveryLiveProductLd: "Product JSON-LD visible on live product page",
+    deliveryLiveOrgLd: "Organization JSON-LD visible on storefront HTML",
+    deliveryLlmsMetafield: "llms.txt content saved (shop metafield)",
+    deliveryOpenTheme: "Fix in theme editor",
+    deliveryRecheck: "Results update automatically after Apply and every 6 hours.",
+    marketsChangedBanner:
+      "Your Shopify Markets changed since the last scan — run Restore or re-confirm markets, then Apply again to realign SEO.",
     refreshingStore: "Updating your store…",
     confirmingPayment: "Confirming payment…",
     restoreWarning:
@@ -369,7 +425,7 @@ const MESSAGES = {
     expectationsTimeline2: "4–8 weeks: better chance of appearing in AI search answers",
     maintenancePlanTitle: "Monthly maintenance — $15/mo",
     maintenancePlanIntro: "Your catalog changes. Maintenance keeps your score high over time:",
-    maintenancePlan1: "Monthly re-scan of your top 50 products",
+    maintenancePlan1: "Monthly re-scan of up to {{limit}} top-selling products",
     maintenancePlan2: "Alerts when new products or gaps lower your score",
     maintenancePlan3: "Optimization for new catalog items as you grow",
     maintenancePlanNote: "Automatic monthly updates keep your catalog optimized as you add products.",
@@ -456,7 +512,7 @@ const MESSAGES = {
     previewAllDone: "Todo optimizado. No hay cambios pendientes.",
     previewProductsDone: "El SEO de productos ya está completo — no hay cambios de títulos ni descripciones.",
     previewSchemaOnlyExplain:
-      "Guardaremos la identidad de marca (Schema.org JSON-LD) para que las AI reconozcan {{shop}} en US & Canada. Activa el embed del tema después de aplicar.",
+      "Guardaremos la identidad de marca (Schema.org JSON-LD) para que las AI reconozcan {{shop}} en {{region}}. Activa el embed del tema después de aplicar.",
     previewSchemaRow: "Identidad de marca (Schema.org)",
     previewSchemaRowDetail: "Metafield JSON-LD de organización + instrucciones del theme embed",
     previewSchema: "+ Identidad de marca preparada — activar en Theme Settings → App embeds",
@@ -538,6 +594,39 @@ const MESSAGES = {
     planTitle: "Qué vamos a corregir",
     rollbackNote:
       "Guardamos una copia antes de cada cambio. Antes de desinstalar, elige abajo si restaurar tu tienda o conservar los datos optimizados.",
+    gscTitle: "Tráfico orgánico de Google (opcional)",
+    gscWhyShopify:
+      "Shopify Analytics muestra sesiones, pedidos y canales de venta — pero Shopify no comparte con apps de terceros el informe oficial de Google sobre búsqueda orgánica (impresiones y clics en resultados de Google).",
+    gscWhyGoogle:
+      "Esos datos están en Google Search Console — cómo Google ve tu tienda en Search. Conectar es opcional, solo lectura, y no cambia tu SEO ni el Apply.",
+    gscNotConfigured:
+      "La conexión con Google aún no está activada en este servidor PredictaCore. Cuando esté activa, aquí aparecerá el botón Conectar — el merchant no necesita API keys.",
+    gscConnectHint:
+      "Conecta con la cuenta Google que tenga esta tienda en Search Console (el mismo correo de search.google.com). Una cuenta Google por tienda Shopify.",
+    gscSkipOk: "Puedes omitir esto — optimización, schema, mercados y scores funcionan sin Google.",
+    gscConnect: "Conectar Google Search Console (opcional)",
+    gscBeforeAfterTitle: "Google orgánico — antes vs después del Apply",
+    gscBaseline: "Línea base (al Apply): {{impressions}} impresiones · {{clicks}} clics",
+    gscLatest: "Último (28 días): {{impressions}} impresiones · {{clicks}} clics",
+    gscDeltaImpressions: "Cambio en impresiones desde Apply: {{delta}}",
+    gscDeltaClicks: "Cambio en clics desde Apply: {{delta}}",
+    gscAwaitingBaseline: "Conecta Search Console y ejecuta Apply para capturar tu línea base antes/después.",
+    deliveryTitle: "Checklist de entrega a crawlers",
+    deliveryIntro:
+      "Verifica que los crawlers de AI vean tu schema — theme blocks, JSON-LD en vivo y llms.txt. Verde = visible en tu tienda.",
+    deliveryReady: "Listo para crawlers — {{passed}}/{{total}} checks aprobados.",
+    deliveryNotReady: "Acción requerida — {{passed}}/{{total}} checks. Activa los theme blocks para entregar resultados.",
+    deliveryScore: "{{pct}}% entrega verificada",
+    deliveryThemeBrand: "Block PredictaCore Brand activo en el tema",
+    deliveryThemeProduct: "Block PredictaCore Product activo en el tema",
+    deliveryShopSchema: "Schema Organization guardado (metafield tienda)",
+    deliveryProductSchema: "Schema Product guardado (producto muestra)",
+    deliveryLlmsLive: "llms.txt activo en /apps/predictacore/llms.txt",
+    deliveryLiveProductLd: "JSON-LD Product visible en página de producto en vivo",
+    deliveryLiveOrgLd: "JSON-LD Organization visible en HTML del storefront",
+    deliveryLlmsMetafield: "Contenido llms.txt guardado (metafield tienda)",
+    deliveryOpenTheme: "Corregir en editor de tema",
+    deliveryRecheck: "Se actualiza automáticamente después del Apply y cada 6 horas.",
     uninstallPrefTitle: "Si desinstalas PredictaCore",
     uninstallPrefIntro:
       "Elige qué pasa con tu SEO e identidad de marca cuando quites la app en Shopify Admin. Puedes cambiarlo antes de desinstalar.",
@@ -573,7 +662,7 @@ const MESSAGES = {
     gapSingleLocale: "Solo un idioma publicado — limita visibilidad AI entre mercados",
     gapNoSchema: "Sin Schema.org — las AI no saben quién eres",
     gapLowScore: "Score {{score}}/100 — no listo para recomendaciones AI",
-    fixSchema: "Añadir identidad de tienda (Schema.org) para US & Canada",
+    fixSchema: "Añadir identidad de tienda (Schema.org) para {{region}}",
     fixBatch: "Aplicar patrones SEO a {{count}} productos prioritarios ({{batches}} categorías)",
     fixMirror: "Refinar individualmente los top {{count}}",
     fixCategory: "SEO en lote para {{count}} productos",
@@ -758,7 +847,7 @@ const MESSAGES = {
     scorePlain1: "Titres de recherche — l'IA trouve-t-elle un nom clair pour chaque produit ?",
     scorePlain2: "Descriptions de recherche — courts résumés que l'IA peut citer",
     scorePlain3: "Descriptions produit — assez de détail sur la page",
-    scorePlain4: "Identité de marque — l'IA sait-elle qui est votre boutique (US & Canada) ?",
+    scorePlain4: "Identité de marque — l'IA sait-elle qui est votre boutique ({{region}}) ?",
     scorePlainLow:
       "Un score bas après Annuler/Restaurer signifie souvent que la boutique est revenue à l'état d'avant PredictaCore — SEO incomplet, pas un bug de calcul.",
     catalogCountExplain:
@@ -784,7 +873,7 @@ const MESSAGES = {
     previewAllDone: "Tous les produits ont déjà un SEO. Rien à appliquer.",
     previewProductsDone: "Le SEO produit est déjà complet — aucun changement de titre ou description.",
     previewSchemaOnlyExplain:
-      "Nous enregistrerons l'identité de marque (Schema.org JSON-LD) pour que l'IA reconnaisse {{shop}} aux US & Canada. Activez l'embed du thème après application.",
+      "Nous enregistrerons l'identité de marque (Schema.org JSON-LD) pour que l'IA reconnaisse {{shop}} en {{region}}. Activez l'embed du thème après application.",
     previewSchemaRow: "Identité de marque (Schema.org)",
     previewSchemaRowDetail: "Metafield JSON-LD Organization + instructions theme embed",
     seeUpdatedScore: "Voir le score mis à jour",

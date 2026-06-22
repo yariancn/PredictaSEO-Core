@@ -29,12 +29,86 @@ const METAFIELDS_DELETE = `#graphql
   }
 `;
 
+function availabilityUrl(variant, product) {
+  if (variant?.availableForSale === false) return "https://schema.org/OutOfStock";
+  if (product?.hasOutOfStockVariants && (variant?.inventoryQuantity ?? 0) <= 0) {
+    return "https://schema.org/OutOfStock";
+  }
+  return "https://schema.org/InStock";
+}
+
+function buildOffers(product, shop, productUrl) {
+  const currency = shop?.currencyCode ?? "USD";
+  const variants = (product?.variants?.nodes ?? []).filter(Boolean);
+  if (!variants.length) return undefined;
+
+  const priced = variants
+    .map((v) => ({
+      ...v,
+      priceNum: parseFloat(String(v.price ?? "0")),
+    }))
+    .filter((v) => Number.isFinite(v.priceNum) && v.priceNum > 0);
+
+  if (!priced.length) return undefined;
+
+  if (priced.length === 1) {
+    const v = priced[0];
+    return {
+      "@type": "Offer",
+      url: productUrl,
+      priceCurrency: currency,
+      price: v.priceNum.toFixed(2),
+      availability: availabilityUrl(v, product),
+      ...(v.sku ? { sku: v.sku } : {}),
+      itemCondition: "https://schema.org/NewCondition",
+    };
+  }
+
+  const prices = priced.map((v) => v.priceNum);
+  const low = Math.min(...prices);
+  const high = Math.max(...prices);
+  const anyAvailable = priced.some((v) => availabilityUrl(v, product).includes("InStock"));
+
+  return {
+    "@type": "AggregateOffer",
+    url: productUrl,
+    priceCurrency: currency,
+    lowPrice: low.toFixed(2),
+    highPrice: high.toFixed(2),
+    offerCount: priced.length,
+    availability: anyAvailable
+      ? "https://schema.org/InStock"
+      : "https://schema.org/OutOfStock",
+  };
+}
+
+function primaryGtin(variants) {
+  for (const v of variants ?? []) {
+    const code = String(v?.barcode ?? "").trim();
+    if (/^\d{8,14}$/.test(code)) return code;
+  }
+  return undefined;
+}
+
+function primarySku(product, variants) {
+  for (const v of variants ?? []) {
+    const sku = String(v?.sku ?? "").trim();
+    if (sku) return sku;
+  }
+  return product.id?.split("/").pop();
+}
+
 export function buildProductJsonLd(product, shop, marketContext) {
   const urlBase = shop.primaryDomain?.url ?? `https://${shop.myshopifyDomain}`;
   const productUrl = `${urlBase.replace(/\/$/, "")}/products/${product.handle}`;
   const inLanguage = marketContext?.languageCode ?? "en";
+  const variants = product?.variants?.nodes ?? [];
+  const offers = buildOffers(product, shop, productUrl);
+  const gtin = primaryGtin(variants);
+  const sku = primarySku(product, variants);
+  const imageUrl = product.featuredImage?.url ?? product.images?.nodes?.[0]?.url;
 
-  return {
+  const ld = {
     "@context": "https://schema.org",
     "@type": "Product",
     name: product.title,
@@ -46,13 +120,16 @@ export function buildProductJsonLd(product, shop, marketContext) {
         .trim()
         .slice(0, 500),
     url: productUrl,
-    sku: product.id?.split("/").pop(),
+    sku,
     brand: {
       "@type": "Brand",
       name: product.vendor?.trim() || shop.name,
     },
     category: product.productType?.trim() || undefined,
     inLanguage,
+    ...(imageUrl ? { image: [imageUrl] } : {}),
+    ...(gtin ? { gtin13: gtin.length === 13 ? gtin : undefined, gtin: gtin.length !== 13 ? gtin : undefined } : {}),
+    ...(offers ? { offers } : {}),
     ...(marketContext?.countryCodes?.length
       ? {
           areaServed: marketContext.countryCodes.map((code) => ({
@@ -62,6 +139,11 @@ export function buildProductJsonLd(product, shop, marketContext) {
         }
       : {}),
   };
+
+  if (ld.gtin13 === undefined) delete ld.gtin13;
+  if (ld.gtin === undefined) delete ld.gtin;
+
+  return ld;
 }
 
 export function buildWebsiteJsonLd(shop) {

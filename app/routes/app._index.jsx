@@ -5,6 +5,15 @@ import { LoadingShell } from "../components/AppShell.jsx";
 import { AppErrorShell, routeErrorHint, routeErrorMessage } from "../components/AppErrorShell.jsx";
 import { formatStepLabel } from "../lib/locale.js";
 import { copyText, getPreviewChangeStats, fillCopy } from "../lib/preview.js";
+import {
+  ApplyImpactPanel,
+  BenchmarkPanel,
+  DeliveryChecklistPanel,
+  MarketsChangedBanner,
+  ProductTierPanel,
+  SearchConsolePanel,
+  ThemeOnboardingPanel,
+} from "../components/PremiumPanels.jsx";
 import { formatProjectedScoreRange } from "../lib/score.js";
 
 export async function loader({ request }) {
@@ -1139,6 +1148,12 @@ export default function Index() {
     marketContext,
     validation,
     canPilotReset = false,
+    productTier,
+    benchmark,
+    applyImpact,
+    marketsWatch,
+    searchConsole,
+    deliveryStatus,
   } = audit ?? {};
 
   const summary = aiFetcher.data?.intent === "summary" && !summaryInvalidated
@@ -1387,6 +1402,12 @@ export default function Index() {
         marketContext={marketContext}
         validation={validation}
         canPilotReset={canPilotReset}
+        productTier={productTier}
+        benchmark={benchmark}
+        applyImpact={applyImpact}
+        marketsWatch={marketsWatch}
+        searchConsole={searchConsole}
+        deliveryStatus={deliveryStatus}
       />
     </>
   );
@@ -1716,6 +1737,12 @@ function IndexWizard({
   marketContext,
   validation,
   canPilotReset,
+  productTier,
+  benchmark,
+  applyImpact,
+  marketsWatch,
+  searchConsole,
+  deliveryStatus,
 }) {
   const pilotMode = Boolean(billing?.pilotMode);
   const { matrix, summary: snapSummary } = snapshot;
@@ -1869,7 +1896,23 @@ function IndexWizard({
 
           <MarketsPanel copy={copy} marketContext={marketContext} applyFetcher={applyFetcher} />
 
+          <MarketsChangedBanner copy={copy} marketsWatch={marketsWatch} />
+
+          <ProductTierPanel copy={copy} productTier={productTier} shop={shop} />
+
           <ValidationPanel copy={copy} validation={validation} marketContext={marketContext} />
+
+          <BenchmarkPanel copy={copy} benchmark={benchmark} />
+
+          <ApplyImpactPanel copy={copy} applyImpact={applyImpact} />
+
+          <DeliveryChecklistPanel copy={copy} deliveryStatus={deliveryStatus} shop={shop} />
+
+          <SearchConsolePanel copy={copy} searchConsole={searchConsole} />
+
+          {(firstApplyDone || setupComplete) && (
+            <ThemeOnboardingPanel copy={copy} shop={shop} />
+          )}
 
           {executive.probabilistic?.projection && (
             <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.25)" }}>

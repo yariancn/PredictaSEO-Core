@@ -38,6 +38,9 @@ model ShopSettings {
   uninstallRestorePreference String   @default("restore")
   targetMarketsJson          String?
   marketsConfirmed           Boolean  @default(false)
+  marketsFingerprint         String?
+  lastApplyReportJson        String?
+  deliveryStatusJson         String?
   lastAiAnalysis             DateTime @default(now())
 }
 
@@ -77,7 +80,25 @@ model ShopBilling {
   setupPaidAt        DateTime?
   subscriptionActive Boolean   @default(false)
   extraApplyCredits  Int       @default(0)
+  extraProductPacks  Int       @default(0)
   updatedAt          DateTime  @updatedAt
+}
+
+model SearchConsoleConnection {
+  shop         String    @id
+  accessToken  String
+  refreshToken String?
+  expiresAt    DateTime?
+  siteUrl      String?
+  baselineImpressions Int?
+  baselineClicks      Int?
+  baselineCapturedAt  DateTime?
+  latestImpressions   Int?
+  latestClicks        Int?
+  latestCapturedAt    DateTime?
+  applyMarkerAt       DateTime?
+  connectedAt  DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 }
 
 model ApplyRun {

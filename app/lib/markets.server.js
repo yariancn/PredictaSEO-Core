@@ -225,6 +225,9 @@ export function buildMarketContext(data, overrides = {}) {
     source: parsedMarkets.length > 0 ? "shopify_markets" : countries.length > 0 ? "fallback" : "unknown",
     warnings,
     confirmed: Boolean(overrides.confirmed),
+    publishedLocales: (locales ?? [])
+      .filter((l) => l.published)
+      .map((l) => ({ locale: l.locale, name: l.name, primary: Boolean(l.primary) })),
   };
 }
 

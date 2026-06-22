@@ -21,12 +21,19 @@ export async function buildApplyContext(admin, shop) {
     throw new Error(errors.map((e) => e.message).join("; "));
   }
 
+  const { getShopProductTier } = await import("./product-limits.server.js");
+  const productTier = await getShopProductTier(shop);
+
   const locale = getStoreLocale(data);
-  const catalogData = await prepareCatalogData(admin, data);
+  const catalogData = await prepareCatalogData(admin, data, productTier.effectiveLimit);
   const snapshot = analyzeSnapshot(catalogData, locale);
   const marketOverrides = await getShopMarketSettings(shop);
   const marketContext = buildMarketContext(data, marketOverrides);
-  const priorityProducts = getPriorityProducts(catalogData.products?.nodes ?? [], snapshot.matrix);
+  const priorityProducts = getPriorityProducts(
+    catalogData.products?.nodes ?? [],
+    snapshot.matrix,
+    productTier.effectiveLimit,
+  );
   const categories = groupProductsByCategory(
     catalogData.products?.nodes ?? [],
     snapshot.matrix,
@@ -46,6 +53,8 @@ export async function buildApplyContext(admin, shop) {
     schemaActive,
     marketContext,
     shop: data.shop,
+    salesRanking: catalogData.salesRanking ?? null,
+    aiPolishLimit: productTier.aiPolishLimit,
   });
 
   const beforeExecBase = analyzeExecutive(catalogData, locale, {
@@ -74,11 +83,12 @@ export async function buildApplyContext(admin, shop) {
     beforeExec,
     marketContext,
     priorityProducts,
+    productTier,
   };
 }
 
 export async function runStoreApply(admin, shop, { applyKind = APPLY_KIND.SETUP } = {}) {
-  const { locale, preview, jsonLd, beforeExec, marketContext, data, priorityProducts } =
+  const { locale, preview, jsonLd, beforeExec, marketContext, data, priorityProducts, productTier } =
     await buildApplyContext(admin, shop);
 
   if (preview.productCount === 0 && !preview.schema?.willApply) {
@@ -90,9 +100,14 @@ export async function runStoreApply(admin, shop, { applyKind = APPLY_KIND.SETUP 
   }
 
   const batchId = `batch_${Date.now()}`;
+
+  const { captureGscBaseline, captureGscLatest } = await import("./search-console.server.js");
+  const gscBefore = await captureGscBaseline(shop).catch(() => null);
+
   const result = await applyPreviewPlan(admin, shop, preview, batchId, {
     jsonLd,
     shop: data.shop,
+    shopName: data.shop?.name ?? shop,
     marketContext,
     priorityProducts,
   });
@@ -111,11 +126,15 @@ export async function runStoreApply(admin, shop, { applyKind = APPLY_KIND.SETUP 
   const { data: dataAfter, errors: errorsAfter } = await responseAfter.json();
   let afterExec = beforeExec;
   if (!errorsAfter?.length && dataAfter) {
-    const catalogAfter = await prepareCatalogData(admin, dataAfter);
+    const catalogAfter = await prepareCatalogData(admin, dataAfter, productTier.effectiveLimit);
     const marketOverrides = await getShopMarketSettings(shop);
     const marketContextAfter = buildMarketContext(dataAfter, marketOverrides);
     const snapshotAfter = analyzeSnapshot(catalogAfter, locale);
-    const priorityAfter = getPriorityProducts(catalogAfter.products?.nodes ?? [], snapshotAfter.matrix);
+    const priorityAfter = getPriorityProducts(
+      catalogAfter.products?.nodes ?? [],
+      snapshotAfter.matrix,
+      productTier.effectiveLimit,
+    );
     const afterBase = analyzeExecutive(catalogAfter, locale, {
       previewItems: [],
       schemaActive: result.schemaApplied || (await getSchemaStatus(shop)).active,
@@ -149,6 +168,41 @@ export async function runStoreApply(admin, shop, { applyKind = APPLY_KIND.SETUP 
     schemaActive: result.schemaApplied,
   });
 
+  const { buildApplyImpactSummary, saveApplyImpactReport } = await import("./apply-impact.server.js");
+  const gscAfter = await captureGscLatest(shop, { markApply: true }).catch(() => null);
+
+  const sampleProduct = preview.items?.[0]
+    ? {
+        id: preview.items[0].id,
+        handle: preview.items[0].handle,
+      }
+    : priorityProducts[0]
+      ? { id: priorityProducts[0].id, handle: priorityProducts[0].handle }
+      : null;
+
+  const { runStorefrontDeliveryCheck } = await import("./storefront-delivery.server.js");
+  const deliveryStatus = await runStorefrontDeliveryCheck(admin, shop, {
+    sampleProduct: sampleProduct
+      ? {
+          ...sampleProduct,
+          storeUrl: data.shop?.primaryDomain?.url ?? `https://${shop}`,
+        }
+      : null,
+    force: true,
+  }).catch(() => null);
+
+  const impact = buildApplyImpactSummary({
+    beforeExec,
+    afterExec,
+    applyResult: result,
+    preview,
+    productTier,
+    gscBefore,
+    gscAfter,
+    deliveryStatus,
+  });
+  await saveApplyImpactReport(shop, impact);
+
   const applyResult = {
     ...result,
     productCount: preview.productCount,
@@ -165,6 +219,8 @@ export async function runStoreApply(admin, shop, { applyKind = APPLY_KIND.SETUP 
     applyKind,
     validation,
     marketRegion: marketContext.regionLabel,
+    impact,
+    deliveryStatus,
   };
 
   return { skipped: false, applyResult, preview, batchId };

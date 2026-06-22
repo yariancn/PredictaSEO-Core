@@ -99,3 +99,33 @@ Product pages include structured data (JSON-LD) when optimized through PredictaC
 See store website for merchant contact and policies.
 `;
 }
+
+export async function saveLlmsTxtMetafield(admin, shopRecord, marketContext) {
+  const text = buildLlmsTxtForShop(shopRecord, marketContext);
+  const shopId = shopRecord?.id;
+  if (!shopId || !admin?.graphql) return false;
+
+  const response = await admin.graphql(
+    `#graphql
+    mutation PredictaCoreLlmsTxt($metafields: [MetafieldsSetInput!]!) {
+      metafieldsSet(metafields: $metafields) {
+        userErrors { message }
+      }
+    }`,
+    {
+      variables: {
+        metafields: [
+          {
+            ownerId: shopId,
+            namespace: "predictacore",
+            key: "llms_txt",
+            type: "multi_line_text_field",
+            value: text,
+          },
+        ],
+      },
+    },
+  );
+  const { errors } = await response.json();
+  return !errors?.length;
+}

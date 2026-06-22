@@ -78,6 +78,19 @@ export async function loadAuditData(request) {
     "scoreConfidenceHigh", "scoreConfidenceModerate", "validationTitle", "validationSummaryPass",
     "validationSummaryReview", "factorMarketAlignment", "factorCatalogCompleteness", "factorBrandEntity",
     "factorSemanticRichness", "factorCommercialSignals",
+    "dashboardActionsTitle", "dashboardActionsBody", "uninstallPrefNotNowNote",
+    "productTierTitle", "productTierBody", "productTierUpgrade",
+    "themeOnboardingTitle", "themeOnboardingBody", "themeOnboardingBrand", "themeOnboardingProduct",
+    "themeOnboardingLlms", "themeOnboardingCta",
+    "benchmarkTitle", "benchmarkAhead", "benchmarkBehind", "benchmarkOnPar",
+    "applyImpactTitle", "impactScore", "impactProducts",
+    "gscTitle", "gscWhyShopify", "gscWhyGoogle", "gscNotConfigured", "gscConnectHint", "gscSkipOk", "gscConnect", "gscConnected", "gscSummary",
+    "gscBeforeAfterTitle", "gscBaseline", "gscLatest", "gscDeltaImpressions", "gscDeltaClicks", "gscAwaitingBaseline",
+    "deliveryTitle", "deliveryIntro", "deliveryReady", "deliveryNotReady", "deliveryScore",
+    "deliveryThemeBrand", "deliveryThemeProduct", "deliveryShopSchema", "deliveryProductSchema",
+    "deliveryLlmsLive", "deliveryLiveProductLd", "deliveryLiveOrgLd", "deliveryLlmsMetafield",
+    "deliveryOpenTheme", "deliveryRecheck",
+    "marketsChangedBanner",
   ];
 
   const buildCopy = (locale) =>
@@ -96,7 +109,16 @@ export async function loadAuditData(request) {
   }
 
   const locale = getStoreLocale(data);
-  const catalogData = await prepareCatalogData(admin, data);
+  const { getShopProductTier } = await import("./product-limits.server.js");
+  const { checkMarketsChanged } = await import("./market-watch.server.js");
+  const { buildCategoryBenchmark } = await import("./benchmark.server.js");
+  const { getApplyImpactReport } = await import("./apply-impact.server.js");
+  const { fetchSearchConsoleSummary, isSearchConsoleConfigured } = await import(
+    "./search-console.server.js"
+  );
+
+  const productTier = await getShopProductTier(session.shop);
+  const catalogData = await prepareCatalogData(admin, data, productTier.effectiveLimit);
   const snapshot = analyzeSnapshot(catalogData, locale);
 
   const { getShopMarketSettings } = await import("./shop-market.server.js");
@@ -108,7 +130,12 @@ export async function loadAuditData(request) {
 
   const marketOverrides = await getShopMarketSettings(session.shop);
   const marketContext = buildMarketContext(data, marketOverrides);
-  const priorityProducts = getPriorityProducts(catalogData.products?.nodes ?? [], snapshot.matrix);
+  const marketsWatch = await checkMarketsChanged(session.shop, marketContext);
+  const priorityProducts = getPriorityProducts(
+    catalogData.products?.nodes ?? [],
+    snapshot.matrix,
+    productTier.effectiveLimit,
+  );
   const categories = groupProductsByCategory(
     catalogData.products?.nodes ?? [],
     snapshot.matrix,
@@ -128,6 +155,9 @@ export async function loadAuditData(request) {
     schemaActive,
     marketContext,
     shop: data.shop,
+    salesRanking: catalogData.salesRanking ?? null,
+    aiPolishLimit: productTier.aiPolishLimit,
+    skipAi: true,
   });
   const executiveBase = analyzeExecutive(catalogData, locale, {
     previewItems: preview.items,
@@ -158,6 +188,38 @@ export async function loadAuditData(request) {
     preview,
     schemaActive,
   });
+  const benchmark = buildCategoryBenchmark(executive, marketContext);
+  const applyImpact = await getApplyImpactReport(session.shop);
+
+  const { getGscComparison } = await import("./search-console.server.js");
+  const gscComparison = isSearchConsoleConfigured() ? await getGscComparison(session.shop) : null;
+  const searchConsole = isSearchConsoleConfigured()
+    ? {
+        configured: true,
+        comparison: gscComparison,
+        ...(await withTimeout(fetchSearchConsoleSummary(session.shop), 5000, {
+          connected: gscComparison?.connected ?? false,
+          timedOut: true,
+        })),
+      }
+    : { connected: false, configured: false };
+
+  const { getDeliveryStatus, runStorefrontDeliveryCheck } = await import("./storefront-delivery.server.js");
+  let deliveryStatus = await getDeliveryStatus(session.shop);
+  const sampleForDelivery = priorityProducts[0];
+  if (!deliveryStatus?.checkedAt && sampleForDelivery) {
+    deliveryStatus = await withTimeout(
+      runStorefrontDeliveryCheck(admin, session.shop, {
+        sampleProduct: {
+          id: sampleForDelivery.id,
+          handle: sampleForDelivery.handle,
+          storeUrl: data.shop?.primaryDomain?.url ?? `https://${session.shop}`,
+        },
+      }),
+      12000,
+      deliveryStatus,
+    );
+  }
 
   const appliedCatalog = await getAppliedCatalogSummary(
     session.shop,
@@ -276,5 +338,11 @@ export async function loadAuditData(request) {
     marketContext,
     validation,
     canPilotReset: canUsePilotReset(session.shop),
+    productTier,
+    benchmark,
+    applyImpact,
+    marketsWatch,
+    searchConsole,
+    deliveryStatus,
   };
 }

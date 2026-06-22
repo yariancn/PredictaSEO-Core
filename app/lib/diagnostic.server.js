@@ -1,7 +1,13 @@
 import { t as translate } from "./locale.js";
 import { enrichCatalogWithSalesProducts, fetchSalesRanking } from "./sales-ranking.server.js";
+import {
+  BASE_PRODUCT_LIMIT,
+  CATALOG_POOL_LIMIT,
+  BEST_SELLER_FETCH_LIMIT,
+} from "./product-limits.server.js";
 
-export const PRIORITY_LIMIT = 50;
+/** @deprecated use BASE_PRODUCT_LIMIT from product-limits.server.js */
+export const PRIORITY_LIMIT = BASE_PRODUCT_LIMIT;
 
 const BEST_SELLER_PATTERN =
   /best\s*sell|bestsell|top\s*sell|m[aá]s\s*vendid|mejores\s*ventas|plus\s*vend/i;
@@ -21,6 +27,18 @@ const PRODUCT_FIELDS = `
   hasOutOfStockVariants
   isGiftCard
   seo { title description }
+  featuredImage { url altText }
+  variants(first: 25) {
+    nodes {
+      id
+      sku
+      barcode
+      price
+      compareAtPrice
+      availableForSale
+      inventoryQuantity
+    }
+  }
 `;
 
 export const CATALOG_QUERY = `#graphql
@@ -41,13 +59,13 @@ export const CATALOG_QUERY = `#graphql
         handle
         title
         productsCount { count }
-        products(first: ${PRIORITY_LIMIT}) {
+        products(first: ${BEST_SELLER_FETCH_LIMIT}) {
           nodes { ${PRODUCT_FIELDS} }
         }
       }
     }
     catalogPool: products(
-      first: 150
+      first: ${CATALOG_POOL_LIMIT}
       sortKey: PUBLISHED_AT
       reverse: true
       query: "status:ACTIVE published_status:published"
@@ -263,28 +281,42 @@ export function selectTopCommercialProducts(rawData, limit = PRIORITY_LIMIT, sal
   };
 }
 
-export async function prepareCatalogData(admin, rawData) {
+export async function prepareCatalogData(admin, rawData, effectiveLimit = BASE_PRODUCT_LIMIT) {
   const catalogTotal = rawData?.productsCount?.count ?? 0;
   let salesRanking = null;
   let enrichedData = rawData;
 
-  if (catalogTotal > PRIORITY_LIMIT && admin) {
-    salesRanking = await fetchSalesRanking(admin);
+  if (catalogTotal > CATALOG_POOL_LIMIT && admin) {
+    salesRanking = await fetchSalesRanking(admin, effectiveLimit);
     enrichedData = await enrichCatalogWithSalesProducts(admin, rawData, salesRanking);
-  } else if (catalogTotal > 0 && catalogTotal <= PRIORITY_LIMIT && admin) {
+  }
+
+  if (admin && catalogTotal > 0) {
     const { fetchAllCatalogProducts } = await import("./sales-ranking.server.js");
-    const fullProducts = await fetchAllCatalogProducts(admin, catalogTotal);
-    if (fullProducts.length > 0) {
-      enrichedData = { ...rawData, catalogPool: { nodes: fullProducts } };
+    const fetchCap = Math.min(catalogTotal, effectiveLimit + CATALOG_POOL_LIMIT);
+    if (catalogTotal > CATALOG_POOL_LIMIT || catalogTotal <= effectiveLimit) {
+      const fullProducts = await fetchAllCatalogProducts(admin, Math.min(fetchCap, effectiveLimit));
+      if (fullProducts.length > 0) {
+        enrichedData = {
+          ...enrichedData,
+          catalogPool: {
+            nodes: dedupeProducts([
+              ...(enrichedData.catalogPool?.nodes ?? []),
+              ...fullProducts,
+            ]),
+          },
+        };
+      }
     }
   }
 
-  const selection = selectTopCommercialProducts(enrichedData, PRIORITY_LIMIT, salesRanking);
+  const selection = selectTopCommercialProducts(enrichedData, effectiveLimit, salesRanking);
   return {
     ...enrichedData,
     products: { nodes: selection.products },
     catalogSelection: selection.meta,
     salesRanking,
+    effectiveLimit,
   };
 }
 
@@ -350,20 +382,20 @@ export function buildProductMatrix(products, locale = "en") {
     .sort((a, b) => b.score - a.score);
 }
 
-export function getPriorityProducts(products, matrix) {
+export function getPriorityProducts(products, matrix, limit = BASE_PRODUCT_LIMIT) {
   const ordered = [];
   const seen = new Set();
   for (const row of matrix) {
     if (seen.has(row.product.id)) continue;
     seen.add(row.product.id);
     ordered.push(row.product);
-    if (ordered.length >= PRIORITY_LIMIT) return ordered;
+    if (ordered.length >= limit) return ordered;
   }
   for (const product of products) {
     if (seen.has(product.id)) continue;
     seen.add(product.id);
     ordered.push(product);
-    if (ordered.length >= PRIORITY_LIMIT) return ordered;
+    if (ordered.length >= limit) return ordered;
   }
   return ordered;
 }

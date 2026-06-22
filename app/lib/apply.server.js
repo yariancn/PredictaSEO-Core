@@ -8,6 +8,9 @@ import {
 } from "./content-engine.server.js";
 import { buildProductJsonLd, saveProductJsonLd } from "./product-schema.server.js";
 import { detectGeoMismatch } from "./markets.server.js";
+import { selectAiProductIds, TOP_AI_PRODUCTS } from "./product-limits.server.js";
+import { saveLlmsTxtMetafield } from "./validation.server.js";
+import { registerProductLocaleTranslations } from "./translations.server.js";
 
 const PRODUCT_UPDATE = `#graphql
   mutation PredictaCoreProductUpdate($input: ProductInput!) {
@@ -43,58 +46,83 @@ function needsBodyDescription(product) {
 }
 
 export async function buildPreviewPlan(products, shopName, matrix, options = {}) {
-  const { jsonLd, schemaActive = false, marketContext, shop } = options;
-  const mirrorIds = new Set(
-    matrix.filter((r) => r.viability === "ALTA").slice(0, 3).map((r) => r.product.id),
-  );
+  const {
+    jsonLd,
+    schemaActive = false,
+    marketContext,
+    shop,
+    salesRanking = null,
+    aiPolishLimit = TOP_AI_PRODUCTS,
+    skipAi = false,
+  } = options;
+  const geminiReady = !skipAi && Boolean(process.env.GEMINI_API_KEY?.trim());
+  const aiIds = selectAiProductIds(matrix, salesRanking, aiPolishLimit);
   const items = [];
+  const candidates = [];
 
   for (const product of products) {
     const category = inferProductCategory(product);
-    const isMirror = mirrorIds.has(product.id);
-    const proposed = await buildSeoForProduct(product, shopName, category, marketContext, {
-      useAi: isMirror,
-    });
-    const changes = {};
-    const before = {
-      seoTitle: product.seo?.title?.trim() || "",
-      seoDescription: product.seo?.description?.trim() || "",
-      descriptionHtml: product.descriptionHtml ?? product.description ?? "",
-    };
-    const after = { ...before };
-
-    if (needsSeoTitle(product, marketContext)) {
-      changes.seoTitle = proposed.seoTitle;
-      after.seoTitle = proposed.seoTitle;
-    }
-    if (needsSeoDescription(product, marketContext)) {
-      changes.seoDescription = proposed.seoDescription;
-      after.seoDescription = proposed.seoDescription;
-    }
-    if (needsBodyDescription(product)) {
-      changes.descriptionHtml = buildProductDescriptionHtml(product, shopName, marketContext);
-      after.descriptionHtml = changes.descriptionHtml;
-    }
-
-    if (Object.keys(changes).length === 0) continue;
-
-    items.push({
-      id: product.id,
-      handle: product.handle,
-      title: product.title,
+    const needsChange =
+      needsSeoTitle(product, marketContext) ||
+      needsSeoDescription(product, marketContext) ||
+      needsBodyDescription(product);
+    if (!needsChange) continue;
+    candidates.push({
+      product,
       category,
-      isMirror,
-      aiGenerated: Boolean(proposed.aiGenerated),
-      before: {
-        seoTitle: before.seoTitle || "—",
-        seoDescription: before.seoDescription || "—",
-        hasDescription: !needsBodyDescription(product),
-      },
-      after,
-      changes,
-      originals: before,
-      productSnapshot: product,
+      useAi: !skipAi && aiIds.has(product.id) && geminiReady,
     });
+  }
+
+  const AI_BATCH = 5;
+  for (let i = 0; i < candidates.length; i += AI_BATCH) {
+    const batch = candidates.slice(i, i + AI_BATCH);
+    const batchItems = await Promise.all(
+      batch.map(async ({ product, category, useAi }) => {
+        const proposed = await buildSeoForProduct(product, shopName, category, marketContext, { useAi });
+        const changes = {};
+        const before = {
+          seoTitle: product.seo?.title?.trim() || "",
+          seoDescription: product.seo?.description?.trim() || "",
+          descriptionHtml: product.descriptionHtml ?? product.description ?? "",
+        };
+        const after = { ...before };
+
+        if (needsSeoTitle(product, marketContext)) {
+          changes.seoTitle = proposed.seoTitle;
+          after.seoTitle = proposed.seoTitle;
+        }
+        if (needsSeoDescription(product, marketContext)) {
+          changes.seoDescription = proposed.seoDescription;
+          after.seoDescription = proposed.seoDescription;
+        }
+        if (needsBodyDescription(product)) {
+          changes.descriptionHtml = buildProductDescriptionHtml(product, shopName, marketContext);
+          after.descriptionHtml = changes.descriptionHtml;
+        }
+
+        if (Object.keys(changes).length === 0) return null;
+
+        return {
+          id: product.id,
+          handle: product.handle,
+          title: product.title,
+          category,
+          isMirror: useAi,
+          aiGenerated: Boolean(proposed.aiGenerated),
+          before: {
+            seoTitle: before.seoTitle || "—",
+            seoDescription: before.seoDescription || "—",
+            hasDescription: !needsBodyDescription(product),
+          },
+          after,
+          changes,
+          originals: before,
+          productSnapshot: product,
+        };
+      }),
+    );
+    items.push(...batchItems.filter(Boolean));
   }
 
   const schema = {
@@ -210,7 +238,7 @@ async function saveProductSnapshots(shop, batchId, item) {
 }
 
 export async function applyPreviewPlan(admin, shop, preview, batchId, options = {}) {
-  const { jsonLd, shop: shopRecord, marketContext, priorityProducts = [] } = options;
+  const { jsonLd, shop: shopRecord, marketContext, priorityProducts = [], shopName = "" } = options;
 
   const { captureBaselineBeforeApply } = await import("./shop-baseline.server.js");
   if (priorityProducts.length > 0) {
@@ -227,6 +255,9 @@ export async function applyPreviewPlan(admin, shop, preview, batchId, options = 
   for (const item of preview.items) {
     try {
       await applyProductChange(admin, item);
+      if (shopName && marketContext?.publishedLocales?.length > 1) {
+        await registerProductLocaleTranslations(admin, item, shopName, marketContext).catch(() => {});
+      }
       if (shopRecord && marketContext) {
         const productForSchema = {
           ...(item.productSnapshot ?? {}),
@@ -256,6 +287,7 @@ export async function applyPreviewPlan(admin, shop, preview, batchId, options = 
       const schemaResult = await applySchemaToTheme(admin, shop, jsonLd);
       if (shopRecord) {
         await saveWebsiteJsonLd(admin, shopRecord).catch(() => {});
+        await saveLlmsTxtMetafield(admin, shopRecord, marketContext).catch(() => {});
       }
       const { shopId, originals } = schemaResult;
 

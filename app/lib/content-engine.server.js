@@ -74,6 +74,14 @@ export function buildProductDescriptionHtml(product, shopName, marketContext) {
     intro = vendor
       ? `${title} de ${vendor}${type ? ` — ${type}` : ""}. Disponible en ${region}.`
       : `${title}${type ? ` — ${type}` : ""}. Disponible en ${region}.`;
+  } else if (lang.startsWith("fr")) {
+    intro = vendor
+      ? `${title} par ${vendor}${type ? ` — ${type}` : ""}. Disponible en ${region}.`
+      : `${title}${type ? ` — ${type}` : ""}. Disponible en ${region}.`;
+  } else if (lang.startsWith("pt")) {
+    intro = vendor
+      ? `${title} da ${vendor}${type ? ` — ${type}` : ""}. Disponível em ${region}.`
+      : `${title}${type ? ` — ${type}` : ""}. Disponível em ${region}.`;
   } else {
     intro = vendor
       ? `${title} from ${vendor}${type ? ` — ${type}` : ""}. Available across ${region}.`

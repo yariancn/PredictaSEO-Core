@@ -1,5 +1,6 @@
 const SALES_LOOKBACK = "-90d";
-const SALES_LIMIT = 150;
+
+import { SALES_RANKING_LIMIT } from "./product-limits.server.js";
 
 const PRODUCT_FIELDS = `
   id
@@ -18,7 +19,8 @@ const PRODUCT_FIELDS = `
   seo { title description }
 `;
 
-const SHOPIFYQL_SALES = `FROM sales SHOW orders, total_sales GROUP BY product_id SINCE ${SALES_LOOKBACK} ORDER BY total_sales DESC LIMIT ${SALES_LIMIT}`;
+const SHOPIFYQL_SALES = (limit) =>
+  `FROM sales SHOW orders, total_sales GROUP BY product_id SINCE ${SALES_LOOKBACK} ORDER BY total_sales DESC LIMIT ${limit}`;
 
 function normalizeProductGid(value) {
   if (value == null || value === "") return null;
@@ -90,7 +92,7 @@ export async function fetchAllCatalogProducts(admin, maxCount) {
   return products;
 }
 
-export async function fetchSalesRanking(admin) {
+export async function fetchSalesRanking(admin, limit = SALES_RANKING_LIMIT) {
   if (!admin?.graphql) return null;
 
   try {
@@ -105,7 +107,7 @@ export async function fetchSalesRanking(admin) {
           parseErrors
         }
       }`,
-      { variables: { query: SHOPIFYQL_SALES } },
+      { variables: { query: SHOPIFYQL_SALES(Math.min(limit, SALES_RANKING_LIMIT)) } },
     );
 
     const { data, errors } = await response.json();
