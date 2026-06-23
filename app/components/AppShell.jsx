@@ -64,6 +64,7 @@ export function LoadingShell({
   title = "PredictaCore",
   message = "Loading your audit…",
   subtext = "",
+  eyebrow = "AI visibility audit",
   mode = "audit",
 }) {
   const isOptimize = mode === "optimize";
@@ -71,7 +72,7 @@ export function LoadingShell({
   return (
     <div style={shellStyle}>
       <p style={{ margin: 0, fontSize: "0.75rem", color: "#6366f1", fontWeight: 600, letterSpacing: "0.06em" }}>
-        AI visibility audit
+        {eyebrow}
       </p>
       <h1 style={{ margin: "4px 0 24px 0", fontSize: "1.35rem", fontWeight: 700, color: "#fff" }}>{title}</h1>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "20px", padding: "12px 0 8px" }}>

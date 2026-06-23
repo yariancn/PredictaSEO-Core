@@ -99,7 +99,7 @@ export async function loadAuditData(request) {
     "deliveryLlmsLive", "deliveryLiveProductLd", "deliveryLiveOrgLd", "deliveryLlmsMetafield",
     "deliveryOpenTheme", "deliveryRecheck",
     "step1ScoreHeadline", "step1WhyBrief", "step1TimelineBrief", "step1PlanIncludes", "step1AfterApplyNote",
-    "validationExplainProducts",
+    "validationExplainProducts", "optimizingStore", "optimizingStoreSubtext",
     "marketsChangedBanner",
   ];
 

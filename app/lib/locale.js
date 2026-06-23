@@ -8,6 +8,27 @@ export function getStoreLocale(data) {
   return "en";
 }
 
+export const SHOP_LOCALE_QUERY = `#graphql
+  query PredictaCoreShopLocale {
+    shopLocales {
+      locale
+      primary
+      published
+    }
+  }
+`;
+
+export async function resolveShopLocale(admin) {
+  try {
+    const response = await admin.graphql(SHOP_LOCALE_QUERY);
+    const { data, errors } = await response.json();
+    if (errors?.length) return "en";
+    return getStoreLocale(data);
+  } catch {
+    return "en";
+  }
+}
+
 const MESSAGES = {
   en: {
     title: "PredictaCore",
@@ -76,7 +97,7 @@ const MESSAGES = {
     catalogScoreLabel: "AI readiness score",
     foundationScoreLabel: "Brand visibility to AI",
     scoreExplain:
-      "Your score combines search titles, search descriptions, product descriptions, and brand identity — averaged across your top products.",
+      "Your score combines search titles, search descriptions, product descriptions, and brand identity — averaged across your priority products (up to {{limit}}).",
     scorePlainTitle: "How to read your score",
     scorePlainBody:
       "Think of it as a readiness grade for AI search (ChatGPT, Perplexity, Google AI). We average four checks on your priority products — not your whole Shopify admin, not your sales.",
@@ -480,6 +501,17 @@ const MESSAGES = {
     heroTitle: "Auditoría AI gratis",
     heroBody:
       "Analizamos gratis hasta {{scanLimit}} productos de tu catálogo. Descubre qué impide que la IA te recomiende — vista previa de cada cambio antes de pagar.",
+    step1ScoreHeadline: "Tu score de visibilidad AI",
+    step1WhyBrief:
+      "Las herramientas de IA (ChatGPT, Perplexity, Google AI) recomiendan tiendas con info completa de productos y marca clara. Un score bajo suele significar títulos, descripciones o datos de marca faltantes — no que tus productos sean malos.",
+    step1TimelineBrief:
+      "Después de aplicar cambios: los crawlers suelen re-leer tu tienda en 2–4 semanas. Cambios en tráfico orgánico suelen verse en 4–8 semanas.",
+    step1PlanIncludes:
+      "El setup incluye hasta {{limit}} productos principales por ventas. Hoy analizamos {{analyzed}} de {{total}} productos en tu catálogo.",
+    step1AfterApplyNote:
+      "Después del Apply verificamos tu storefront y opcionalmente Google Search Console — los detalles aparecen abajo una vez optimizado.",
+    validationExplainProducts:
+      "Mercados confirmados. También escaneamos tus productos buscando campos SEO faltantes (reflejado en tu score arriba).",
     scopeNote: "Top {{analyzed}} productos seleccionados de {{total}} en catálogo",
     scopeNoteFullCatalog: "Los {{analyzed}} productos de tu catálogo analizados ({{total}} en total)",
     scopeNoteFullCatalogExcluded:
@@ -572,6 +604,22 @@ const MESSAGES = {
     step4PaymentSuccess: "Pago exitoso — ya puedes aplicar los cambios en tu tienda.",
     step4FlowIntro: "Completa el pago en Shopify para desbloquear Apply.",
     expectationsPreviewTitle: "Qué esperar después de aplicar",
+    expectationsPreviewMeans1:
+      "Después del Apply, la búsqueda con IA podrá leer títulos, descripciones e identidad de marca claros en tu tienda.",
+    expectationsPreviewMeans2:
+      "Optimizaremos tus {{count}} productos prioritarios (donde más importa la visibilidad AI).",
+    expectationsPreviewNot1:
+      "Menciones instantáneas en AI search el mismo día — los crawlers necesitan tiempo para re-leer tu tienda.",
+    expectationsPreviewNot2:
+      "Garantía de posición #1 — los resultados de AI search cambian constantemente.",
+    expectationsPreviewTimeline1:
+      "2–4 semanas después del Apply: los crawlers de IA suelen reindexar tu tienda.",
+    expectationsPreviewTimeline2:
+      "4–8 semanas después del Apply: más probabilidad de aparecer en respuestas de AI search.",
+    expectationsPreviewMaintenanceTitle: "Después del mes 1 — mantenimiento $15/mes",
+    expectationsPreviewMaintenance1: "Re-escaneo mensual de hasta {{limit}} productos principales por ventas",
+    expectationsPreviewMaintenance2: "Actualizaciones cuando productos nuevos o gaps bajan tu score",
+    expectationsPreviewMaintenance3: "Pulido de productos nuevos conforme crece tu catálogo",
     step4PaidIntro: "Pago completado — confirma abajo para publicar los cambios en tu tienda.",
     introTitle: "Analizaremos cómo la IA ve tu tienda",
     introBody:
@@ -609,7 +657,6 @@ const MESSAGES = {
     previewNotAppliedYet: "Aún no hemos cambiado nada en tu tienda — esto es solo una vista previa.",
     previewAwaitApply:
       "Pago completado — aún no hay cambios en vivo. Confirma Apply abajo para publicar estos cambios en tu tienda.",
-    step4PaidIntro: "Plan activo — confirma abajo para publicar los cambios en tu tienda.",
     alreadyOptimizedTitle: "Ya optimizado",
     alreadyOptimizedBody:
       "No hay cambios pendientes — tu tienda se optimizó en una sesión anterior. Usa Restore abajo para repetir el wizard.",

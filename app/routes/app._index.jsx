@@ -18,8 +18,8 @@ import { formatProjectedScoreRange } from "../lib/score.js";
 
 export async function loader({ request }) {
   const { authenticate } = await import("../shopify.server");
-  const { session } = await authenticate.admin(request);
-  const { t } = await import("../lib/locale.js");
+  const { admin, session } = await authenticate.admin(request);
+  const { t, resolveShopLocale } = await import("../lib/locale.js");
   const { fillCopy } = await import("../lib/preview.js");
   const {
     BASE_PRODUCT_LIMIT,
@@ -27,7 +27,7 @@ export async function loader({ request }) {
     EXTRA_PRODUCT_PACK_PRICE,
     EXTRA_PRODUCT_PACK_SIZE,
   } = await import("../lib/product-limits.server.js");
-  const locale = "en";
+  const locale = await resolveShopLocale(admin);
   const limitVars = {
     scanLimit: BASE_PRODUCT_LIMIT,
     aiLimit: TOP_AI_PRODUCTS,
@@ -37,12 +37,12 @@ export async function loader({ request }) {
   const introKeys = [
     "title", "subtitle", "introTitle", "introBody", "introBullet1", "introBullet2", "introBullet3",
     "introNoChanges", "pricingTitle", "pricingFree", "pricingSetup", "pricingScope", "pricingExtra",
-    "startAuditButton", "loadingAuditSubtext", "optimizingStore", "optimizingStoreSubtext",
+    "startAuditButton", "loading", "loadingAuditSubtext", "optimizingStore", "optimizingStoreSubtext",
   ];
   const introCopy = Object.fromEntries(
     introKeys.map((key) => [key, fillCopy(t(locale, key), limitVars)]),
   );
-  return json({ shop: session.shop, introCopy });
+  return json({ shop: session.shop, introCopy, locale });
 }
 
 export async function action({ request }) {
@@ -60,10 +60,11 @@ export async function action({ request }) {
     "../lib/apply.server.js"
   );
   const { getSchemaStatus } = await import("../lib/schema.server.js");
-  const { getStoreLocale, t } = await import("../lib/locale.js");
+  const { getStoreLocale, t, resolveShopLocale } = await import("../lib/locale.js");
   const { isBillingBypassed, isBillingTest, canUsePilotReset } = await import("../lib/billing.server.js");
 
   const { admin, session, billing } = await authenticate.admin(request);
+  const storeLocale = await resolveShopLocale(admin);
   const form = await request.formData();
   const intent = form.get("intent");
 
@@ -99,7 +100,7 @@ export async function action({ request }) {
         return json({ intent: "reset-test-store", resetTestError: errors.map((e) => e.message).join("; ") });
       }
       const catalogData = await prepareCatalogData(admin, data);
-      const snapshot = analyzeSnapshot(catalogData, "en");
+      const snapshot = analyzeSnapshot(catalogData, getStoreLocale(data));
       const priorityProducts = getPriorityProducts(catalogData.products?.nodes ?? [], snapshot.matrix);
       const result = await resetTestStoreForDemo(admin, session.shop, { priorityProducts });
       return json({ intent: "reset-test-store", resetTestResult: result });
@@ -174,9 +175,8 @@ export async function action({ request }) {
       const { syncBillingFromShopify } = await import("../lib/billing.server.js");
       await syncBillingFromShopify(session.shop, setupCheck);
       if (!setupPaid) {
-        const locale = "en";
         const { t: tr } = await import("../lib/locale.js");
-        return json({ intent: "apply", applyError: tr(locale, "billingRequired"), billingBlocked: true });
+        return json({ intent: "apply", applyError: tr(storeLocale, "billingRequired"), billingBlocked: true });
       }
     }
 
@@ -187,13 +187,12 @@ export async function action({ request }) {
     });
 
     if (!permission.allowed) {
-      const locale = "en";
       const { t: tr } = await import("../lib/locale.js");
       const messageKey =
         permission.reason === "already_applied" ? "applyAlreadyDone" : "billingRequired";
       return json({
         intent: "apply",
-        applyError: tr(locale, messageKey),
+        applyError: tr(storeLocale, messageKey),
         applyQuotaBlocked: true,
         blockReason: permission.reason,
       });
@@ -204,14 +203,13 @@ export async function action({ request }) {
       const outcome = await runStoreApply(admin, session.shop, { applyKind: permission.kind });
 
       if (outcome.skipped) {
-        const locale = "en";
         const { t: tr } = await import("../lib/locale.js");
         const msg =
           outcome.reason === "markets_not_configured"
-            ? tr(locale, "marketsNotConfigured")
+            ? tr(storeLocale, "marketsNotConfigured")
             : outcome.reason === "all_failed"
-            ? outcome.errors?.slice(0, 2).join("; ") || tr(locale, "applyError")
-            : tr(locale, "noChangesAlreadyApplied");
+            ? outcome.errors?.slice(0, 2).join("; ") || tr(storeLocale, "applyError")
+            : tr(storeLocale, "noChangesAlreadyApplied");
         return json({ intent: "apply", applyError: msg });
       }
 
@@ -1338,7 +1336,9 @@ export default function Index() {
   if (auditPending) {
     return (
       <LoadingShell
-        message="Analyzing your store…"
+        title={introCopy?.title ?? "PredictaCore"}
+        eyebrow={introCopy?.subtitle ?? "AI visibility audit"}
+        message={introCopy?.loading ?? "Analyzing your store…"}
         subtext={introCopy?.loadingAuditSubtext ?? "Read-only scan — nothing on your store is modified yet."}
         mode="audit"
       />
@@ -1371,6 +1371,8 @@ export default function Index() {
           }}
         >
           <LoadingShell
+            title={copy?.title ?? introCopy?.title ?? "PredictaCore"}
+            eyebrow={copy?.subtitle ?? introCopy?.subtitle ?? "AI visibility audit"}
             message={copy?.optimizingStore ?? introCopy?.optimizingStore ?? "We are optimizing your store and products"}
             subtext={copy?.optimizingStoreSubtext ?? introCopy?.optimizingStoreSubtext ?? ""}
             mode="optimize"
