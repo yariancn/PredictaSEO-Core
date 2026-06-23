@@ -1677,16 +1677,11 @@ function MarketsPanel({ copy, marketContext, applyFetcher }) {
 
 function ValidationPanel({ copy, validation, marketContext }) {
   if (!validation) return null;
-  const summaryKey = validation.summaryKey ?? "validationSummaryReview";
   return (
     <div style={{ ...theme.card, borderColor: "rgba(255,255,255,0.08)" }}>
-      <h2 style={theme.h2}>{copyText(copy, "validationTitle", "Readiness validation")}</h2>
-      <p style={{ ...theme.body, marginBottom: "10px" }}>{copyText(copy, summaryKey, "")}</p>
-      {marketContext?.regionLabel && (
-        <p style={{ ...theme.body, fontSize: "0.82rem", color: "#8b8b9a" }}>
-          {marketContext.regionLabel} · {validation.countryCount ?? 0} countries
-        </p>
-      )}
+      <p style={{ ...theme.body, margin: 0, fontSize: "0.88rem", color: "#c8c8d0" }}>
+        {copyText(copy, "validationExplainProducts", "Markets confirmed. Product SEO scan reflected in your score.")}
+      </p>
     </div>
   );
 }
@@ -1894,126 +1889,37 @@ function IndexWizard({
             </div>
           )}
 
-          <MarketsPanel copy={copy} marketContext={marketContext} applyFetcher={applyFetcher} />
-
-          <MarketsChangedBanner copy={copy} marketsWatch={marketsWatch} />
-
-          <ProductTierPanel copy={copy} productTier={productTier} shop={shop} />
-
-          <ValidationPanel copy={copy} validation={validation} marketContext={marketContext} />
-
-          <BenchmarkPanel copy={copy} benchmark={benchmark} />
-
-          <ApplyImpactPanel copy={copy} applyImpact={applyImpact} />
-
-          <DeliveryChecklistPanel copy={copy} deliveryStatus={deliveryStatus} shop={shop} />
-
-          <SearchConsolePanel copy={copy} searchConsole={searchConsole} />
-
-          {(firstApplyDone || setupComplete) && (
-            <ThemeOnboardingPanel copy={copy} shop={shop} />
-          )}
-
-          {executive.probabilistic?.projection && (
-            <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.25)" }}>
-              <p style={{ ...theme.body, margin: 0, color: "#a5b4fc" }}>
-                {fillCopy(copyText(copy, "scoreProjectionLabel", ""), {
-                  low: String(executive.probabilistic.projection.low),
-                  high: String(executive.probabilistic.projection.high),
-                })}
-              </p>
-              <p style={{ ...theme.body, margin: "8px 0 0 0", fontSize: "0.82rem", color: "#8b8b9a" }}>
-                {copyText(copy, executive.probabilistic.confidenceLabelKey ?? "scoreConfidenceModerate", "")}
-              </p>
+          <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.45)", background: "rgba(99,102,241,0.1)" }}>
+            <h2 style={{ ...theme.h2, color: "#a5b4fc", marginBottom: "14px" }}>
+              {copyText(copy, "step1ScoreHeadline", "Your AI visibility score")}
+            </h2>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: "20px", flexWrap: "wrap" }}>
+              <div style={theme.scoreRing(executive.score)}>
+                <div style={theme.scoreInner}>{executive.score}</div>
+              </div>
+              <div style={{ flex: 1, minWidth: "200px" }}>
+                <p style={{ margin: 0, fontSize: "1.05rem", fontWeight: 600, color: "#fff" }}>
+                  {copy.scoreNow.replace("{{score}}", String(executive.score))}
+                </p>
+                {pendingOptimization && scoreRange && (
+                  <p style={{ margin: "6px 0 0 0", fontSize: "0.88rem", color: "#a3e635" }}>
+                    {copy.scoreAfterApply
+                      .replace("{{low}}", String(scoreRange.low))
+                      .replace("{{high}}", String(scoreRange.high))}
+                  </p>
+                )}
+                <p style={{ margin: "10px 0 0 0", fontSize: "0.88rem", lineHeight: 1.55, color: "#c8c8d0" }}>
+                  {copyText(copy, "step1WhyBrief", "")}
+                </p>
+                <p style={{ margin: "8px 0 0 0", fontSize: "0.82rem", color: "#8b8b9a" }}>
+                  {copy.foundationScoreLabel}: {executive.foundationScore}/100 · {snapSummary.marketsLabel}
+                </p>
+              </div>
             </div>
-          )}
-
-          <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.35)", background: "rgba(99,102,241,0.08)" }}>
-            <h2 style={{ ...theme.h2, color: "#a5b4fc" }}>{copy.heroTitle}</h2>
-            <p style={theme.body}>{copy.heroBody}</p>
-            <p style={{ ...theme.body, marginTop: "10px", fontSize: "0.82rem", color: "#a5b4fc" }}>{scopeLabel}</p>
-          </div>
-
-          <div style={theme.card}>
-            <h2 style={theme.h2}>{copy.impactTitle}</h2>
-            <p style={theme.body}>{copy.impactIntro}</p>
-          </div>
-
-          <div style={{ ...theme.card, display: "flex", alignItems: "center", gap: "20px" }}>
-            <div style={theme.scoreRing(executive.score)}>
-              <div style={theme.scoreInner}>{executive.score}</div>
-            </div>
-            <div style={{ flex: 1 }}>
-              <p style={{ margin: 0, fontSize: "0.78rem", color: "#8b8b9a" }}>{copy.catalogScoreLabel}</p>
-              <p style={{ margin: "4px 0 0 0", fontSize: "1.1rem", fontWeight: 600, color: "#fff" }}>
-                {copy.scoreNow.replace("{{score}}", String(executive.score))}
-              </p>
-              {nearlyComplete && (
-                <p style={{ margin: "4px 0 0 0", fontSize: "0.82rem", color: "#fbbf24" }}>
-                  {copyText(
-                    copy,
-                    "scoreAlmostComplete",
-                    "{{count}} products still need fixes — go to step 4 to finish (~{{score}}/100)",
-                  )
-                    .replace("{{count}}", String(preview.productCount || catalogGaps))
-                    .replace("{{score}}", String(executive.scoreAfterApply))}
-                </p>
-              )}
-              {pendingOptimization && !nearlyComplete && scoreRange && (
-                <p style={{ margin: "4px 0 0 0", fontSize: "0.82rem", color: "#a3e635" }}>
-                  {copy.scoreAfterApply
-                    .replace("{{low}}", String(scoreRange.low))
-                    .replace("{{high}}", String(scoreRange.high))}
-                </p>
-              )}
-              {pendingOptimization && !nearlyComplete && !scoreRange && (
-                <p style={{ margin: "4px 0 0 0", fontSize: "0.82rem", color: "#a3e635" }}>
-                  {copy.scoreGainGeneric}
-                </p>
-              )}
-              {allComplete && !pendingOptimization && (
-                <p style={{ margin: "4px 0 0 0", fontSize: "0.82rem", color: "#a3e635" }}>
-                  {copy.scoreSeoComplete}
-                </p>
-              )}
-              <p style={{ margin: "8px 0 0 0", fontSize: "0.82rem", color: "#6b6b78" }}>
-                {copy.foundationScoreLabel}: {executive.foundationScore}/100 · {snapSummary.marketsLabel}
-              </p>
-              <p style={{ margin: "10px 0 0 0", fontSize: "0.82rem", lineHeight: 1.5, color: "#8b8b9a" }}>
-                {copy.scoreExplain}
-              </p>
-            </div>
-          </div>
-
-          <div style={{ ...theme.card, borderColor: "rgba(255,255,255,0.08)" }}>
-            <h2 style={theme.h2}>{copyText(copy, "scorePlainTitle", "How to read your score")}</h2>
-            <p style={{ ...theme.body, marginBottom: "10px" }}>
-              {copyText(copy, "scorePlainBody", "Think of it as a readiness grade for AI search.")}
-            </p>
-            <p style={theme.bullet("#6366f1")}>{copyText(copy, "scorePlain1", "")}</p>
-            <p style={theme.bullet("#6366f1")}>{copyText(copy, "scorePlain2", "")}</p>
-            <p style={theme.bullet("#6366f1")}>{copyText(copy, "scorePlain3", "")}</p>
-            <p style={theme.bullet("#6366f1")}>
-              {fillCopy(copyText(copy, "scorePlain4", ""), {
-                region: marketContext?.regionLabel ?? snapSummary?.marketsLabel ?? "your markets",
-              })}
-            </p>
-            <p style={{ ...theme.body, marginTop: "12px", fontSize: "0.82rem", color: "#8b8b9a" }}>
-              {copyText(copy, "scorePlainLow", "")}
+            <p style={{ ...theme.body, marginTop: "14px", marginBottom: 0, fontSize: "0.82rem", color: "#a5b4fc" }}>
+              {scopeLabel}
             </p>
           </div>
-
-          {(snapSummary?.excludedCount ?? 0) > 0 && (
-            <div style={{ ...theme.card, borderColor: "rgba(165,180,252,0.25)", background: "rgba(99,102,241,0.06)" }}>
-              <p style={{ ...theme.body, margin: 0, fontSize: "0.88rem", color: "#c8c8d0" }}>
-                {fillCopy(copyText(copy, "catalogCountExplain", ""), {
-                  analyzed: snapSummary?.priorityCount ?? 0,
-                  total: snapSummary?.catalogTotal ?? 0,
-                  excluded: snapSummary?.excludedCount ?? 0,
-                })}
-              </p>
-            </div>
-          )}
 
           <div style={theme.card}>
             <h2 style={theme.h2}>{copy.scoreBreakdownTitle}</h2>
@@ -2023,10 +1929,6 @@ function IndexWizard({
                 {factor.label}
               </p>
             ))}
-          </div>
-
-          <div style={theme.card}>
-            <h2 style={theme.h2}>{copy.foundationBreakdownTitle}</h2>
             {foundationFactors.map((factor) => (
               <p key={factor.id} style={theme.bullet(factor.ok ? "#a3e635" : "#f87171")}>
                 {factor.ok ? "✓ " : "○ "}
@@ -2034,6 +1936,49 @@ function IndexWizard({
               </p>
             ))}
           </div>
+
+          <div style={theme.card}>
+            <h2 style={theme.h2}>{copy.planTitle}</h2>
+            {(report?.fixes ?? []).slice(0, 4).map((fix, i) => (
+              <p key={i} style={theme.bullet("#a3e635")}>
+                {fix}
+              </p>
+            ))}
+            <p style={{ ...theme.body, marginTop: "12px", marginBottom: 0, fontSize: "0.82rem", color: "#8b8b9a" }}>
+              {copyText(copy, "step1TimelineBrief", "")}
+            </p>
+          </div>
+
+          <MarketsPanel copy={copy} marketContext={marketContext} applyFetcher={applyFetcher} />
+          <ValidationPanel copy={copy} validation={validation} marketContext={marketContext} />
+          <MarketsChangedBanner copy={copy} marketsWatch={marketsWatch} />
+
+          <div style={{ ...theme.card, borderColor: "rgba(255,255,255,0.06)" }}>
+            <p style={{ ...theme.body, margin: 0, fontSize: "0.88rem", color: "#c8c8d0" }}>
+              {fillCopy(copyText(copy, "step1PlanIncludes", ""), {
+                limit: String(productTier?.effectiveLimit ?? 590),
+                analyzed: String(snapSummary?.priorityCount ?? preview?.productCount ?? 0),
+                total: String(snapSummary?.catalogTotal ?? 0),
+              })}
+            </p>
+          </div>
+
+          {!firstApplyDone && !setupComplete && (
+            <p style={{ ...theme.body, fontSize: "0.82rem", color: "#6b6b78", margin: "0 0 14px 0" }}>
+              {copyText(copy, "step1AfterApplyNote", "")}
+            </p>
+          )}
+
+          {(firstApplyDone || setupComplete) && (
+            <>
+              <DeliveryChecklistPanel copy={copy} deliveryStatus={deliveryStatus} shop={shop} />
+              <ApplyImpactPanel copy={copy} applyImpact={applyImpact} />
+              <ThemeOnboardingPanel copy={copy} shop={shop} />
+              <SearchConsolePanel copy={copy} searchConsole={searchConsole} />
+              <BenchmarkPanel copy={copy} benchmark={benchmark} />
+              <ProductTierPanel copy={copy} productTier={productTier} shop={shop} showUpgrade />
+            </>
+          )}
 
           {(pilotMode || backupSummary?.baselineMissing) && (
             <>
@@ -2089,13 +2034,6 @@ function IndexWizard({
             </div>
             </>
           )}
-
-          <div style={theme.card}>
-            <h2 style={theme.h2}>{copy.planTitle}</h2>
-            {report.fixes.map((item) => (
-              <p key={item} style={theme.bullet("#a3e635")}>{item}</p>
-            ))}
-          </div>
 
           {(summaryLoading || summary || displaySummaryError) && (
             <div

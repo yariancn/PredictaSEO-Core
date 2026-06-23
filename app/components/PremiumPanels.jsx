@@ -24,7 +24,7 @@ const body = {
   color: "#c8c8d0",
 };
 
-export function ProductTierPanel({ copy, productTier, shop }) {
+export function ProductTierPanel({ copy, productTier, shop, showUpgrade = true }) {
   if (!productTier) return null;
   return (
     <div style={{ ...card, borderColor: "rgba(99,102,241,0.35)", background: "rgba(99,102,241,0.08)" }}>
@@ -35,7 +35,7 @@ export function ProductTierPanel({ copy, productTier, shop }) {
           .replace("{{base}}", String(productTier.baseLimit))
           .replace("{{ai}}", String(productTier.aiPolishLimit))}
       </p>
-      {productTier.canExpand && (
+      {showUpgrade && productTier.canExpand && (
         <a
           href={`/app/billing/extra-products?shop=${encodeURIComponent(shop)}`}
           style={{

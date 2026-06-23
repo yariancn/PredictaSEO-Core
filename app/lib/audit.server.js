@@ -90,6 +90,8 @@ export async function loadAuditData(request) {
     "deliveryThemeBrand", "deliveryThemeProduct", "deliveryShopSchema", "deliveryProductSchema",
     "deliveryLlmsLive", "deliveryLiveProductLd", "deliveryLiveOrgLd", "deliveryLlmsMetafield",
     "deliveryOpenTheme", "deliveryRecheck",
+    "step1ScoreHeadline", "step1WhyBrief", "step1TimelineBrief", "step1PlanIncludes", "step1AfterApplyNote",
+    "validationExplainProducts",
     "marketsChangedBanner",
   ];
 

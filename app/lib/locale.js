@@ -15,6 +15,17 @@ const MESSAGES = {
     heroTitle: "Free AI visibility audit",
     heroBody:
       "We check your most important products for free and show you what's missing — before you pay anything.",
+    step1ScoreHeadline: "Your AI visibility score",
+    step1WhyBrief:
+      "AI tools (ChatGPT, Perplexity, Google AI) recommend stores that have complete product info and a clear brand. A low score usually means missing titles, descriptions, or brand data — not that your products are bad.",
+    step1TimelineBrief:
+      "After you apply changes: crawlers typically re-read your store in 2–4 weeks. Organic traffic shifts often show in 4–8 weeks.",
+    step1PlanIncludes:
+      "Setup includes up to {{limit}} top sellers by sales. Today we analyzed {{analyzed}} of {{total}} products in your catalog.",
+    step1AfterApplyNote:
+      "After Apply we verify your storefront and optionally track Google Search Console — details appear below once optimized.",
+    validationExplainProducts:
+      "Markets confirmed. We also scanned your products for missing SEO fields (reflected in your score above).",
     introTitle: "We'll analyze how AI search sees your store",
     introBody:
       "Before any payment or changes, we read your catalog and brand data to show an AI readiness score and a clear action plan.",
@@ -458,7 +469,7 @@ const MESSAGES = {
     subtitle: "Auditoría de visibilidad AI",
     heroTitle: "Auditoría AI gratis",
     heroBody:
-      "Analizamos gratis tus 50 productos prioritarios. Descubre qué impide que las AI te recomienden — preview de cada cambio antes de pagar.",
+      "Analizamos gratis hasta tus 590 productos más vendidos. Descubre qué impide que la IA te recomiende — vista previa de cada cambio antes de pagar.",
     scopeNote: "Top {{analyzed}} productos seleccionados de {{total}} en catálogo",
     scopeNoteFullCatalog: "Los {{analyzed}} productos de tu catálogo analizados ({{total}} en total)",
     scopeNoteFullCatalogExcluded:
@@ -474,7 +485,7 @@ const MESSAGES = {
     catalogScoreLabel: "Score de preparación AI",
     foundationScoreLabel: "Visibilidad de marca",
     scoreExplain:
-      "Tu score combina títulos de búsqueda, descripciones SEO, descripciones de producto e identidad de marca — promedio en tus top 50.",
+      "Tu score combina títulos de búsqueda, descripciones SEO, descripciones de producto e identidad de marca — promedio en tus productos prioritarios (hasta 590).",
     scorePlainTitle: "Cómo leer tu score",
     scorePlainBody:
       "Piensa en él como una nota de preparación para búsqueda con IA (ChatGPT, Perplexity, Google AI). Promediamos cuatro chequeos en tus productos prioritarios — no todo el admin de Shopify ni tus ventas.",
@@ -600,32 +611,32 @@ const MESSAGES = {
     gscWhyGoogle:
       "Esos datos están en Google Search Console — cómo Google ve tu tienda en Search. Conectar es opcional, solo lectura, y no cambia tu SEO ni el Apply.",
     gscNotConfigured:
-      "La conexión con Google aún no está activada en este servidor PredictaCore. Cuando esté activa, aquí aparecerá el botón Conectar — el merchant no necesita API keys.",
+      "La conexión con Google aún no está activada en este servidor PredictaCore. Cuando esté activa, aquí aparecerá el botón Conectar — la tienda no necesita API keys.",
     gscConnectHint:
-      "Conecta con la cuenta Google que tenga esta tienda en Search Console (el mismo correo de search.google.com). Una cuenta Google por tienda Shopify.",
+      "Conecta con la cuenta de Google que tenga esta tienda en Search Console (el mismo correo de search.google.com). Una cuenta de Google por tienda Shopify.",
     gscSkipOk: "Puedes omitir esto — optimización, schema, mercados y scores funcionan sin Google.",
     gscConnect: "Conectar Google Search Console (opcional)",
     gscBeforeAfterTitle: "Google orgánico — antes vs después del Apply",
-    gscBaseline: "Línea base (al Apply): {{impressions}} impresiones · {{clicks}} clics",
-    gscLatest: "Último (28 días): {{impressions}} impresiones · {{clicks}} clics",
-    gscDeltaImpressions: "Cambio en impresiones desde Apply: {{delta}}",
-    gscDeltaClicks: "Cambio en clics desde Apply: {{delta}}",
-    gscAwaitingBaseline: "Conecta Search Console y ejecuta Apply para capturar tu línea base antes/después.",
+    gscBaseline: "Punto de partida (al Apply): {{impressions}} impresiones · {{clicks}} clics",
+    gscLatest: "Más reciente (28 días): {{impressions}} impresiones · {{clicks}} clics",
+    gscDeltaImpressions: "Cambio en impresiones desde el Apply: {{delta}}",
+    gscDeltaClicks: "Cambio en clics desde el Apply: {{delta}}",
+    gscAwaitingBaseline: "Conecta Search Console y ejecuta Apply para capturar tu comparación antes/después.",
     deliveryTitle: "Checklist de entrega a crawlers",
     deliveryIntro:
-      "Verifica que los crawlers de AI vean tu schema — theme blocks, JSON-LD en vivo y llms.txt. Verde = visible en tu tienda.",
-    deliveryReady: "Listo para crawlers — {{passed}}/{{total}} checks aprobados.",
-    deliveryNotReady: "Acción requerida — {{passed}}/{{total}} checks. Activa los theme blocks para entregar resultados.",
+      "Verifica que los crawlers de IA vean tu schema — bloques del tema, JSON-LD en vivo y llms.txt. Verde = visible en tu tienda.",
+    deliveryReady: "Listo para crawlers — {{passed}}/{{total}} verificaciones aprobadas.",
+    deliveryNotReady: "Acción requerida — {{passed}}/{{total}} verificaciones. Activa los bloques del tema para entregar resultados.",
     deliveryScore: "{{pct}}% entrega verificada",
-    deliveryThemeBrand: "Block PredictaCore Brand activo en el tema",
-    deliveryThemeProduct: "Block PredictaCore Product activo en el tema",
-    deliveryShopSchema: "Schema Organization guardado (metafield tienda)",
-    deliveryProductSchema: "Schema Product guardado (producto muestra)",
+    deliveryThemeBrand: "Bloque PredictaCore Brand activo en el tema",
+    deliveryThemeProduct: "Bloque PredictaCore Product activo en el tema",
+    deliveryShopSchema: "Schema Organization guardado (metafield de la tienda)",
+    deliveryProductSchema: "Schema Product guardado (producto de muestra)",
     deliveryLlmsLive: "llms.txt activo en /apps/predictacore/llms.txt",
-    deliveryLiveProductLd: "JSON-LD Product visible en página de producto en vivo",
-    deliveryLiveOrgLd: "JSON-LD Organization visible en HTML del storefront",
-    deliveryLlmsMetafield: "Contenido llms.txt guardado (metafield tienda)",
-    deliveryOpenTheme: "Corregir en editor de tema",
+    deliveryLiveProductLd: "JSON-LD de Product visible en la página del producto en vivo",
+    deliveryLiveOrgLd: "JSON-LD de Organization visible en el HTML de la tienda",
+    deliveryLlmsMetafield: "Contenido de llms.txt guardado (metafield de la tienda)",
+    deliveryOpenTheme: "Arreglar en el editor de temas",
     deliveryRecheck: "Se actualiza automáticamente después del Apply y cada 6 horas.",
     uninstallPrefTitle: "Si desinstalas PredictaCore",
     uninstallPrefIntro:
@@ -765,7 +776,7 @@ const MESSAGES = {
     expectationsTimeline2: "4–8 semanas: más probabilidad de aparecer en respuestas de AI search",
     maintenancePlanTitle: "Mantenimiento mensual — $15/mes",
     maintenancePlanIntro: "Tu catálogo cambia. El mantenimiento mantiene tu score alto:",
-    maintenancePlan1: "Re-scan mensual de tus top 50 productos",
+    maintenancePlan1: "Re-escaneo mensual de tus productos prioritarios (hasta 590)",
     maintenancePlan2: "Alertas si productos nuevos o gaps bajan tu score",
     maintenancePlan3: "Optimización de productos nuevos conforme creces",
     maintenancePlanNote:
