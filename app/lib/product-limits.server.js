@@ -1,16 +1,16 @@
 import prisma from "../db.server.js";
 
 /** Included with $35 setup + $15/mo — top sellers by sales ranking. */
-export const BASE_PRODUCT_LIMIT = 590;
+export const BASE_PRODUCT_LIMIT = 500;
 
 /** Each paid pack adds this many product slots. */
-export const EXTRA_PRODUCT_PACK_SIZE = 100;
+export const EXTRA_PRODUCT_PACK_SIZE = 50;
 
 /** Max product slots (base + packs). */
 export const MAX_PRODUCT_LIMIT = 2000;
 
 /** Full Gemini SEO polish for top N products by sales; rest get market-aware templates. */
-export const TOP_AI_PRODUCTS = 100;
+export const TOP_AI_PRODUCTS = 50;
 
 /** GraphQL pool sizes (Shopify max 250 per page). */
 export const CATALOG_POOL_LIMIT = 250;

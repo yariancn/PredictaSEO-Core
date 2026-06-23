@@ -14,7 +14,7 @@ const MESSAGES = {
     subtitle: "AI visibility audit",
     heroTitle: "Free AI visibility audit",
     heroBody:
-      "We check your most important products for free and show you what's missing — before you pay anything.",
+      "We scan up to {{scanLimit}} products from your catalog for free and show what's missing — preview every change before you pay.",
     step1ScoreHeadline: "Your AI visibility score",
     step1WhyBrief:
       "AI tools (ChatGPT, Perplexity, Google AI) recommend stores that have complete product info and a clear brand. A low score usually means missing titles, descriptions, or brand data — not that your products are bad.",
@@ -28,11 +28,19 @@ const MESSAGES = {
       "Markets confirmed. We also scanned your products for missing SEO fields (reflected in your score above).",
     introTitle: "We'll analyze how AI search sees your store",
     introBody:
-      "Before any payment or changes, we read your catalog and brand data to show an AI readiness score and a clear action plan.",
+      "Before any payment or changes, we scan up to {{scanLimit}} products from your catalog (ranked by sales) and show an AI readiness score plus a clear action plan.",
     introBullet1: "Read-only scan — we do not change products until you pay and confirm",
-    introBullet2: "Score based on search titles, descriptions, and brand identity for AI",
+    introBullet2:
+      "We fully optimize your top {{aiLimit}} products by sales (AI-written SEO); the rest of your included scope uses market-aware templates",
     introBullet3: "Preview every change before the one-time $35 setup fee",
     introNoChanges: "Nothing on your storefront is modified during this free audit.",
+    pricingScope:
+      "Included: scan up to {{scanLimit}} products · full AI polish on top {{aiLimit}} by sales",
+    pricingExtra:
+      "Need more than {{aiLimit}} fully optimized? +${{packPrice}} one-time per additional {{packSize}} products",
+    loadingAuditSubtext: "Read-only scan — nothing on your store is modified yet.",
+    optimizingStore: "We are optimizing your store and products",
+    optimizingStoreSubtext: "Updating titles, descriptions, and brand data for AI search — usually 1–2 minutes.",
     startAuditButton: "Start free audit — I agree",
     monthlyBeforePayTitle: "After you unlock ($15/month)",
     monthlyBeforePayBody:
@@ -51,6 +59,8 @@ const MESSAGES = {
     skipAiWhileLoading: "Continue without AI summary",
     retryAiPlan: "Try AI summary again",
     previewNotAppliedYet: "Nothing has been changed on your store yet — this is a preview only.",
+    previewAwaitApply:
+      "Payment complete — nothing is live yet. Confirm Apply below to publish these changes to your store.",
     scopeNote: "Top {{analyzed}} products selected from {{total}} in catalog",
     scopeNoteFullCatalog: "All {{analyzed}} products in your catalog analyzed ({{total}} total)",
     scopeNoteFullCatalogExcluded:
@@ -110,7 +120,7 @@ const MESSAGES = {
     seeUpdatedScore: "See updated score",
     whyUsTitle: "Why PredictaCore",
     whyUs1: "Full audit + preview free — pay only when you're convinced",
-    whyUs2: "Top 50 best sellers — where AI impact and revenue actually happen",
+    whyUs2: "Top {{aiLimit}} best sellers — where AI impact and revenue actually happen",
     whyUs3: "Backup before every change + one-click restore",
     whyUs4: "Built for AI search visibility — not traditional SEO alone",
     pricingTitle: "Pricing",
@@ -469,7 +479,7 @@ const MESSAGES = {
     subtitle: "Auditoría de visibilidad AI",
     heroTitle: "Auditoría AI gratis",
     heroBody:
-      "Analizamos gratis hasta tus 590 productos más vendidos. Descubre qué impide que la IA te recomiende — vista previa de cada cambio antes de pagar.",
+      "Analizamos gratis hasta {{scanLimit}} productos de tu catálogo. Descubre qué impide que la IA te recomiende — vista previa de cada cambio antes de pagar.",
     scopeNote: "Top {{analyzed}} productos seleccionados de {{total}} en catálogo",
     scopeNoteFullCatalog: "Los {{analyzed}} productos de tu catálogo analizados ({{total}} en total)",
     scopeNoteFullCatalogExcluded:
@@ -485,7 +495,7 @@ const MESSAGES = {
     catalogScoreLabel: "Score de preparación AI",
     foundationScoreLabel: "Visibilidad de marca",
     scoreExplain:
-      "Tu score combina títulos de búsqueda, descripciones SEO, descripciones de producto e identidad de marca — promedio en tus productos prioritarios (hasta 590).",
+      "Tu score combina títulos de búsqueda, descripciones SEO, descripciones de producto e identidad de marca — promedio en tus productos prioritarios (hasta {{limit}}).",
     scorePlainTitle: "Cómo leer tu score",
     scorePlainBody:
       "Piensa en él como una nota de preparación para búsqueda con IA (ChatGPT, Perplexity, Google AI). Promediamos cuatro chequeos en tus productos prioritarios — no todo el admin de Shopify ni tus ventas.",
@@ -533,7 +543,7 @@ const MESSAGES = {
     seeUpdatedScore: "Ver score actualizado",
     whyUsTitle: "Por qué PredictaCore",
     whyUs1: "Auditoría + preview gratis — pagas solo cuando te convence",
-    whyUs2: "Top 50 best sellers — donde impactan ventas y visibilidad AI",
+    whyUs2: "Top {{aiLimit}} best sellers — donde impactan ventas y visibilidad AI",
     whyUs3: "Backup antes de cada cambio + restore en un clic",
     whyUs4: "Hecho para visibilidad en AI search — no solo SEO tradicional",
     pricingTitle: "Precios",
@@ -565,11 +575,20 @@ const MESSAGES = {
     step4PaidIntro: "Pago completado — confirma abajo para publicar los cambios en tu tienda.",
     introTitle: "Analizaremos cómo la IA ve tu tienda",
     introBody:
-      "Antes de cualquier pago o cambio, leemos tu catálogo y datos de marca para mostrar un score de preparación para IA y un plan claro.",
+      "Antes de cualquier pago o cambio, escaneamos hasta {{scanLimit}} productos de tu catálogo (ordenados por ventas) y te mostramos un score de preparación para IA y un plan claro.",
     introBullet1: "Escaneo solo lectura — no modificamos productos hasta que pagues y confirmes",
-    introBullet2: "Score basado en títulos, descripciones e identidad de marca para IA",
+    introBullet2:
+      "Optimizamos con IA completa tus {{aiLimit}} productos principales por ventas; el resto de tu alcance incluido usa plantillas según tus mercados",
     introBullet3: "Vista previa de cada cambio antes del pago único de $35",
     introNoChanges: "Nada en tu tienda se modifica durante esta auditoría gratuita.",
+    pricingScope:
+      "Incluido: escaneo de hasta {{scanLimit}} productos · pulido IA completo en los {{aiLimit}} principales por ventas",
+    pricingExtra:
+      "¿Necesitas más de {{aiLimit}} con IA completa? +${{packPrice}} pago único por cada {{packSize}} productos adicionales",
+    loadingAuditSubtext: "Escaneo solo lectura — aún no modificamos nada en tu tienda.",
+    optimizingStore: "Estamos optimizando tu tienda y tus productos",
+    optimizingStoreSubtext:
+      "Actualizando títulos, descripciones e identidad de marca para búsqueda con IA — suele tardar 1–2 minutos.",
     startAuditButton: "Iniciar auditoría gratis — acepto",
     monthlyBeforePayTitle: "Después de desbloquear ($15/mes)",
     monthlyBeforePayBody:
@@ -588,6 +607,8 @@ const MESSAGES = {
     skipAiWhileLoading: "Continuar sin resumen IA",
     retryAiPlan: "Reintentar resumen IA",
     previewNotAppliedYet: "Aún no hemos cambiado nada en tu tienda — esto es solo una vista previa.",
+    previewAwaitApply:
+      "Pago completado — aún no hay cambios en vivo. Confirma Apply abajo para publicar estos cambios en tu tienda.",
     step4PaidIntro: "Plan activo — confirma abajo para publicar los cambios en tu tienda.",
     alreadyOptimizedTitle: "Ya optimizado",
     alreadyOptimizedBody:
@@ -776,7 +797,7 @@ const MESSAGES = {
     expectationsTimeline2: "4–8 semanas: más probabilidad de aparecer en respuestas de AI search",
     maintenancePlanTitle: "Mantenimiento mensual — $15/mes",
     maintenancePlanIntro: "Tu catálogo cambia. El mantenimiento mantiene tu score alto:",
-    maintenancePlan1: "Re-escaneo mensual de tus productos prioritarios (hasta 590)",
+    maintenancePlan1: "Re-escaneo mensual de hasta {{limit}} productos prioritarios por ventas",
     maintenancePlan2: "Alertas si productos nuevos o gaps bajan tu score",
     maintenancePlan3: "Optimización de productos nuevos conforme creces",
     maintenancePlanNote:

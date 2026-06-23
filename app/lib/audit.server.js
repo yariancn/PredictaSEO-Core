@@ -17,6 +17,13 @@ export async function loadAuditData(request) {
   const { buildPreviewPlan, getAppliedCatalogSummary } = await import("./apply.server.js");
   const { getSchemaStatus } = await import("./schema.server.js");
   const { getStoreLocale, t } = await import("./locale.js");
+  const { fillCopy } = await import("./preview.js");
+  const {
+    BASE_PRODUCT_LIMIT,
+    TOP_AI_PRODUCTS,
+    EXTRA_PRODUCT_PACK_PRICE,
+    EXTRA_PRODUCT_PACK_SIZE,
+  } = await import("./product-limits.server.js");
   const { isBillingBypassed, isBillingTest, syncBillingFromShopify, canUsePilotReset } = await import(
     "./billing.server.js"
   );
@@ -25,8 +32,9 @@ export async function loadAuditData(request) {
   const COPY_KEYS = [
     "title", "subtitle", "heroTitle", "heroBody", "introTitle", "introBody", "introBullet1", "introBullet2", "introBullet3",
     "introNoChanges", "startAuditButton", "monthlyBeforePayTitle", "monthlyBeforePayBody",
+    "pricingScope", "pricingExtra", "loadingAuditSubtext", "optimizingStore", "optimizingStoreSubtext",
     "generateAiPlan", "skipAiPlan", "step3AiTitle", "step3AiIntro", "step3ContinueWait", "step3ContinueReady", "generateAiPlanBody", "skipAiPlanBody",
-    "retryAiPlan", "aiTimeout", "aiNotConfigured", "previewNotAppliedYet",
+    "retryAiPlan", "aiTimeout", "aiNotConfigured", "previewNotAppliedYet", "previewAwaitApply",
     "billingStatusTitle", "billingStatusNone", "billingStatusSetupOnly", "billingStatusActive", "billingShopifyReceipt",
     "scopeNote", "scopeNoteFullCatalog", "scopeNoteFullCatalogExcluded", "selectionNote", "priorityPlanSummary", "priorityScopeSummary", "stepOf",
     "catalogScoreLabel", "foundationScoreLabel", "scoreExplain",
@@ -95,8 +103,8 @@ export async function loadAuditData(request) {
     "marketsChangedBanner",
   ];
 
-  const buildCopy = (locale) =>
-    Object.fromEntries(COPY_KEYS.map((key) => [key, t(locale, key)]));
+  const buildCopy = (loc, vars = {}) =>
+    Object.fromEntries(COPY_KEYS.map((key) => [key, fillCopy(t(loc, key), vars)]));
 
   const { admin, session, billing } = await authenticate.admin(request);
 
@@ -120,6 +128,15 @@ export async function loadAuditData(request) {
   );
 
   const productTier = await getShopProductTier(session.shop);
+  const copyVars = {
+    scanLimit: BASE_PRODUCT_LIMIT,
+    aiLimit: TOP_AI_PRODUCTS,
+    packSize: EXTRA_PRODUCT_PACK_SIZE,
+    packPrice: EXTRA_PRODUCT_PACK_PRICE,
+    limit: productTier.effectiveLimit,
+    base: productTier.baseLimit,
+    ai: productTier.aiPolishLimit,
+  };
   const catalogData = await prepareCatalogData(admin, data, productTier.effectiveLimit);
   const snapshot = analyzeSnapshot(catalogData, locale);
 
@@ -325,7 +342,7 @@ export async function loadAuditData(request) {
     shopName: data.shop.name,
     error: null,
     locale,
-    copy: buildCopy(locale),
+    copy: buildCopy(locale, copyVars),
     executive,
     snapshot,
     report,

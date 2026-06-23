@@ -20,12 +20,28 @@ export async function loader({ request }) {
   const { authenticate } = await import("../shopify.server");
   const { session } = await authenticate.admin(request);
   const { t } = await import("../lib/locale.js");
+  const { fillCopy } = await import("../lib/preview.js");
+  const {
+    BASE_PRODUCT_LIMIT,
+    TOP_AI_PRODUCTS,
+    EXTRA_PRODUCT_PACK_PRICE,
+    EXTRA_PRODUCT_PACK_SIZE,
+  } = await import("../lib/product-limits.server.js");
   const locale = "en";
+  const limitVars = {
+    scanLimit: BASE_PRODUCT_LIMIT,
+    aiLimit: TOP_AI_PRODUCTS,
+    packSize: EXTRA_PRODUCT_PACK_SIZE,
+    packPrice: EXTRA_PRODUCT_PACK_PRICE,
+  };
   const introKeys = [
     "title", "subtitle", "introTitle", "introBody", "introBullet1", "introBullet2", "introBullet3",
-    "introNoChanges", "pricingTitle", "pricingFree", "pricingSetup", "startAuditButton",
+    "introNoChanges", "pricingTitle", "pricingFree", "pricingSetup", "pricingScope", "pricingExtra",
+    "startAuditButton", "loadingAuditSubtext", "optimizingStore", "optimizingStoreSubtext",
   ];
-  const introCopy = Object.fromEntries(introKeys.map((key) => [key, t(locale, key)]));
+  const introCopy = Object.fromEntries(
+    introKeys.map((key) => [key, fillCopy(t(locale, key), limitVars)]),
+  );
   return json({ shop: session.shop, introCopy });
 }
 
@@ -522,12 +538,17 @@ function PreviewChangesPanel({
   shopName,
   shop,
   region,
+  setupPaid = false,
 }) {
+  const previewLead = setupPaid
+    ? copyText(copy, "previewAwaitApply", copy.previewNotAppliedYet)
+    : copy.previewNotAppliedYet;
+
   return (
     <div style={theme.card}>
       <h2 style={theme.h2}>{copy.previewTitle}</h2>
       <p style={{ ...theme.body, marginBottom: "12px", fontSize: "0.82rem", color: "#a5b4fc" }}>
-        {copy.previewNotAppliedYet}
+        {previewLead}
       </p>
       {schemaOnlyPreview ? (
         <>
@@ -990,7 +1011,11 @@ function IntroScreen({ copy, shopName, onStart }) {
       <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.25)" }}>
         <h2 style={theme.h2}>{copy.pricingTitle}</h2>
         <p style={theme.bullet("#a3e635")}>{copy.pricingFree}</p>
+        <p style={theme.bullet("#a5b4fc")}>{copy.pricingScope}</p>
         <p style={theme.bullet("#a5b4fc")}>{copy.pricingSetup}</p>
+        <p style={{ ...theme.body, marginTop: "10px", fontSize: "0.82rem", color: "#8b8b9a", lineHeight: 1.55 }}>
+          {copy.pricingExtra}
+        </p>
       </div>
 
       <button type="button" style={theme.btnPrimary} onClick={onStart}>
@@ -1008,9 +1033,12 @@ function ExpectationsPanel({
   schemaWasApplied = false,
   showMaintenance = true,
   variant = "post",
+  maintenanceLimit = 500,
 }) {
   const count = String(priorityCount);
+  const limit = String(maintenanceLimit);
   const fill = (text) => text.replace("{{count}}", count);
+  const fillLimit = (text) => fillCopy(text, { limit, count });
   const isPreview = variant === "preview";
   const title = isPreview
     ? copyText(copy, "expectationsPreviewTitle", copy.expectationsTitle)
@@ -1076,7 +1104,9 @@ function ExpectationsPanel({
           <p style={{ ...theme.h2, marginTop: "16px" }}>
             {copyText(copy, "expectationsPreviewMaintenanceTitle", copy.maintenancePlanTitle)}
           </p>
-          <p style={theme.bullet("#6366f1")}>{copyText(copy, "expectationsPreviewMaintenance1", "")}</p>
+          <p style={theme.bullet("#6366f1")}>
+            {fillLimit(copyText(copy, "expectationsPreviewMaintenance1", copy.maintenancePlan1))}
+          </p>
           <p style={theme.bullet("#6366f1")}>{copyText(copy, "expectationsPreviewMaintenance2", "")}</p>
           <p style={theme.bullet("#6366f1")}>{copyText(copy, "expectationsPreviewMaintenance3", "")}</p>
         </>
@@ -1086,7 +1116,7 @@ function ExpectationsPanel({
         <>
           <p style={{ ...theme.h2, marginTop: "16px" }}>{copy.maintenancePlanTitle}</p>
           <p style={{ ...theme.body, fontSize: "0.88rem", marginBottom: "8px" }}>{copy.maintenancePlanIntro}</p>
-          <p style={theme.bullet("#6366f1")}>{copy.maintenancePlan1}</p>
+          <p style={theme.bullet("#6366f1")}>{fillLimit(copy.maintenancePlan1)}</p>
           <p style={theme.bullet("#6366f1")}>{copy.maintenancePlan2}</p>
           <p style={theme.bullet("#6366f1")}>{copy.maintenancePlan3}</p>
           <p style={{ ...theme.body, fontSize: "0.82rem", color: "#8b8b9a", marginTop: "10px" }}>
@@ -1167,6 +1197,7 @@ export default function Index() {
   const applyResult = applyFetcher.data?.intent === "apply" ? applyFetcher.data.applyResult : null;
   const applyError = applyFetcher.data?.intent === "apply" ? applyFetcher.data.applyError : null;
   const applyLoading = applyFetcher.state !== "idle" && applyFetcher.formData?.get("intent") === "apply";
+  const optimizingOverlay = applyLoading || (Boolean(applyResult) && auditReloading);
 
   const restoreResult =
     applyFetcher.data?.intent === "restore" || applyFetcher.data?.intent === "restore-all"
@@ -1308,6 +1339,8 @@ export default function Index() {
     return (
       <LoadingShell
         message="Analyzing your store…"
+        subtext={introCopy?.loadingAuditSubtext ?? "Read-only scan — nothing on your store is modified yet."}
+        mode="audit"
       />
     );
   }
@@ -1324,7 +1357,7 @@ export default function Index() {
 
   return (
     <>
-      {applyLoading && (
+      {optimizingOverlay && (
         <div
           style={{
             position: "fixed",
@@ -1337,7 +1370,11 @@ export default function Index() {
             padding: "24px",
           }}
         >
-          <LoadingShell message={copy?.applying ?? "Applying…"} />
+          <LoadingShell
+            message={copy?.optimizingStore ?? introCopy?.optimizingStore ?? "We are optimizing your store and products"}
+            subtext={copy?.optimizingStoreSubtext ?? introCopy?.optimizingStoreSubtext ?? ""}
+            mode="optimize"
+          />
         </div>
       )}
       {restoreLoading && (
@@ -1956,7 +1993,7 @@ function IndexWizard({
           <div style={{ ...theme.card, borderColor: "rgba(255,255,255,0.06)" }}>
             <p style={{ ...theme.body, margin: 0, fontSize: "0.88rem", color: "#c8c8d0" }}>
               {fillCopy(copyText(copy, "step1PlanIncludes", ""), {
-                limit: String(productTier?.effectiveLimit ?? 590),
+                limit: String(productTier?.effectiveLimit ?? 500),
                 analyzed: String(snapSummary?.priorityCount ?? preview?.productCount ?? 0),
                 total: String(snapSummary?.catalogTotal ?? 0),
               })}
@@ -2147,6 +2184,7 @@ function IndexWizard({
               schemaOnlyOutcome={schemaOnlyPreview}
               variant="preview"
               showMaintenance={false}
+              maintenanceLimit={productTier?.effectiveLimit ?? 500}
             />
           )}
 
@@ -2159,6 +2197,7 @@ function IndexWizard({
               shopName={shopName}
               shop={shop}
               region={marketContext?.regionLabel}
+              setupPaid={setupPaid || pilotMode}
             />
           )}
 
@@ -2219,6 +2258,7 @@ function IndexWizard({
               shopName={shopName}
               shop={shop}
               region={marketContext?.regionLabel}
+              setupPaid={setupPaid || pilotMode}
             />
           )}
 
@@ -2278,6 +2318,7 @@ function IndexWizard({
               schemaOnlyOutcome={schemaOnlyOutcome}
               schemaWasApplied={schemaWasApplied}
               showMaintenance={true}
+              maintenanceLimit={productTier?.effectiveLimit ?? 500}
             />
           )}
 
