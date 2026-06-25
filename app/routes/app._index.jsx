@@ -36,7 +36,7 @@ export async function loader({ request }) {
   };
   const introKeys = [
     "title", "subtitle", "introTitle", "introBody", "introBullet1", "introBullet2", "introBullet3",
-    "introNoChanges", "pricingTitle", "pricingFree", "pricingSetup", "pricingScope", "pricingExtra",
+    "introNoChanges", "pricingTitle", "pricingFree", "pricingSetup", "pricingScope", "pricingExtra", "pricingRecurringNote",
     "startAuditButton", "loading", "loadingAuditSubtext", "optimizingStore", "optimizingStoreSubtext",
   ];
   const introCopy = Object.fromEntries(
@@ -809,9 +809,49 @@ function readBillingReturnState() {
   return { auditStarted: false, step: 1, billingJustReturned: false };
 }
 
+function BillingDisclosureCard({ copy }) {
+  return (
+    <div
+      style={{
+        ...theme.card,
+        borderColor: "rgba(251,191,36,0.45)",
+        background: "rgba(251,191,36,0.08)",
+        marginBottom: "14px",
+      }}
+    >
+      <h2 style={{ ...theme.h2, color: "#fbbf24" }}>
+        {copyText(copy, "billingPaymentDisclosureTitle", "What Shopify will ask you to approve")}
+      </h2>
+      <p style={theme.bullet("#a3e635")}>{copyText(copy, "billingPaymentStep1", "")}</p>
+      <p style={theme.bullet("#6366f1")}>{copyText(copy, "billingPaymentStep2", "")}</p>
+      <p style={{ ...theme.body, marginTop: "10px", marginBottom: 0, fontSize: "0.82rem", color: "#8b8b9a", lineHeight: 1.55 }}>
+        {copyText(copy, "billingShopifyEmailNote", "")}
+      </p>
+    </div>
+  );
+}
+
+function MaintenanceSubscriptionGate({ copy }) {
+  return (
+    <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.45)", background: "rgba(99,102,241,0.1)" }}>
+      <h2 style={{ ...theme.h2, color: "#a5b4fc" }}>
+        {copyText(copy, "billingMaintenanceApproveTitle", "Approve $15/month maintenance")}
+      </h2>
+      <p style={{ ...theme.body, marginBottom: "14px", color: "#e8e8ef", lineHeight: 1.55 }}>
+        {copyText(copy, "billingMaintenanceApproveBody", copyText(copy, "billingBundleStep2", ""))}
+      </p>
+      <a href="/app/billing/maintenance" target="_top" rel="noopener noreferrer" style={{ ...theme.btnPrimary, display: "block", textAlign: "center", textDecoration: "none" }}>
+        {copyText(copy, "subscribeMaintenance", "Approve $15/month in Shopify")}
+      </a>
+    </div>
+  );
+}
+
 function PaymentGateCard({ copy }) {
   return (
-    <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.35)" }}>
+    <>
+      <BillingDisclosureCard copy={copy} />
+      <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.35)" }}>
       <h2 style={theme.h2}>{copy.step4FlowTitle}</h2>
       <p style={{ ...theme.body, marginBottom: "16px", color: "#e8e8ef", lineHeight: 1.55 }}>
         {copyText(copy, "step4PaymentBodyFirst", copy.step4FlowIntro)}
@@ -831,7 +871,8 @@ function PaymentGateCard({ copy }) {
       <p style={{ ...theme.body, fontSize: "0.78rem", color: "#8b8b9a", marginTop: "12px", marginBottom: 0, lineHeight: 1.55 }}>
         {copyText(copy, "billingFootnote", "")}
       </p>
-    </div>
+      </div>
+    </>
   );
 }
 
@@ -1013,6 +1054,9 @@ function IntroScreen({ copy, shopName, onStart }) {
         <p style={theme.bullet("#a5b4fc")}>{copy.pricingSetup}</p>
         <p style={{ ...theme.body, marginTop: "10px", fontSize: "0.82rem", color: "#8b8b9a", lineHeight: 1.55 }}>
           {copy.pricingExtra}
+        </p>
+        <p style={{ ...theme.body, marginTop: "10px", fontSize: "0.82rem", color: "#fbbf24", lineHeight: 1.55 }}>
+          {copy.pricingRecurringNote}
         </p>
       </div>
 
@@ -1830,6 +1874,8 @@ function IndexWizard({
   });
   const previewStats = getPreviewChangeStats(preview);
   const setupPaid = billing?.setupPaid ?? false;
+  const maintenanceActive = billing?.maintenanceActive ?? false;
+  const maintenanceNeedsApproval = billing?.maintenanceNeedsApproval ?? false;
   const applyQuota = billing?.applyQuota;
   const firstApplyDone = Boolean(applyQuota?.setupDone);
   const hasPendingWork = preview.total > 0;
@@ -1849,6 +1895,14 @@ function IndexWizard({
     firstApplyDone;
   const showPaymentSuccess =
     billingJustReturned && step === 3 && hasPendingWork && !applyResult && setupPaid && !pilotMode;
+  const showMaintenanceGate =
+    !pilotMode &&
+    setupPaid &&
+    !maintenanceActive &&
+    (maintenanceNeedsApproval || step >= 2) &&
+    !applyResult &&
+    hasPendingWork &&
+    (step === 2 || step === 3);
   const showExpectationsPreview = step === 2 && !applyResult && hasPendingWork;
   const showPayStepActions =
     step === 2 &&
@@ -2168,6 +2222,8 @@ function IndexWizard({
             </div>
           )}
 
+          {showMaintenanceGate && step === 2 && <MaintenanceSubscriptionGate copy={copy} />}
+
           {!hasPendingWork && !applyResult && (
             <div style={{ ...theme.card, borderColor: "rgba(251,191,36,0.35)", background: "rgba(251,191,36,0.06)", marginBottom: "14px" }}>
               <p style={{ ...theme.body, color: "#e8e8ef", marginBottom: "14px", lineHeight: 1.55 }}>
@@ -2250,6 +2306,8 @@ function IndexWizard({
           )}
 
           {showPaymentSuccess && <PaymentSuccessBanner copy={copy} />}
+
+          {showMaintenanceGate && step === 3 && <MaintenanceSubscriptionGate copy={copy} />}
 
           {!applyResult && hasPendingWork && (
             <PreviewChangesPanel

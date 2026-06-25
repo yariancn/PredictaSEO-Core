@@ -148,7 +148,20 @@ const MESSAGES = {
     pricingFree: "Free — full audit, AI plan & preview",
     pricingSetup:
       "$35 — first month + full optimization (Apply unlock). $15/month after for automatic catalog updates.",
+    pricingRecurringNote:
+      "Shopify billing has two steps: (1) $35 one-time charge today. (2) $15/month subscription — Shopify asks for a second approval (first charge on day 31; month 1 included in setup).",
     pricingMaintenance: "",
+    billingPaymentDisclosureTitle: "What Shopify will ask you to approve",
+    billingPaymentStep1: "Step 1 — Today: $35 one-time setup (includes your first month of service)",
+    billingPaymentStep2:
+      "Step 2 — Next: $15/month subscription (Shopify shows a second approval screen; billing starts on day 31 — cancel anytime in Shopify Admin)",
+    billingShopifyEmailNote:
+      "Shopify’s email only lists the charge you approved in that moment. The $15/month plan is a separate subscription approval — not missing from your account.",
+    billingMaintenanceApproveTitle: "One more step — approve $15/month maintenance",
+    billingMaintenanceApproveBody:
+      "Your $35 setup is active. Approve the $15/month subscription in Shopify so automatic catalog updates continue after day 31. Month 1 is already included in your setup fee — no double charge today.",
+    subscribeMaintenance: "Approve $15/month in Shopify",
+    billingMaintenanceApproved: "Maintenance plan active — $15/month from day 31 (month 1 included in setup).",
     billingFootnote:
       "No refunds. Cancel anytime in Shopify Admin — takes effect next billing period; the current month stays paid ($35 first month, then $15/month).",
     pricingMaintenanceIncluded:
@@ -168,7 +181,7 @@ const MESSAGES = {
       "This store already has a completed Apply on record. Use Restore all below to undo changes and run the full flow again (including payment if needed).",
     step4FlowTitle: "Apply to your store",
     step4PaymentBodyFirst: "Continue to complete payment in Shopify and unlock Apply.",
-    step4PaymentSuccess: "Payment successful — you can now apply changes to your store.",
+    step4PaymentSuccess: "Payment successful — $35 setup complete. Next: approve the $15/month maintenance plan in Shopify (billing starts day 31).",
     step4FlowIntro: "Complete payment in Shopify to unlock Apply on your store.",
     expectationsPreviewTitle: "What to expect after you apply",
     expectationsPreviewMeans1:
@@ -582,7 +595,20 @@ const MESSAGES = {
     pricingFree: "Gratis — auditoría completa, plan AI y preview",
     pricingSetup:
       "$35 — primer mes + optimización completa (desbloquea Apply). $15/mes después para actualizaciones automáticas.",
+    pricingRecurringNote:
+      "Shopify factura en dos pasos: (1) cargo único de $35 hoy — ese es el correo que recibiste. (2) suscripción de $15/mes — Shopify te pedirá aprobarla después (primer cobro al día 31; el mes 1 ya está incluido en el setup de $35).",
     pricingMaintenance: "",
+    billingPaymentDisclosureTitle: "Qué te pedirá aprobar Shopify",
+    billingPaymentStep1: "Paso 1 — Hoy: setup único de $35 (incluye tu primer mes de servicio)",
+    billingPaymentStep2:
+      "Paso 2 — Después: suscripción de $15/mes (Shopify muestra una segunda pantalla de aprobación; el cobro empieza al día 31 — cancela cuando quieras en Shopify Admin)",
+    billingShopifyEmailNote:
+      "El correo de Shopify solo lista el cargo que aprobaste en ese momento. El plan de $15/mes es una aprobación de suscripción aparte — no falta en tu cuenta.",
+    billingMaintenanceApproveTitle: "Un paso más — aprueba el mantenimiento de $15/mes",
+    billingMaintenanceApproveBody:
+      "Tu setup de $35 ya está activo. Aprueba la suscripción de $15/mes en Shopify para que las actualizaciones automáticas del catálogo continúen después del día 31. El mes 1 ya está incluido en el setup — no hay doble cobro hoy.",
+    subscribeMaintenance: "Aprobar $15/mes en Shopify",
+    billingMaintenanceApproved: "Plan de mantenimiento activo — $15/mes desde el día 31 (mes 1 incluido en el setup).",
     billingFootnote:
       "Sin devoluciones. Cancela en Shopify Admin — aplica al siguiente periodo; el mes en curso ya está pagado ($35 primer mes, luego $15/mes).",
     pricingMaintenanceIncluded:
@@ -601,7 +627,7 @@ const MESSAGES = {
       "Esta tienda ya tiene un Apply completado registrado. Usa Restaurar todo abajo para deshacer cambios y volver a correr el flujo completo.",
     step4FlowTitle: "Aplicar en tu tienda",
     step4PaymentBodyFirst: "Continúa para completar el pago en Shopify y desbloquear Apply.",
-    step4PaymentSuccess: "Pago exitoso — ya puedes aplicar los cambios en tu tienda.",
+    step4PaymentSuccess: "Pago exitoso — setup de $35 completado. Siguiente: aprueba el plan de $15/mes en Shopify (el cobro empieza al día 31).",
     step4FlowIntro: "Completa el pago en Shopify para desbloquear Apply.",
     expectationsPreviewTitle: "Qué esperar después de aplicar",
     expectationsPreviewMeans1:

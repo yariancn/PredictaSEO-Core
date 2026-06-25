@@ -45,6 +45,8 @@ export async function loadAuditData(request) {
     "fixSeoDone", "previewAllDone", "previewProductsDone", "previewSchemaOnlyExplain", "previewSchemaRow", "previewSchemaRowDetail", "seeUpdatedScore",
     "whyUsTitle", "whyUs1", "whyUs2", "whyUs3", "whyUs4",
     "pricingTitle", "pricingFree", "pricingSetup", "pricingMaintenance", "billingFootnote", "pricingMaintenanceIncluded",
+    "billingPaymentDisclosureTitle", "billingPaymentStep1", "billingPaymentStep2", "billingShopifyEmailNote",
+    "billingMaintenanceApproveTitle", "billingMaintenanceApproveBody", "subscribeMaintenance", "billingMaintenanceApproved",
     "step4FlowTitle", "step4FlowIntro", "step2PayIntro", "step2NoPendingWork", "billingAlreadyApproved", "step4PaymentBodyFirst", "step4PaymentSuccess", "step4PaidIntro", "step4RestoreToContinue", "applyAlreadyDone", "unlockApply", "alreadyOptimizedTitle", "alreadyOptimizedBody",
     "refreshingStore", "confirmingPayment",
     "unlockApply", "subscribeMaintenance", "billingRequired", "restoreWarning", "restoreLastConfirm", "restoreLastHint",
@@ -292,14 +294,30 @@ export async function loadAuditData(request) {
           });
           await syncBillingFromShopify(session.shop, setupCheck);
           const setupPaid = setupCheck.hasActivePayment;
+          let maintenanceActive = false;
+          let maintenanceNeedsApproval = false;
+          let maintenanceConfirmationUrl = null;
           if (setupPaid) {
-            const { ensureDeferredMaintenanceSubscription } = await import("./billing-maintenance.server.js");
-            ensureDeferredMaintenanceSubscription(admin, session.shop, { isTest: isBillingTest() }).catch(() => {});
+            const { ensureDeferredMaintenanceSubscription, getMaintenanceSubscriptionStatus } =
+              await import("./billing-maintenance.server.js");
+            const maintenanceStatus = await getMaintenanceSubscriptionStatus(admin);
+            maintenanceActive = maintenanceStatus.active;
+            if (!maintenanceActive) {
+              const maintenanceResult = await ensureDeferredMaintenanceSubscription(admin, session.shop, {
+                isTest: isBillingTest(),
+              });
+              maintenanceActive = Boolean(maintenanceResult.active);
+              maintenanceConfirmationUrl = maintenanceResult.confirmationUrl ?? null;
+              maintenanceNeedsApproval = Boolean(maintenanceConfirmationUrl);
+            }
           }
           const base = {
             canApply: setupPaid,
             setupPaid,
-            subscriptionActive: setupPaid,
+            subscriptionActive: maintenanceActive || setupPaid,
+            maintenanceActive,
+            maintenanceNeedsApproval,
+            maintenanceConfirmationUrl,
             pilotMode: false,
           };
           const { getApplyQuotaStatus } = await import("./apply-quota.server.js");

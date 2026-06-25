@@ -48,6 +48,16 @@ function hasActiveMaintenanceSubscription(subs = []) {
   });
 }
 
+export async function getMaintenanceSubscriptionStatus(admin) {
+  const response = await admin.graphql(ACTIVE_SUBS_QUERY);
+  const { data, errors } = await response.json();
+  if (errors?.length) {
+    return { active: false, subs: [], error: errors.map((e) => e.message).join("; ") };
+  }
+  const subs = data?.currentAppInstallation?.activeSubscriptions ?? [];
+  return { active: hasActiveMaintenanceSubscription(subs), subs };
+}
+
 /**
  * After $35 setup, register $15/mo with a 30-day deferral (month 1 covered by setup).
  * Best-effort — never blocks the merchant wizard.
@@ -57,13 +67,9 @@ export async function ensureDeferredMaintenanceSubscription(admin, shop, { isTes
   if (!billing?.setupPaid) return { shop, skipped: true, reason: "setup_unpaid" };
 
   try {
-    const response = await admin.graphql(ACTIVE_SUBS_QUERY);
-    const { data, errors } = await response.json();
-    if (errors?.length) return { shop, skipped: true, reason: "graphql_error" };
-
-    const subs = data?.currentAppInstallation?.activeSubscriptions ?? [];
-    if (hasActiveMaintenanceSubscription(subs)) {
-      return { shop, skipped: true, reason: "already_active" };
+    const status = await getMaintenanceSubscriptionStatus(admin);
+    if (status.active) {
+      return { shop, skipped: true, reason: "already_active", active: true };
     }
 
     const urls = getBillingReturnUrls(shop);
@@ -95,6 +101,8 @@ export async function ensureDeferredMaintenanceSubscription(admin, shop, { isTes
     return {
       shop,
       created: true,
+      active: false,
+      needsApproval: Boolean(payload?.confirmationUrl),
       confirmationUrl: payload?.confirmationUrl ?? null,
       status: payload?.appSubscription?.status ?? null,
     };
