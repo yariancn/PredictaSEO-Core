@@ -12,6 +12,7 @@ function adminAppReturnUrl(shop, params = "") {
   return params ? `${base}?${params}` : base;
 }
 
+/** Outside embedded /app layout — Google redirect has no Shopify session cookies. */
 export async function loader({ request }) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
@@ -34,6 +35,6 @@ export async function loader({ request }) {
   }
 }
 
-export default function SearchConsoleCallback() {
+export default function SearchConsoleOAuthCallback() {
   return null;
 }

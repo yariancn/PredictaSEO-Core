@@ -7,9 +7,13 @@ export function isSearchConsoleConfigured() {
   return Boolean(process.env.GOOGLE_CLIENT_ID?.trim() && process.env.GOOGLE_CLIENT_SECRET?.trim());
 }
 
+export function getSearchConsoleRedirectUri() {
+  return `${getShopifyAppUrl()}/search-console/callback`;
+}
+
 export function buildSearchConsoleAuthUrl(shop, state) {
   const clientId = process.env.GOOGLE_CLIENT_ID;
-  const redirectUri = `${getShopifyAppUrl()}/app/search-console/callback`;
+  const redirectUri = getSearchConsoleRedirectUri();
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
@@ -30,7 +34,7 @@ export async function exchangeSearchConsoleCode(code) {
       code,
       client_id: process.env.GOOGLE_CLIENT_ID,
       client_secret: process.env.GOOGLE_CLIENT_SECRET,
-      redirect_uri: `${getShopifyAppUrl()}/app/search-console/callback`,
+      redirect_uri: getSearchConsoleRedirectUri(),
       grant_type: "authorization_code",
     }),
   });

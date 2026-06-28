@@ -6,6 +6,9 @@ const DEFAULT_SCOPES =
 const PRODUCTION_APP_URL =
   "https://predictaseo-core-production.up.railway.app";
 
+const PILOT_APP_URL =
+  "https://predictaseo-pam-pilot-production.up.railway.app";
+
 // Public client id from shopify.app.toml — safe to ship as fallback for App Store app only
 const DEFAULT_APP_STORE_API_KEY = "08747e1aee44008f3206d0e0d4c1b130";
 
@@ -50,7 +53,10 @@ export function getShopifyAppUrl() {
   const railwayDomain = process.env.RAILWAY_PUBLIC_DOMAIN?.trim();
   if (railwayDomain) return `https://${railwayDomain}`;
 
-  if (process.env.NODE_ENV === "production") return PRODUCTION_APP_URL;
+  if (process.env.NODE_ENV === "production") {
+    if (isPilotApp()) return PILOT_APP_URL;
+    return PRODUCTION_APP_URL;
+  }
 
   return "";
 }
