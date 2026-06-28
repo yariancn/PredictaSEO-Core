@@ -1,7 +1,7 @@
 import { AppDistribution } from "@shopify/shopify-app-remix/server";
 
 const DEFAULT_SCOPES =
-  "read_products,write_products,read_content,write_content,read_locales,read_markets,read_themes,write_themes,read_locations,read_metaobject_definitions,write_metaobject_definitions,read_metaobjects,write_metaobjects,read_reports";
+  "read_products,write_products,read_content,write_content,read_locales,read_markets,read_themes,write_themes,read_locations,read_metaobject_definitions,write_metaobject_definitions,read_metaobjects,write_metaobjects,read_reports,read_orders";
 
 const PRODUCTION_APP_URL =
   "https://predictaseo-core-production.up.railway.app";
@@ -66,4 +66,27 @@ export function getShopifyScopes() {
 /** Shopify Admin app path slug, e.g. predictacore-app or predictacore-pilot. */
 export function getShopifyAppHandle() {
   return process.env.SHOPIFY_APP_HANDLE?.trim() || DEFAULT_APP_STORE_HANDLE;
+}
+
+/** predictacore-ads base URL (with /ads prefix). Pam pilot pulls Meta intelligence from here. */
+export function getPredictacoreAdsOrigin() {
+  const raw =
+    process.env.PREDICTACORE_ADS_ORIGIN?.trim() ||
+    process.env.PREDICTACORE_ADS_URL?.trim() ||
+    "https://predictacore.ai/ads";
+  return raw.replace(/\/$/, "");
+}
+
+/** Puente pilot → predictacore-ads. Copia el valor de META_CRON_SECRET de ads. */
+export function getPredictacoreAdsInternalSecret() {
+  return (
+    process.env.PREDICTACORE_ADS_INTERNAL_SECRET?.trim() ||
+    process.env.META_CRON_SECRET?.trim() ||
+    process.env.META_AUDIT_SECRET?.trim() ||
+    ""
+  );
+}
+
+export function isPredictacoreAdsConfigured() {
+  return Boolean(getPredictacoreAdsInternalSecret());
 }

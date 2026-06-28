@@ -42,7 +42,8 @@ export async function loader({ request }) {
   const introCopy = Object.fromEntries(
     introKeys.map((key) => [key, fillCopy(t(locale, key), limitVars)]),
   );
-  return json({ shop: session.shop, introCopy, locale });
+  const { isPilotApp } = await import("../lib/env.server.js");
+  return json({ shop: session.shop, introCopy, locale, showGrowthHub: isPilotApp() });
 }
 
 export async function action({ request }) {
@@ -148,9 +149,20 @@ export async function action({ request }) {
       if (errors?.length) {
         return json({ intent: "confirm-markets", marketError: errors.map((e) => e.message).join("; ") });
       }
+      const rawCodes = String(form.get("countryCodes") ?? "")
+        .split(",")
+        .map((c) => c.trim().toUpperCase())
+        .filter(Boolean);
+      if (rawCodes.length === 0) {
+        const { t: tr } = await import("../lib/locale.js");
+        return json({
+          intent: "confirm-markets",
+          marketError: tr(storeLocale, "marketsSelectRequired"),
+        });
+      }
       const { buildMarketContext } = await import("../lib/markets.server.js");
       const { saveShopMarketConfirmation } = await import("../lib/shop-market.server.js");
-      const marketContext = buildMarketContext(data, { confirmed: true });
+      const marketContext = buildMarketContext(data, { confirmed: true, countryCodes: rawCodes });
       await saveShopMarketConfirmation(session.shop, marketContext);
       return json({ intent: "confirm-markets", marketConfirmed: true, regionLabel: marketContext.regionLabel });
     } catch (err) {
@@ -1021,9 +1033,37 @@ function PostApplyMerchantPanel({
   );
 }
 
-function IntroScreen({ copy, shopName, onStart }) {
+function GrowthHubBanner({ locale }) {
+  const es = locale === "es";
+  return (
+    <a
+      href="/app/growth"
+      target="_top"
+      rel="noopener noreferrer"
+      style={{
+        display: "block",
+        marginBottom: "16px",
+        padding: "14px 16px",
+        borderRadius: "12px",
+        background: "rgba(99,102,241,0.15)",
+        border: "1px solid rgba(99,102,241,0.35)",
+        color: "#c7d2fe",
+        textDecoration: "none",
+        fontWeight: 700,
+        fontSize: "0.88rem",
+      }}
+    >
+      {es
+        ? "Centro de inteligencia → Meta + Shopify + Google + AI"
+        : "Intelligence hub → Meta + Shopify + Google + AI"}
+    </a>
+  );
+}
+
+function IntroScreen({ copy, shopName, onStart, showGrowthHub, locale }) {
   return (
     <div style={theme.page}>
+      {showGrowthHub && <GrowthHubBanner locale={locale} />}
       <header style={{ marginBottom: "20px" }}>
         <p style={{ margin: 0, fontSize: "0.75rem", color: "#6366f1", fontWeight: 600, letterSpacing: "0.06em" }}>
           {copy.subtitle}
@@ -1171,7 +1211,7 @@ function ExpectationsPanel({
 }
 
 export default function Index() {
-  const { shop: shellShop, introCopy } = useLoaderData();
+  const { shop: shellShop, introCopy, showGrowthHub, locale: shellLocale } = useLoaderData();
   const auditFetcher = useFetcher();
   const aiFetcher = useFetcher();
   const applyFetcher = useFetcher();
@@ -1373,6 +1413,8 @@ export default function Index() {
         copy={introCopy}
         shopName={shellShop?.replace(".myshopify.com", "")}
         onStart={startAudit}
+        showGrowthHub={showGrowthHub}
+        locale={shellLocale}
       />
     );
   }
@@ -1401,6 +1443,11 @@ export default function Index() {
 
   return (
     <>
+      {showGrowthHub && (
+        <div style={{ padding: "12px 16px 0", maxWidth: 960, margin: "0 auto" }}>
+          <GrowthHubBanner locale={shellLocale} />
+        </div>
+      )}
       {optimizingOverlay && (
         <div
           style={{
@@ -1491,6 +1538,7 @@ export default function Index() {
         marketsWatch={marketsWatch}
         searchConsole={searchConsole}
         deliveryStatus={deliveryStatus}
+        auditFetcher={auditFetcher}
       />
     </>
   );
@@ -1695,13 +1743,62 @@ function BackupStatusPanel({ copy, backupSummary }) {
 }
 
 function MarketsPanel({ copy, marketContext, applyFetcher }) {
+  const NORTH_AMERICA = ["US", "CA", "MX"];
+  const available = sortMarketCountries(marketContext?.countries ?? [], NORTH_AMERICA);
+
+  const defaultSelected = () => {
+    const codes = available.map((c) => c.code);
+    const preferred = NORTH_AMERICA.filter((c) => codes.includes(c));
+    if (preferred.length) return preferred;
+    if (marketContext?.countryCodes?.length) return marketContext.countryCodes;
+    return codes.slice(0, 1);
+  };
+
+  const savedCount = marketContext?.countryCodes?.length ?? 0;
+  const tooBroad = marketContext?.confirmed && savedCount > 5;
+
+  const [editing, setEditing] = useState(!marketContext?.confirmed || tooBroad);
+  const [selected, setSelected] = useState(defaultSelected);
+
   const confirming =
     applyFetcher.state !== "idle" && applyFetcher.formData?.get("intent") === "confirm-markets";
-  const confirmed =
-    marketContext?.confirmed ||
-    (applyFetcher.data?.intent === "confirm-markets" && applyFetcher.data?.marketConfirmed);
+  const justConfirmed =
+    applyFetcher.data?.intent === "confirm-markets" && applyFetcher.data?.marketConfirmed;
+  const confirmed = (marketContext?.confirmed || justConfirmed) && !editing;
+  const showPicker = !confirmed;
+
+  useEffect(() => {
+    if (!marketContext?.confirmed || tooBroad) {
+      setEditing(true);
+      setSelected(defaultSelected());
+    } else if (marketContext.countryCodes?.length) {
+      setSelected(marketContext.countryCodes);
+    }
+  }, [marketContext?.confirmed, marketContext?.countryCodes?.join(","), tooBroad]);
+
   const region =
     applyFetcher.data?.regionLabel ?? marketContext?.regionLabel ?? copyText(copy, "marketsNotConfigured");
+
+  const mexicoMissing = !available.some((c) => c.code === "MX");
+
+  const toggleCode = (code) => {
+    setSelected((prev) => (prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]));
+  };
+
+  const applyPreset = (codes) => {
+    const allowed = codes.filter((c) => available.some((a) => a.code === c));
+    setSelected(allowed.length ? allowed : defaultSelected());
+    setEditing(true);
+  };
+
+  const submitConfirm = () => {
+    applyFetcher.submit(
+      { intent: "confirm-markets", countryCodes: selected.join(",") },
+      { method: "post" },
+    );
+  };
+
+  const selectedLabels = formatRegionLabelFromCodes(selected, available);
 
   return (
     <div
@@ -1719,13 +1816,77 @@ function MarketsPanel({ copy, marketContext, applyFetcher }) {
       </p>
       {marketContext?.configured ? (
         <>
+          {showPicker && (
+            <p style={{ ...theme.body, fontSize: "0.82rem", color: "#a5b4fc", marginBottom: "10px" }}>
+              {copyText(copy, "marketsSelectHint", "")}
+            </p>
+          )}
           <p style={{ ...theme.body, color: "#e8e8ff", fontWeight: 600, marginBottom: "6px" }}>
-            {fillCopy(copyText(copy, "marketsDetected", ""), { region })}
+            {confirmed
+              ? fillCopy(copyText(copy, "marketsConfirmed", ""), { region })
+              : fillCopy(copyText(copy, "marketsDetected", ""), { region: selectedLabels })}
           </p>
-          {marketContext.countryNames?.length > 0 && (
+          {showPicker && available.length > 0 && (
+            <>
+              {mexicoMissing && (
+                <p style={{ ...theme.body, fontSize: "0.82rem", color: "#fbbf24", marginBottom: "10px" }}>
+                  {copyText(copy, "marketsAddMexicoHint", "")}
+                </p>
+              )}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "12px" }}>
+                <button
+                  type="button"
+                  style={{ ...theme.btnGhost, fontSize: "0.78rem", padding: "6px 10px" }}
+                  onClick={() => applyPreset(NORTH_AMERICA)}
+                >
+                  {copyText(copy, "marketsPresetNorthAmerica", "US, Canada & Mexico only")}
+                </button>
+              </div>
+              <p style={{ ...theme.body, fontSize: "0.78rem", color: "#8b8b9a", marginBottom: "8px" }}>
+                Shopify lists {available.length} countries — check only where you sell:
+              </p>
+              <div
+                style={{
+                  maxHeight: "200px",
+                  overflowY: "auto",
+                  marginBottom: "12px",
+                  padding: "8px",
+                  borderRadius: "8px",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                }}
+              >
+                {available.map((c) => (
+                  <label
+                    key={c.code}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      padding: "4px 0",
+                      fontSize: "0.82rem",
+                      color: NORTH_AMERICA.includes(c.code) ? "#e8e8ff" : "#8b8b9a",
+                      cursor: "pointer",
+                      fontWeight: NORTH_AMERICA.includes(c.code) ? 600 : 400,
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selected.includes(c.code)}
+                      onChange={() => toggleCode(c.code)}
+                    />
+                    {c.name} ({c.code})
+                  </label>
+                ))}
+              </div>
+            </>
+          )}
+          {confirmed && !editing && selected.length > 0 && (
             <p style={{ ...theme.body, fontSize: "0.82rem", color: "#8b8b9a", marginBottom: "12px" }}>
               {fillCopy(copyText(copy, "marketsCountries", ""), {
-                countries: marketContext.countryNames.join(", "),
+                countries: formatRegionLabelFromCodes(
+                  marketContext?.countryCodes ?? selected,
+                  available,
+                ),
               })}
             </p>
           )}
@@ -1740,22 +1901,58 @@ function MarketsPanel({ copy, marketContext, applyFetcher }) {
           {w}
         </p>
       ))}
-      {confirmed ? (
-        <p style={{ ...theme.body, color: "#a3e635", margin: 0 }}>
-          {fillCopy(copyText(copy, "marketsConfirmed", ""), { region })}
+      {applyFetcher.data?.intent === "confirm-markets" && applyFetcher.data?.marketError && (
+        <p style={{ ...theme.body, color: "#f87171", marginBottom: "8px" }}>
+          {applyFetcher.data.marketError}
         </p>
+      )}
+      {confirmed && !editing ? (
+        <button
+          type="button"
+          style={{ ...theme.btnGhost, marginTop: "4px" }}
+          onClick={() => {
+            setEditing(true);
+            setSelected(
+              marketContext?.countryCodes?.length ? marketContext.countryCodes : defaultSelected(),
+            );
+          }}
+        >
+          {copyText(copy, "marketsChangeButton", "Change target markets")}
+        </button>
       ) : (
         <button
           type="button"
           style={{ ...theme.btnPrimary, marginTop: "4px" }}
-          disabled={confirming || !marketContext?.configured}
-          onClick={() => applyFetcher.submit({ intent: "confirm-markets" }, { method: "post" })}
+          disabled={confirming || !marketContext?.configured || selected.length === 0}
+          onClick={submitConfirm}
         >
           {confirming ? copyText(copy, "loading", "…") : copyText(copy, "marketsConfirmButton", "Confirm")}
         </button>
       )}
     </div>
   );
+}
+
+function sortMarketCountries(countries, priorityCodes) {
+  return [...countries].sort((a, b) => {
+    const ai = priorityCodes.indexOf(a.code);
+    const bi = priorityCodes.indexOf(b.code);
+    if (ai >= 0 && bi >= 0) return ai - bi;
+    if (ai >= 0) return -1;
+    if (bi >= 0) return 1;
+    return a.name.localeCompare(b.name);
+  });
+}
+
+function formatRegionLabelFromCodes(codes, available) {
+  const names = codes
+    .map((code) => available.find((c) => c.code === code)?.name ?? code)
+    .filter(Boolean);
+  if (names.length === 0) return "your markets";
+  if (names.length === 1) return names[0];
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  if (names.length === 3) return `${names[0]}, ${names[1]}, and ${names[2]}`;
+  return `${names.slice(0, 2).join(", ")} +${names.length - 2} more`;
 }
 
 function ValidationPanel({ copy, validation, marketContext }) {
@@ -1821,6 +2018,7 @@ function IndexWizard({
   marketsWatch,
   searchConsole,
   deliveryStatus,
+  auditFetcher,
 }) {
   const pilotMode = Boolean(billing?.pilotMode);
   const { matrix, summary: snapSummary } = snapshot;
@@ -2064,7 +2262,13 @@ function IndexWizard({
 
           {(firstApplyDone || setupComplete) && (
             <>
-              <DeliveryChecklistPanel copy={copy} deliveryStatus={deliveryStatus} shop={shop} />
+              <DeliveryChecklistPanel
+                copy={copy}
+                deliveryStatus={deliveryStatus}
+                shop={shop}
+                onRecheck={() => auditFetcher.load("/app/audit-data")}
+                rechecking={auditFetcher.state === "loading"}
+              />
               <ApplyImpactPanel copy={copy} applyImpact={applyImpact} />
               <ThemeOnboardingPanel copy={copy} shop={shop} />
               <SearchConsolePanel copy={copy} searchConsole={searchConsole} />
