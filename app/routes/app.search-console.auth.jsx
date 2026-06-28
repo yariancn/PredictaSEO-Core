@@ -1,33 +1,30 @@
-import { json } from "@remix-run/node";
-import { useLoaderData } from "@remix-run/react";
-import { useEffect } from "react";
+import { redirect } from "@remix-run/node";
 import { authenticate } from "../shopify.server";
 import { buildSearchConsoleAuthUrl } from "../lib/search-console.server.js";
 import crypto from "node:crypto";
 
-/** Google OAuth must open in top window — iframe embed returns Google 403. */
+/** Google OAuth must leave the embedded iframe — use Shopify exit-iframe (not window.top). */
 export async function loader({ request }) {
   const { session } = await authenticate.admin(request);
   const state = crypto.randomBytes(16).toString("hex");
-  const url = buildSearchConsoleAuthUrl(session.shop, state);
-  return json({ url });
+  const googleUrl = buildSearchConsoleAuthUrl(session.shop, state);
+
+  const requestUrl = new URL(request.url);
+  const isEmbedded = requestUrl.searchParams.get("embedded") === "1";
+
+  if (isEmbedded) {
+    const params = new URLSearchParams({
+      shop: session.shop,
+      exitIframe: googleUrl,
+    });
+    const host = requestUrl.searchParams.get("host");
+    if (host) params.set("host", host);
+    throw redirect(`/auth/exit-iframe?${params.toString()}`);
+  }
+
+  throw redirect(googleUrl);
 }
 
 export default function SearchConsoleAuth() {
-  const { url } = useLoaderData();
-
-  useEffect(() => {
-    if (typeof window !== "undefined" && url) {
-      window.top.location.assign(url);
-    }
-  }, [url]);
-
-  return (
-    <div style={{ padding: "24px", color: "#e2e8f0", fontFamily: "system-ui, sans-serif" }}>
-      <p style={{ marginBottom: "12px" }}>Redirecting to Google Search Console…</p>
-      <a href={url} target="_top" rel="noopener noreferrer" style={{ color: "#a5b4fc" }}>
-        Click here if Google does not open
-      </a>
-    </div>
-  );
+  return null;
 }
