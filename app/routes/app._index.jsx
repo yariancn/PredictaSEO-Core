@@ -1035,10 +1035,11 @@ function PostApplyMerchantPanel({
 
 function GrowthHubBanner({ locale }) {
   const es = locale === "es";
+  const hubUrl = "https://predictacore.ai/ads/clients/pam-andander/growth";
   return (
     <a
-      href="/app/growth"
-      target="_top"
+      href={hubUrl}
+      target="_blank"
       rel="noopener noreferrer"
       style={{
         display: "block",
