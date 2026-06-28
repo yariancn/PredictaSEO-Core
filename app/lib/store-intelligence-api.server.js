@@ -66,6 +66,36 @@ async function runShopifyQl(token, shop, ql) {
   return table;
 }
 
+async function tryShopifyQl(token, shop, queries) {
+  let lastError = "";
+  for (const ql of queries) {
+    try {
+      const table = await runShopifyQl(token, shop, ql);
+      if (rowsFromTable(table).length > 0 || !table?.parseErrors?.length) {
+        return { table, query: ql };
+      }
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : String(err);
+    }
+  }
+  throw new Error(lastError || "ShopifyQL failed");
+}
+
+function sourceFromRow(row) {
+  return String(
+    row.referrer_source ??
+      row.utm_source ??
+      row.session_referrer_source ??
+      row.referrer ??
+      row.traffic_source ??
+      "unknown",
+  );
+}
+
+function deviceFromRow(row) {
+  return String(row.device_type ?? row.session_device_type ?? "unknown");
+}
+
 async function fetchShopifyAnalytics(token, shop, days) {
   const since = sinceDate(days);
   const empty = {
@@ -76,6 +106,7 @@ async function fetchShopifyAnalytics(token, shop, days) {
     totalSessions: 0,
     totalOrders: 0,
     referrers: [],
+    trafficTypes: [],
     salesByChannel: [],
     deviceBreakdown: [],
     metaSessions: 0,
@@ -85,29 +116,43 @@ async function fetchShopifyAnalytics(token, shop, days) {
   };
 
   try {
-    const [referrerTable, salesTable, deviceTable] = await Promise.all([
-      runShopifyQl(
-        token,
-        shop,
-        `FROM sessions SHOW sessions, pageviews GROUP BY session_referrer_source SINCE ${since} ORDER BY sessions DESC LIMIT 20`,
-      ),
+    const [referrerResult, trafficTypeResult, totalsTable, salesTable, deviceResult] = await Promise.all([
+      tryShopifyQl(token, shop, [
+        `FROM sessions SHOW sessions GROUP BY referrer_source SINCE ${since} ORDER BY sessions DESC LIMIT 20`,
+        `FROM sessions SHOW sessions GROUP BY utm_source SINCE ${since} ORDER BY sessions DESC LIMIT 20`,
+      ]),
+      tryShopifyQl(token, shop, [
+        `FROM sessions SHOW sessions GROUP BY traffic_type SINCE ${since} ORDER BY sessions DESC LIMIT 10`,
+      ]),
+      runShopifyQl(token, shop, `FROM sessions SHOW sessions SINCE ${since}`),
       runShopifyQl(token, shop, `FROM sales SHOW orders, total_sales GROUP BY sales_channel SINCE ${since}`),
-      runShopifyQl(
-        token,
-        shop,
-        `FROM sessions SHOW sessions, pageviews GROUP BY session_device_type SINCE ${since} ORDER BY sessions DESC`,
-      ),
+      tryShopifyQl(token, shop, [
+        `FROM sessions SHOW sessions GROUP BY session_device_type SINCE ${since} ORDER BY sessions DESC`,
+        `FROM sessions SHOW sessions GROUP BY device_type SINCE ${since} ORDER BY sessions DESC`,
+      ]),
     ]);
 
-    const referrerRows = rowsFromTable(referrerTable);
-    const totalSessions = referrerRows.reduce((sum, r) => sum + toNumber(r.sessions), 0);
+    const referrerRows = rowsFromTable(referrerResult.table);
+    const totalsRows = rowsFromTable(totalsTable);
+    const totalFromShow = totalsRows.reduce((sum, r) => sum + toNumber(r.sessions), 0);
+    const totalFromReferrers = referrerRows.reduce((sum, r) => sum + toNumber(r.sessions), 0);
+    const totalSessions = totalFromShow > 0 ? totalFromShow : totalFromReferrers;
 
     const referrers = referrerRows.map((r) => {
       const sessions = toNumber(r.sessions);
       return {
-        source: String(r.session_referrer_source ?? "unknown"),
+        source: sourceFromRow(r),
         sessions,
         pageviews: toNumber(r.pageviews),
+        sharePct: totalSessions > 0 ? Math.round((sessions / totalSessions) * 1000) / 10 : 0,
+      };
+    });
+
+    const trafficTypes = rowsFromTable(trafficTypeResult.table).map((r) => {
+      const sessions = toNumber(r.sessions);
+      return {
+        type: String(r.traffic_type ?? "unknown"),
+        sessions,
         sharePct: totalSessions > 0 ? Math.round((sessions / totalSessions) * 1000) / 10 : 0,
       };
     });
@@ -118,22 +163,24 @@ async function fetchShopifyAnalytics(token, shop, days) {
       sales: toNumber(r.total_sales),
     }));
 
-    const deviceBreakdown = rowsFromTable(deviceTable).map((r) => ({
-      device: String(r.session_device_type ?? "unknown"),
+    const deviceBreakdown = rowsFromTable(deviceResult.table).map((r) => ({
+      device: deviceFromRow(r),
       sessions: toNumber(r.sessions),
       pageviews: toNumber(r.pageviews),
     }));
 
     const totalOrders = salesByChannel.reduce((s, c) => s + c.orders, 0);
-    const metaSessions =
-      referrers.find((r) => /facebook|instagram|meta|fb/i.test(r.source))?.sessions ?? 0;
+    const paidTrafficSessions = trafficTypes.find((t) => t.type === "paid")?.sessions ?? 0;
+    const metaReferrerSessions =
+      referrers.find((r) => /facebook|instagram|meta|fb|paid/i.test(r.source))?.sessions ?? 0;
+    const metaSessions = Math.max(paidTrafficSessions, metaReferrerSessions);
     const metaShare = totalSessions > 0 ? (metaSessions / totalSessions) * 100 : 0;
 
     let botSuspicionNoteEs = "";
     let botSuspicionNoteEn = "";
     if (totalSessions > 2000 && totalOrders <= 2) {
-      botSuspicionNoteEs = `Alto tráfico (${totalSessions.toLocaleString()} sesiones) con casi cero pedidos. Meta ~${Math.round(metaShare)}% (${metaSessions} ses.). PredictaCore SEO no genera sesiones masivas.`;
-      botSuspicionNoteEn = `High traffic (${totalSessions.toLocaleString()} sessions) with near-zero orders. Meta ~${Math.round(metaShare)}%. PredictaCore SEO does not mass-generate sessions.`;
+      botSuspicionNoteEs = `Alto tráfico (${totalSessions.toLocaleString()} sesiones) con casi cero pedidos. Meta/referrer ~${Math.round(metaShare)}% (${metaSessions} ses.). El resto es orgánico/directo/bots — revisa tabla.`;
+      botSuspicionNoteEn = `High traffic (${totalSessions.toLocaleString()} sessions) with near-zero orders. Meta/referrer ~${Math.round(metaShare)}% (${metaSessions} sessions). Rest is organic/direct/bots — see table.`;
     }
 
     return {
@@ -144,22 +191,25 @@ async function fetchShopifyAnalytics(token, shop, days) {
       totalSessions,
       totalOrders,
       referrers,
+      trafficTypes,
       salesByChannel,
       deviceBreakdown,
       metaSessions,
       metaSharePct: Math.round(metaShare * 10) / 10,
       botSuspicionNoteEs,
       botSuspicionNoteEn,
-      source: "Pam pilot → Shopify Admin API (offline token)",
+      source: `Shopify Admin API ${API_VERSION} (referrer_source via ShopifyQL)`,
     };
   } catch (err) {
     const raw = err instanceof Error ? err.message : "Shopify analytics failed";
     let error = raw.slice(0, 300);
     if (/shopifyqlQuery.*doesn't exist/i.test(raw)) {
       error =
-        "API Shopify desactualizada en el servidor pilot — requiere Admin API 2026-04 para analytics. No es renovar token manual.";
+        "API Shopify desactualizada en el servidor pilot — requiere Admin API 2026-04 para analytics.";
     } else if (/Invalid API key or access token/i.test(raw)) {
-      error = "Token Shopify inválido — abre la app pilot en Shopify Admin una vez (OAuth automático).";
+      error = "Token Shopify inválido — abre la app pilot en Shopify Admin (OAuth automático).";
+    } else if (/Column Not Found/i.test(raw)) {
+      error = `ShopifyQL column mismatch (actualizando consulta): ${raw.slice(0, 120)}`;
     }
     return {
       ...empty,

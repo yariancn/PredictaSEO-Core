@@ -33,6 +33,32 @@ async function runShopifyQl(admin, query) {
   return table;
 }
 
+async function tryShopifyQl(admin, queries) {
+  let lastError = "";
+  for (const query of queries) {
+    try {
+      return await runShopifyQl(admin, query);
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : String(err);
+    }
+  }
+  throw new Error(lastError || "ShopifyQL failed");
+}
+
+function sourceFromRow(row) {
+  return String(
+    row.referrer_source ??
+      row.utm_source ??
+      row.session_referrer_source ??
+      row.referrer ??
+      "unknown",
+  );
+}
+
+function deviceFromRow(row) {
+  return String(row.device_type ?? row.session_device_type ?? "unknown");
+}
+
 export async function fetchShopStoreAnalytics(admin, days = 30) {
   const since = sinceDate(days);
   const empty = {
@@ -50,29 +76,32 @@ export async function fetchShopStoreAnalytics(admin, days = 30) {
   };
 
   try {
-    const [referrerTable, dailyTable, salesTable, deviceTable] = await Promise.all([
-      runShopifyQl(
-        admin,
-        `FROM sessions SHOW sessions, pageviews GROUP BY session_referrer_source SINCE ${since} ORDER BY sessions DESC LIMIT 20`,
-      ),
+    const [referrerTable, totalsTable, dailyTable, salesTable, deviceTable] = await Promise.all([
+      tryShopifyQl(admin, [
+        `FROM sessions SHOW sessions GROUP BY referrer_source SINCE ${since} ORDER BY sessions DESC LIMIT 20`,
+        `FROM sessions SHOW sessions GROUP BY utm_source SINCE ${since} ORDER BY sessions DESC LIMIT 20`,
+      ]),
+      runShopifyQl(admin, `FROM sessions SHOW sessions SINCE ${since}`),
       runShopifyQl(
         admin,
         `FROM sessions SHOW sessions, online_store_visitors, pageviews WHERE session_start >= '${since}' GROUP BY day ORDER BY day`,
       ),
       runShopifyQl(admin, `FROM sales SHOW orders, total_sales GROUP BY sales_channel SINCE ${since}`),
-      runShopifyQl(
-        admin,
-        `FROM sessions SHOW sessions, pageviews GROUP BY session_device_type SINCE ${since} ORDER BY sessions DESC`,
-      ),
+      tryShopifyQl(admin, [
+        `FROM sessions SHOW sessions GROUP BY device_type SINCE ${since} ORDER BY sessions DESC`,
+        `FROM sessions SHOW sessions GROUP BY session_device_type SINCE ${since} ORDER BY sessions DESC`,
+      ]),
     ]);
 
     const referrerRows = rowsFromTable(referrerTable);
-    const totalSessions = referrerRows.reduce((sum, r) => sum + toNumber(r.sessions), 0);
+    const totalFromShow = rowsFromTable(totalsTable).reduce((sum, r) => sum + toNumber(r.sessions), 0);
+    const totalFromReferrers = referrerRows.reduce((sum, r) => sum + toNumber(r.sessions), 0);
+    const totalSessions = totalFromShow > 0 ? totalFromShow : totalFromReferrers;
 
     const referrers = referrerRows.map((r) => {
       const sessions = toNumber(r.sessions);
       return {
-        source: String(r.session_referrer_source ?? r.referrer ?? "unknown"),
+        source: sourceFromRow(r),
         sessions,
         pageviews: toNumber(r.pageviews),
         sharePct: totalSessions > 0 ? Math.round((sessions / totalSessions) * 1000) / 10 : 0,
@@ -93,7 +122,7 @@ export async function fetchShopStoreAnalytics(admin, days = 30) {
     }));
 
     const deviceBreakdown = rowsFromTable(deviceTable).map((r) => ({
-      device: String(r.session_device_type ?? "unknown"),
+      device: deviceFromRow(r),
       sessions: toNumber(r.sessions),
       pageviews: toNumber(r.pageviews),
     }));
