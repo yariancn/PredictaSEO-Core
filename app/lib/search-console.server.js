@@ -140,8 +140,7 @@ export async function fetchSearchConsoleSummary(shop) {
     body: JSON.stringify({
       startDate: start.toISOString().slice(0, 10),
       endDate: end.toISOString().slice(0, 10),
-      dimensions: ["country"],
-      rowLimit: 10,
+      rowLimit: 1,
     }),
   });
 
@@ -155,13 +154,29 @@ export async function fetchSearchConsoleSummary(shop) {
   const totalClicks = rows.reduce((s, r) => s + (r.clicks ?? 0), 0);
   const totalImpressions = rows.reduce((s, r) => s + (r.impressions ?? 0), 0);
 
+  const countryRes = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      startDate: start.toISOString().slice(0, 10),
+      endDate: end.toISOString().slice(0, 10),
+      dimensions: ["country"],
+      rowLimit: 10,
+    }),
+  });
+  const countryData = countryRes.ok ? await countryRes.json() : { rows: [] };
+  const countryRows = countryData.rows ?? [];
+
   return {
     connected: true,
     siteUrl,
     periodDays: 28,
     totalClicks,
     totalImpressions,
-    topCountries: rows.slice(0, 5).map((r) => ({
+    topCountries: countryRows.slice(0, 5).map((r) => ({
       country: r.keys?.[0] ?? "",
       clicks: r.clicks ?? 0,
       impressions: r.impressions ?? 0,

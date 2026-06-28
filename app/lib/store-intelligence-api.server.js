@@ -230,7 +230,10 @@ export async function buildStoreIntelligencePayload(days = 30) {
           shop,
           error: "Sin token offline en Session — reinstala la app pilot en la tienda.",
         }),
-    fetchSearchConsoleSummary(shop).catch(() => ({ connected: false })),
+    fetchSearchConsoleSummary(shop).catch((err) => ({
+      connected: false,
+      error: err instanceof Error ? err.message.slice(0, 200) : "GSC fetch failed",
+    })),
     getGscComparison(shop).catch(() => ({ connected: false })),
     getApplyImpactReport(shop).catch(() => null),
     prisma.entityProfile.findUnique({ where: { shop } }).catch(() => null),
