@@ -1,4 +1,4 @@
-const API_VERSION = "2025-04";
+const API_VERSION = "2026-04";
 
 function toNumber(value) {
   const n = Number.parseFloat(String(value ?? "0").replace(/,/g, ""));

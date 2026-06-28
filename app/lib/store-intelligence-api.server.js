@@ -7,7 +7,8 @@ import {
 import { getApplyImpactReport } from "./apply-impact.server.js";
 
 const DEFAULT_SHOP = "pamandander1.myshopify.com";
-const API_VERSION = "2025-04";
+/** shopifyqlQuery requires Admin API 2025-10+ (see Shopify changelog Oct 2025). */
+const API_VERSION = process.env.SHOPIFY_ADMIN_API_VERSION?.trim() || "2026-04";
 
 function pilotShop() {
   return process.env.PILOT_SHOP?.trim() || DEFAULT_SHOP;
@@ -152,9 +153,17 @@ async function fetchShopifyAnalytics(token, shop, days) {
       source: "Pam pilot → Shopify Admin API (offline token)",
     };
   } catch (err) {
+    const raw = err instanceof Error ? err.message : "Shopify analytics failed";
+    let error = raw.slice(0, 300);
+    if (/shopifyqlQuery.*doesn't exist/i.test(raw)) {
+      error =
+        "API Shopify desactualizada en el servidor pilot — requiere Admin API 2026-04 para analytics. No es renovar token manual.";
+    } else if (/Invalid API key or access token/i.test(raw)) {
+      error = "Token Shopify inválido — abre la app pilot en Shopify Admin una vez (OAuth automático).";
+    }
     return {
       ...empty,
-      error: err instanceof Error ? err.message.slice(0, 300) : "Shopify analytics failed",
+      error,
     };
   }
 }
