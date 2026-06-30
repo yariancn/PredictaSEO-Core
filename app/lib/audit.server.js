@@ -1,6 +1,6 @@
 const BILLING_TIMEOUT_MS = 8000;
 const AUDIT_LOAD_TIMEOUT_MS = 55000;
-const DELIVERY_CHECK_TIMEOUT_MS = 12000;
+const DELIVERY_CHECK_TIMEOUT_MS = 25000;
 
 function withTimeout(promise, ms, fallback) {
   return Promise.race([
@@ -261,12 +261,16 @@ async function loadAuditDataInner(request) {
       }
     : { connected: false, configured: false };
 
-  const { getDeliveryStatus, runStorefrontDeliveryCheck } = await import("./storefront-delivery.server.js");
+  const { getDeliveryStatus, runStorefrontDeliveryCheck, deliveryNeedsRefresh, normalizeDeliveryReport } =
+    await import("./storefront-delivery.server.js");
   const storeUrl = data.shop?.primaryDomain?.url ?? `https://${session.shop}`;
   const forceDelivery = new URL(request.url).searchParams.get("recheckDelivery") === "1";
   let deliveryStatus = await getDeliveryStatus(session.shop);
   const sampleForDelivery = priorityProducts[0];
-  if (sampleForDelivery && (forceDelivery || !deliveryStatus?.checkedAt)) {
+  if (
+    sampleForDelivery &&
+    deliveryNeedsRefresh(deliveryStatus, { force: forceDelivery })
+  ) {
     deliveryStatus = await withTimeout(
       runStorefrontDeliveryCheck(admin, session.shop, {
         force: forceDelivery,
@@ -277,8 +281,10 @@ async function loadAuditDataInner(request) {
         },
       }),
       DELIVERY_CHECK_TIMEOUT_MS,
-      deliveryStatus,
+      deliveryStatus ? normalizeDeliveryReport(deliveryStatus) : null,
     );
+  } else if (deliveryStatus) {
+    deliveryStatus = normalizeDeliveryReport(deliveryStatus);
   }
 
   const appliedCatalog = await getAppliedCatalogSummary(

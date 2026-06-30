@@ -13,6 +13,9 @@ const THEME_SETTINGS_QUERY = `#graphql
               ... on OnlineStoreThemeFileBodyText {
                 content
               }
+              ... on OnlineStoreThemeFileBodyBase64 {
+                contentBase64
+              }
             }
           }
         }
@@ -42,18 +45,32 @@ const PRODUCT_METAFIELD_QUERY = `#graphql
 
 const CACHE_MS = 6 * 60 * 60 * 1000;
 
+const BRAND_SLUGS = ["brand-identity", "predictacore-brand-identity", "predictacore-brand"];
+const PRODUCT_SLUGS = ["product-identity", "predictacore-product-identity", "predictacore-product"];
+
 function stripThemeFileComments(content) {
   if (!content) return "";
   return content.replace(/^\/\*[\s\S]*?\*\/\s*/, "").trim();
 }
 
-function collectThemeBlocks(node, blocks = []) {
-  if (!node || typeof node !== "object") return blocks;
+function readThemeFileBody(body) {
+  if (!body) return "";
+  if (typeof body.content === "string" && body.content.length > 0) return body.content;
+  if (typeof body.contentBase64 === "string" && body.contentBase64.length > 0) {
+    return Buffer.from(body.contentBase64, "base64").toString("utf8");
+  }
+  return "";
+}
+
+function collectThemeBlocks(node, blocks = [], depth = 0) {
+  if (!node || typeof node !== "object" || depth > 14) return blocks;
   if (typeof node.type === "string") blocks.push(node);
-  if (node.blocks && typeof node.blocks === "object") {
-    for (const block of Object.values(node.blocks)) {
-      collectThemeBlocks(block, blocks);
-    }
+  if (Array.isArray(node)) {
+    for (const item of node) collectThemeBlocks(item, blocks, depth + 1);
+    return blocks;
+  }
+  for (const value of Object.values(node)) {
+    if (value && typeof value === "object") collectThemeBlocks(value, blocks, depth + 1);
   }
   return blocks;
 }
@@ -68,13 +85,11 @@ function isThemeBlockEnabled(block) {
   return Boolean(block.type);
 }
 
-function parseThemeEmbedStatus(settingsContent) {
+export function parseThemeEmbedStatus(settingsContent) {
   if (!settingsContent) {
     return { brandEmbed: false, productEmbed: false, rawFound: false };
   }
 
-  const brandSlugs = ["brand-identity", "predictacore-brand-identity", "predictacore-brand"];
-  const productSlugs = ["product-identity", "predictacore-product-identity", "predictacore-product"];
   const lower = settingsContent.toLowerCase();
   const rawFound = lower.includes("predictacore");
 
@@ -83,12 +98,12 @@ function parseThemeEmbedStatus(settingsContent) {
     const data = JSON.parse(cleaned);
     const blocks = collectThemeBlocks(data);
     const brandEmbed = blocks.some(
-      (block) => isThemeBlockEnabled(block) && blockTypeMatches(block.type, brandSlugs),
+      (block) => isThemeBlockEnabled(block) && blockTypeMatches(block.type, BRAND_SLUGS),
     );
     const productEmbed = blocks.some(
-      (block) => isThemeBlockEnabled(block) && blockTypeMatches(block.type, productSlugs),
+      (block) => isThemeBlockEnabled(block) && blockTypeMatches(block.type, PRODUCT_SLUGS),
     );
-    if (brandEmbed || productEmbed) {
+    if (brandEmbed || productEmbed || rawFound) {
       return { brandEmbed, productEmbed, rawFound: true };
     }
   } catch {
@@ -112,8 +127,8 @@ function parseThemeEmbedStatus(settingsContent) {
   };
 
   return {
-    brandEmbed: isBlockEnabled(brandSlugs),
-    productEmbed: isBlockEnabled(productSlugs),
+    brandEmbed: isBlockEnabled(BRAND_SLUGS),
+    productEmbed: isBlockEnabled(PRODUCT_SLUGS),
     rawFound,
   };
 }
@@ -133,6 +148,48 @@ function reconcileThemeEmbedChecks(checks) {
     product.ok = true;
     product.detail = "confirmed_live_html";
   }
+}
+
+function reconcileLlmsChecks(checks) {
+  const llmsMeta = checks.find((c) => c.id === "shop_llms_metafield");
+  const llmsProxy = checks.find((c) => c.id === "llms_proxy_live");
+  if (llmsMeta && !llmsMeta.ok && llmsProxy?.ok) {
+    llmsMeta.ok = true;
+    llmsMeta.detail = "served_via_proxy";
+  }
+}
+
+export function normalizeDeliveryReport(report) {
+  if (!report?.checks?.length) return report;
+  const checks = report.checks.map((c) => ({ ...c }));
+  reconcileThemeEmbedChecks(checks);
+  reconcileLlmsChecks(checks);
+  const passed = checks.filter((c) => c.ok).length;
+  const total = checks.length;
+  const crawlerReady = checks
+    .filter((c) =>
+      ["theme_brand_embed", "theme_product_embed", "live_product_jsonld", "live_org_jsonld"].includes(c.id),
+    )
+    .every((c) => c.ok);
+  return {
+    ...report,
+    checks,
+    passed,
+    total,
+    crawlerReady,
+    readyPct: total ? Math.round((passed / total) * 100) : 0,
+  };
+}
+
+export function deliveryNeedsRefresh(status, { force = false } = {}) {
+  if (force) return true;
+  if (!status?.checkedAt) return true;
+  if (Date.now() - new Date(status.checkedAt).getTime() > CACHE_MS) return true;
+  const byId = Object.fromEntries((status.checks ?? []).map((c) => [c.id, c]));
+  if (byId.live_org_jsonld?.ok && !byId.theme_brand_embed?.ok) return true;
+  if (byId.live_product_jsonld?.ok && !byId.theme_product_embed?.ok) return true;
+  if (byId.llms_proxy_live?.ok && !byId.shop_llms_metafield?.ok) return true;
+  return false;
 }
 
 function extractJsonLdBlocks(html) {
@@ -170,6 +227,35 @@ async function fetchStorefrontUrl(url, timeoutMs = 8000) {
   }
 }
 
+function isLlmsTextOk(text) {
+  if (!text || text.includes("<html")) return false;
+  const trimmed = text.trim();
+  return trimmed.startsWith("#") || trimmed.toLowerCase().includes("llms");
+}
+
+async function fetchLlmsProxy(storeUrl, shop) {
+  const candidates = [];
+  const add = (base) => {
+    const clean = String(base ?? "").replace(/\/$/, "");
+    if (!clean) return;
+    const url = `${clean}/apps/predictacore/llms.txt`;
+    if (!candidates.includes(url)) candidates.push(url);
+  };
+
+  add(storeUrl);
+  add(`https://${shop}`);
+
+  let last = { ok: false, status: 0, text: "", url: candidates[0] ?? "" };
+  for (const url of candidates) {
+    const result = await fetchStorefrontUrl(url);
+    last = result;
+    if (result.ok && isLlmsTextOk(result.text)) {
+      return { ...result, ok: true };
+    }
+  }
+  return last;
+}
+
 function hasSchemaType(blocks, type) {
   const walk = (node) => {
     if (!node || typeof node !== "object") return false;
@@ -182,10 +268,34 @@ function hasSchemaType(blocks, type) {
   return blocks.some(walk);
 }
 
+function buildDeliveryReport({ checks, storeUrl, shop }) {
+  reconcileThemeEmbedChecks(checks);
+  reconcileLlmsChecks(checks);
+  const passed = checks.filter((c) => c.ok).length;
+  const total = checks.length;
+  const crawlerReady = checks
+    .filter((c) =>
+      ["theme_brand_embed", "theme_product_embed", "live_product_jsonld", "live_org_jsonld"].includes(c.id),
+    )
+    .every((c) => c.ok);
+
+  return {
+    checkedAt: new Date().toISOString(),
+    passed,
+    total,
+    crawlerReady,
+    readyPct: total ? Math.round((passed / total) * 100) : 0,
+    checks,
+    storeUrl,
+    themeEditorUrl: `https://admin.shopify.com/store/${shop.replace(".myshopify.com", "")}/themes/current/editor?context=apps`,
+  };
+}
+
 export async function runStorefrontDeliveryCheck(admin, shop, { sampleProduct = null, force = false } = {}) {
   const cached = await getDeliveryStatus(shop);
-  if (!force && cached?.checkedAt && Date.now() - new Date(cached.checkedAt).getTime() < CACHE_MS) {
-    return cached;
+  const normalizedCache = cached ? normalizeDeliveryReport(cached) : null;
+  if (!force && normalizedCache?.checkedAt && !deliveryNeedsRefresh(normalizedCache, { force: false })) {
+    return normalizedCache;
   }
 
   const storeUrl = sampleProduct?.storeUrl ?? `https://${shop}`;
@@ -196,7 +306,7 @@ export async function runStorefrontDeliveryCheck(admin, shop, { sampleProduct = 
     const themeRes = await admin.graphql(THEME_SETTINGS_QUERY);
     const { data } = await themeRes.json();
     const theme = data?.themes?.nodes?.[0];
-    const settingsContent = theme?.files?.nodes?.[0]?.body?.content ?? "";
+    const settingsContent = readThemeFileBody(theme?.files?.nodes?.[0]?.body);
     themeEmbeds = parseThemeEmbedStatus(settingsContent);
     checks.push({
       id: "theme_brand_embed",
@@ -215,47 +325,51 @@ export async function runStorefrontDeliveryCheck(admin, shop, { sampleProduct = 
     checks.push({ id: "theme_product_embed", labelKey: "deliveryThemeProduct", ok: false, detail: "query_failed" });
   }
 
-  let shopMetafields = { organization: false, llms: false };
   try {
     const mfRes = await admin.graphql(SHOP_METAFIELDS_QUERY);
     const { data } = await mfRes.json();
-    shopMetafields = {
-      organization: Boolean(data?.shop?.organization?.value?.trim()),
-      llms: Boolean(data?.shop?.llms?.value?.trim()),
-    };
+    let llmsSaved = Boolean(data?.shop?.llms?.value?.trim());
+    if (!llmsSaved) {
+      try {
+        const { CATALOG_QUERY } = await import("./diagnostic.server.js");
+        const { buildMarketContext } = await import("./markets.server.js");
+        const { getShopMarketSettings } = await import("./shop-market.server.js");
+        const { saveLlmsTxtMetafield } = await import("./validation.server.js");
+        const catalogRes = await admin.graphql(CATALOG_QUERY);
+        const catalogJson = await catalogRes.json();
+        const overrides = await getShopMarketSettings(shop);
+        const marketContext = buildMarketContext(catalogJson.data, overrides);
+        llmsSaved = await saveLlmsTxtMetafield(admin, catalogJson.data?.shop, marketContext);
+      } catch {
+        llmsSaved = false;
+      }
+    }
     checks.push({
       id: "shop_org_metafield",
       labelKey: "deliveryShopSchema",
-      ok: shopMetafields.organization,
-      detail: shopMetafields.organization ? "saved" : "missing",
+      ok: Boolean(data?.shop?.organization?.value?.trim()),
+      detail: data?.shop?.organization?.value?.trim() ? "saved" : "missing",
     });
     checks.push({
       id: "shop_llms_metafield",
       labelKey: "deliveryLlmsMetafield",
-      ok: shopMetafields.llms,
-      detail: shopMetafields.llms ? "saved" : "missing",
+      ok: llmsSaved || Boolean(data?.shop?.llms?.value?.trim()),
+      detail: llmsSaved || data?.shop?.llms?.value?.trim() ? "saved" : "missing",
     });
   } catch {
     checks.push({ id: "shop_org_metafield", labelKey: "deliveryShopSchema", ok: false, detail: "query_failed" });
+    checks.push({ id: "shop_llms_metafield", labelKey: "deliveryLlmsMetafield", ok: false, detail: "query_failed" });
   }
 
-  const llmsProxyUrl = `${storeUrl.replace(/\/$/, "")}/apps/predictacore/llms.txt`;
-  const llmsFetch = await fetchStorefrontUrl(llmsProxyUrl);
-  const llmsOk = llmsFetch.ok && llmsFetch.text.includes("#") && !llmsFetch.text.includes("<html");
+  const llmsFetch = await fetchLlmsProxy(storeUrl, shop);
+  const llmsOk = llmsFetch.ok && isLlmsTextOk(llmsFetch.text);
   checks.push({
     id: "llms_proxy_live",
     labelKey: "deliveryLlmsLive",
     ok: llmsOk,
     detail: llmsOk ? "live" : llmsFetch.error ?? `http_${llmsFetch.status}`,
-    url: llmsProxyUrl,
+    url: llmsFetch.url,
   });
-
-  // Metafield is optional when the app proxy serves llms.txt live.
-  const llmsMetaCheck = checks.find((c) => c.id === "shop_llms_metafield");
-  if (llmsMetaCheck && !llmsMetaCheck.ok && llmsOk) {
-    llmsMetaCheck.ok = true;
-    llmsMetaCheck.detail = "served_via_proxy";
-  }
 
   if (sampleProduct?.id) {
     try {
@@ -278,20 +392,18 @@ export async function runStorefrontDeliveryCheck(admin, shop, { sampleProduct = 
     const pageFetch = await fetchStorefrontUrl(productUrl);
     if (pageFetch.ok) {
       const ldBlocks = extractJsonLdBlocks(pageFetch.text);
-      const hasProduct = hasSchemaType(ldBlocks, "Product");
-      const hasOrg = hasSchemaType(ldBlocks, "Organization");
       checks.push({
         id: "live_product_jsonld",
         labelKey: "deliveryLiveProductLd",
-        ok: hasProduct,
-        detail: hasProduct ? "visible" : "not_in_html",
+        ok: hasSchemaType(ldBlocks, "Product"),
+        detail: hasSchemaType(ldBlocks, "Product") ? "visible" : "not_in_html",
         url: productUrl,
       });
       checks.push({
         id: "live_org_jsonld",
         labelKey: "deliveryLiveOrgLd",
-        ok: hasOrg,
-        detail: hasOrg ? "visible" : "not_in_html",
+        ok: hasSchemaType(ldBlocks, "Organization"),
+        detail: hasSchemaType(ldBlocks, "Organization") ? "visible" : "not_in_html",
         url: storeUrl,
       });
     } else {
@@ -302,34 +414,23 @@ export async function runStorefrontDeliveryCheck(admin, shop, { sampleProduct = 
         detail: pageFetch.error ?? `http_${pageFetch.status}`,
         url: productUrl,
       });
+      checks.push({
+        id: "live_org_jsonld",
+        labelKey: "deliveryLiveOrgLd",
+        ok: false,
+        detail: pageFetch.error ?? `http_${pageFetch.status}`,
+        url: storeUrl,
+      });
     }
   }
 
-  reconcileThemeEmbedChecks(checks);
-
-  const passed = checks.filter((c) => c.ok).length;
-  const total = checks.length;
-  const crawlerReady = checks.filter((c) =>
-    ["theme_brand_embed", "theme_product_embed", "live_product_jsonld", "live_org_jsonld"].includes(c.id),
-  ).every((c) => c.ok);
-
-  const report = {
-    checkedAt: new Date().toISOString(),
-    passed,
-    total,
-    crawlerReady,
-    readyPct: total ? Math.round((passed / total) * 100) : 0,
-    checks,
-    storeUrl,
-    themeEditorUrl: `https://admin.shopify.com/store/${shop.replace(".myshopify.com", "")}/themes/current/editor?context=apps`,
-  };
-
+  const report = buildDeliveryReport({ checks, storeUrl, shop });
   await saveDeliveryStatus(shop, report);
   return report;
 }
 
 export async function saveDeliveryStatus(shop, report) {
-  const payload = JSON.stringify(report);
+  const payload = JSON.stringify(normalizeDeliveryReport(report));
   await prisma.shopSettings.upsert({
     where: { shop },
     create: { shop, deliveryStatusJson: payload },
@@ -341,7 +442,7 @@ export async function getDeliveryStatus(shop) {
   const row = await prisma.shopSettings.findUnique({ where: { shop } });
   if (!row?.deliveryStatusJson) return null;
   try {
-    return JSON.parse(row.deliveryStatusJson);
+    return normalizeDeliveryReport(JSON.parse(row.deliveryStatusJson));
   } catch {
     return null;
   }

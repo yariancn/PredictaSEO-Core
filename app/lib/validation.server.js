@@ -102,8 +102,17 @@ See store website for merchant contact and policies.
 
 export async function saveLlmsTxtMetafield(admin, shopRecord, marketContext) {
   const text = buildLlmsTxtForShop(shopRecord, marketContext);
-  const shopId = shopRecord?.id;
-  if (!shopId || !admin?.graphql) return false;
+  if (!admin?.graphql) return false;
+
+  let shopId = shopRecord?.id ?? null;
+  if (!shopId) {
+    const idRes = await admin.graphql(`#graphql
+      query PredictaCoreShopIdForLlms { shop { id } }
+    `);
+    const idJson = await idRes.json();
+    shopId = idJson?.data?.shop?.id ?? null;
+  }
+  if (!shopId) return false;
 
   const response = await admin.graphql(
     `#graphql
@@ -126,6 +135,7 @@ export async function saveLlmsTxtMetafield(admin, shopRecord, marketContext) {
       },
     },
   );
-  const { errors } = await response.json();
-  return !errors?.length;
+  const { errors, data } = await response.json();
+  const userErrors = data?.metafieldsSet?.userErrors ?? [];
+  return !errors?.length && userErrors.length === 0;
 }
