@@ -5,7 +5,7 @@ import { isbot } from "isbot";
 import { renderToPipeableStream } from "react-dom/server";
 import { addDocumentResponseHeaders } from "./shopify.server";
 
-export const streamTimeout = 30000;
+export const streamTimeout = 90000;
 
 export default async function handleRequest(
   request,

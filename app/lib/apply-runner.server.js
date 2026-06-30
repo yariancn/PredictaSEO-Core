@@ -87,7 +87,22 @@ export async function buildApplyContext(admin, shop) {
   };
 }
 
+const APPLY_TIMEOUT_MS = 8 * 60 * 1000;
+
+function withApplyTimeout(promise, ms = APPLY_TIMEOUT_MS) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      setTimeout(() => reject(new Error("Apply timed out — try again or contact support")), ms);
+    }),
+  ]);
+}
+
 export async function runStoreApply(admin, shop, { applyKind = APPLY_KIND.SETUP } = {}) {
+  return withApplyTimeout(runStoreApplyInner(admin, shop, { applyKind }));
+}
+
+async function runStoreApplyInner(admin, shop, { applyKind = APPLY_KIND.SETUP } = {}) {
   const { locale, preview, jsonLd, beforeExec, marketContext, data, priorityProducts, productTier } =
     await buildApplyContext(admin, shop);
 

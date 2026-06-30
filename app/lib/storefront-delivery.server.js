@@ -42,25 +42,97 @@ const PRODUCT_METAFIELD_QUERY = `#graphql
 
 const CACHE_MS = 6 * 60 * 60 * 1000;
 
+function stripThemeFileComments(content) {
+  if (!content) return "";
+  return content.replace(/^\/\*[\s\S]*?\*\/\s*/, "").trim();
+}
+
+function collectThemeBlocks(node, blocks = []) {
+  if (!node || typeof node !== "object") return blocks;
+  if (typeof node.type === "string") blocks.push(node);
+  if (node.blocks && typeof node.blocks === "object") {
+    for (const block of Object.values(node.blocks)) {
+      collectThemeBlocks(block, blocks);
+    }
+  }
+  return blocks;
+}
+
+function blockTypeMatches(type, slugs) {
+  const lower = String(type).toLowerCase();
+  return slugs.some((slug) => lower.includes(slug.toLowerCase()));
+}
+
+function isThemeBlockEnabled(block) {
+  if (!block || block.disabled === true) return false;
+  return Boolean(block.type);
+}
+
 function parseThemeEmbedStatus(settingsContent) {
   if (!settingsContent) {
     return { brandEmbed: false, productEmbed: false, rawFound: false };
   }
-  const lower = settingsContent.toLowerCase();
-  const hasPredicta = lower.includes("predictacore") || lower.includes("predictacore-brand");
-  const brandEmbed =
-    lower.includes("brand-identity") ||
-    (lower.includes("predictacore brand") && !lower.includes('"disabled": true'));
-  const productEmbed =
-    lower.includes("product-identity") ||
-    (lower.includes("predictacore product") && !lower.includes('"disabled": true'));
 
-  const blocksSection = settingsContent.includes('"blocks"');
-  return {
-    brandEmbed: hasPredicta && brandEmbed && blocksSection,
-    productEmbed: hasPredicta && productEmbed && blocksSection,
-    rawFound: hasPredicta,
+  const brandSlugs = ["brand-identity", "predictacore-brand-identity", "predictacore-brand"];
+  const productSlugs = ["product-identity", "predictacore-product-identity", "predictacore-product"];
+  const lower = settingsContent.toLowerCase();
+  const rawFound = lower.includes("predictacore");
+
+  const cleaned = stripThemeFileComments(settingsContent);
+  try {
+    const data = JSON.parse(cleaned);
+    const blocks = collectThemeBlocks(data);
+    const brandEmbed = blocks.some(
+      (block) => isThemeBlockEnabled(block) && blockTypeMatches(block.type, brandSlugs),
+    );
+    const productEmbed = blocks.some(
+      (block) => isThemeBlockEnabled(block) && blockTypeMatches(block.type, productSlugs),
+    );
+    if (brandEmbed || productEmbed) {
+      return { brandEmbed, productEmbed, rawFound: true };
+    }
+  } catch {
+    /* fall through to string heuristics */
+  }
+
+  const isBlockEnabled = (slugs) => {
+    for (const slug of slugs) {
+      const needle = slug.toLowerCase();
+      if (!lower.includes(needle)) continue;
+      let idx = 0;
+      while (idx < lower.length) {
+        const at = lower.indexOf(needle, idx);
+        if (at < 0) break;
+        const windowText = settingsContent.slice(Math.max(0, at - 250), at + 450);
+        if (!/["']disabled["']\s*:\s*true/i.test(windowText)) return true;
+        idx = at + needle.length;
+      }
+    }
+    return false;
   };
+
+  return {
+    brandEmbed: isBlockEnabled(brandSlugs),
+    productEmbed: isBlockEnabled(productSlugs),
+    rawFound,
+  };
+}
+
+function reconcileThemeEmbedChecks(checks) {
+  const byId = Object.fromEntries(checks.map((c) => [c.id, c]));
+  const liveOrg = byId.live_org_jsonld;
+  const liveProduct = byId.live_product_jsonld;
+  const brand = byId.theme_brand_embed;
+  const product = byId.theme_product_embed;
+
+  if (brand && !brand.ok && liveOrg?.ok) {
+    brand.ok = true;
+    brand.detail = "confirmed_live_html";
+  }
+  if (product && !product.ok && liveProduct?.ok) {
+    product.ok = true;
+    product.detail = "confirmed_live_html";
+  }
 }
 
 function extractJsonLdBlocks(html) {
@@ -167,6 +239,24 @@ export async function runStorefrontDeliveryCheck(admin, shop, { sampleProduct = 
     checks.push({ id: "shop_org_metafield", labelKey: "deliveryShopSchema", ok: false, detail: "query_failed" });
   }
 
+  const llmsProxyUrl = `${storeUrl.replace(/\/$/, "")}/apps/predictacore/llms.txt`;
+  const llmsFetch = await fetchStorefrontUrl(llmsProxyUrl);
+  const llmsOk = llmsFetch.ok && llmsFetch.text.includes("#") && !llmsFetch.text.includes("<html");
+  checks.push({
+    id: "llms_proxy_live",
+    labelKey: "deliveryLlmsLive",
+    ok: llmsOk,
+    detail: llmsOk ? "live" : llmsFetch.error ?? `http_${llmsFetch.status}`,
+    url: llmsProxyUrl,
+  });
+
+  // Metafield is optional when the app proxy serves llms.txt live.
+  const llmsMetaCheck = checks.find((c) => c.id === "shop_llms_metafield");
+  if (llmsMetaCheck && !llmsMetaCheck.ok && llmsOk) {
+    llmsMetaCheck.ok = true;
+    llmsMetaCheck.detail = "served_via_proxy";
+  }
+
   if (sampleProduct?.id) {
     try {
       const pRes = await admin.graphql(PRODUCT_METAFIELD_QUERY, { variables: { id: sampleProduct.id } });
@@ -182,17 +272,6 @@ export async function runStorefrontDeliveryCheck(admin, shop, { sampleProduct = 
       checks.push({ id: "product_schema_metafield", labelKey: "deliveryProductSchema", ok: false, detail: "query_failed" });
     }
   }
-
-  const llmsProxyUrl = `${storeUrl.replace(/\/$/, "")}/apps/predictacore/llms.txt`;
-  const llmsFetch = await fetchStorefrontUrl(llmsProxyUrl);
-  const llmsOk = llmsFetch.ok && llmsFetch.text.includes("#") && !llmsFetch.text.includes("<html");
-  checks.push({
-    id: "llms_proxy_live",
-    labelKey: "deliveryLlmsLive",
-    ok: llmsOk,
-    detail: llmsOk ? "live" : llmsFetch.error ?? `http_${llmsFetch.status}`,
-    url: llmsProxyUrl,
-  });
 
   if (sampleProduct?.handle) {
     const productUrl = `${storeUrl.replace(/\/$/, "")}/products/${sampleProduct.handle}`;
@@ -226,6 +305,8 @@ export async function runStorefrontDeliveryCheck(admin, shop, { sampleProduct = 
     }
   }
 
+  reconcileThemeEmbedChecks(checks);
+
   const passed = checks.filter((c) => c.ok).length;
   const total = checks.length;
   const crawlerReady = checks.filter((c) =>
@@ -239,7 +320,8 @@ export async function runStorefrontDeliveryCheck(admin, shop, { sampleProduct = 
     crawlerReady,
     readyPct: total ? Math.round((passed / total) * 100) : 0,
     checks,
-    themeEditorUrl: `https://admin.shopify.com/store/${shop.replace(".myshopify.com", "")}/themes/current/editor`,
+    storeUrl,
+    themeEditorUrl: `https://admin.shopify.com/store/${shop.replace(".myshopify.com", "")}/themes/current/editor?context=apps`,
   };
 
   await saveDeliveryStatus(shop, report);

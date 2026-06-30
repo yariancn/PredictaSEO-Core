@@ -48,8 +48,37 @@ export function routeErrorMessage(error) {
 
 export function routeErrorHint(error) {
   const status = error && typeof error === "object" && "status" in error ? error.status : null;
+  const statusText =
+    error && typeof error === "object" && "statusText" in error ? String(error.statusText ?? "") : "";
+  const message = error instanceof Error ? error.message : "";
+  const upstream =
+    status === 502 ||
+    status === 503 ||
+    status === 504 ||
+    /upstream/i.test(statusText) ||
+    /upstream/i.test(message);
+
+  if (upstream) {
+    return "The server restarted or was briefly unavailable (often during a deploy). Reload from Shopify Admin → Apps → PredictaCore. Product changes already saved in Shopify are not lost.";
+  }
   if (status === 401 || status === 410) {
     return "Open PredictaCore from Shopify Admin → Apps, or reload this page. If billing failed, try again from step 4.";
   }
   return "Reload from Shopify Admin → Apps → PredictaCore.";
+}
+
+export function auditErrorCopy(errorCode, copy = {}, introCopy = {}) {
+  if (errorCode === "AUDIT_LOAD_TIMEOUT") {
+    return {
+      message:
+        copy.auditLoadTimeout ??
+        introCopy.auditLoadTimeout ??
+        "The store scan took too long. Your Shopify data is safe — try again.",
+      hint:
+        copy.auditLoadTimeoutHint ??
+        introCopy.auditLoadTimeoutHint ??
+        "Large catalogs may need a second attempt. Reload from Shopify Admin → Apps → PredictaCore.",
+    };
+  }
+  return null;
 }

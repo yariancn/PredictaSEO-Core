@@ -74,7 +74,7 @@ export async function buildPreviewPlan(products, shopName, matrix, options = {})
     });
   }
 
-  const AI_BATCH = 5;
+  const AI_BATCH = 3;
   for (let i = 0; i < candidates.length; i += AI_BATCH) {
     const batch = candidates.slice(i, i + AI_BATCH);
     const batchItems = await Promise.all(
@@ -252,34 +252,42 @@ export async function applyPreviewPlan(admin, shop, preview, batchId, options = 
   let schemaError = null;
   let productSchemasApplied = 0;
 
-  for (const item of preview.items) {
-    try {
-      await applyProductChange(admin, item);
-      if (shopName && marketContext?.publishedLocales?.length > 1) {
-        await registerProductLocaleTranslations(admin, item, shopName, marketContext).catch(() => {});
-      }
-      if (shopRecord && marketContext) {
-        const productForSchema = {
-          ...(item.productSnapshot ?? {}),
-          id: item.id,
-          handle: item.handle,
-          title: item.title,
-          seo: {
-            title: item.after?.seoTitle ?? item.changes?.seoTitle,
-            description: item.after?.seoDescription ?? item.changes?.seoDescription,
-          },
-          descriptionHtml: item.after?.descriptionHtml ?? item.changes?.descriptionHtml,
-        };
-        const productLd = buildProductJsonLd(productForSchema, shopRecord, marketContext);
-        await saveProductJsonLd(admin, productForSchema, productLd);
-        productSchemasApplied += 1;
-      }
-      await saveProductSnapshots(shop, batchId, item);
-      applied += 1;
-    } catch (err) {
-      failedCount += 1;
-      errors.push(`${item.title ?? item.id}: ${err.message ?? "Update failed"}`);
-    }
+  const APPLY_UPDATE_BATCH = 5;
+  const items = preview.items ?? [];
+
+  for (let i = 0; i < items.length; i += APPLY_UPDATE_BATCH) {
+    const batch = items.slice(i, i + APPLY_UPDATE_BATCH);
+    await Promise.all(
+      batch.map(async (item) => {
+        try {
+          await applyProductChange(admin, item);
+          if (shopName && marketContext?.publishedLocales?.length > 1) {
+            await registerProductLocaleTranslations(admin, item, shopName, marketContext).catch(() => {});
+          }
+          if (shopRecord && marketContext) {
+            const productForSchema = {
+              ...(item.productSnapshot ?? {}),
+              id: item.id,
+              handle: item.handle,
+              title: item.title,
+              seo: {
+                title: item.after?.seoTitle ?? item.changes?.seoTitle,
+                description: item.after?.seoDescription ?? item.changes?.seoDescription,
+              },
+              descriptionHtml: item.after?.descriptionHtml ?? item.changes?.descriptionHtml,
+            };
+            const productLd = buildProductJsonLd(productForSchema, shopRecord, marketContext);
+            await saveProductJsonLd(admin, productForSchema, productLd);
+            productSchemasApplied += 1;
+          }
+          await saveProductSnapshots(shop, batchId, item);
+          applied += 1;
+        } catch (err) {
+          failedCount += 1;
+          errors.push(`${item.title ?? item.id}: ${err.message ?? "Update failed"}`);
+        }
+      }),
+    );
   }
 
   if (preview.schema?.willApply && jsonLd) {

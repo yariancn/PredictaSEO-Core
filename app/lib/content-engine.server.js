@@ -128,7 +128,7 @@ Rules:
 - Do NOT mention US, Canada, or countries outside the target markets list unless they are listed.
 - Plain merchant-friendly language. No markdown.`;
 
-  const raw = await askGeminiWithTimeout(prompt, 35000);
+  const raw = await askGeminiWithTimeout(prompt, 25000);
   const lines = raw.split("\n").map((l) => l.replace(/^LINE\d:\s*/i, "").trim()).filter(Boolean);
   const seoTitle = (lines[0] ?? buildSeoProposal(product, shopName, categoryName, marketContext).seoTitle).slice(
     0,

@@ -5,9 +5,10 @@ import { runBillingSetupFlow } from "../lib/billing-flow.server.js";
 export async function loader({ request }) {
   try {
     const { isBillingTest, syncBillingFromShopify } = await import("../lib/billing.server.js");
-    const { billing, session } = await authenticate.admin(request);
+    const { admin, billing, session } = await authenticate.admin(request);
 
     return runBillingSetupFlow({
+      admin,
       billing,
       session,
       isTest: isBillingTest(),

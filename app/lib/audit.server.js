@@ -1,4 +1,6 @@
 const BILLING_TIMEOUT_MS = 8000;
+const AUDIT_LOAD_TIMEOUT_MS = 55000;
+const DELIVERY_CHECK_TIMEOUT_MS = 12000;
 
 function withTimeout(promise, ms, fallback) {
   return Promise.race([
@@ -7,7 +9,35 @@ function withTimeout(promise, ms, fallback) {
   ]);
 }
 
+function withAuditDeadline(promise, ms = AUDIT_LOAD_TIMEOUT_MS) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      setTimeout(() => reject(new Error("AUDIT_LOAD_TIMEOUT")), ms);
+    }),
+  ]);
+}
+
 export async function loadAuditData(request) {
+  try {
+    return await withAuditDeadline(loadAuditDataInner(request));
+  } catch (err) {
+    if (err?.message === "AUDIT_LOAD_TIMEOUT") {
+      let shop = "";
+      try {
+        const { authenticate } = await import("../shopify.server");
+        const { session } = await authenticate.admin(request);
+        shop = session.shop;
+      } catch {
+        /* session may be unavailable */
+      }
+      return { shop, error: "AUDIT_LOAD_TIMEOUT" };
+    }
+    throw err;
+  }
+}
+
+async function loadAuditDataInner(request) {
   const { authenticate, SETUP_PLAN } = await import("../shopify.server");
   const { CATALOG_QUERY, analyzeExecutive, analyzeSnapshot, getPriorityProducts, prepareCatalogData } =
     await import("./diagnostic.server.js");
@@ -84,13 +114,16 @@ export async function loadAuditData(request) {
     "uninstallPrefTitle", "uninstallPrefIntro", "uninstallPrefRestoreLabel", "uninstallPrefRestoreBody",
     "uninstallPrefKeepLabel", "uninstallPrefKeepBody", "uninstallPrefSaved", "uninstallPrefSteps",
     "marketsPanelTitle", "marketsPanelBody", "marketsDetected", "marketsCountries", "marketsConfirmButton",
-    "marketsConfirmed", "marketsNotConfigured", "marketsConfirmRequired", "scoreProjectionLabel",
+    "marketsConfirmed", "marketsNotConfigured", "marketsConfirmRequired", "marketsAddMexicoHint", "scoreProjectionLabel",
     "scoreConfidenceHigh", "scoreConfidenceModerate", "validationTitle", "validationSummaryPass",
     "validationSummaryReview", "factorMarketAlignment", "factorCatalogCompleteness", "factorBrandEntity",
     "factorSemanticRichness", "factorCommercialSignals",
     "dashboardActionsTitle", "dashboardActionsBody", "uninstallPrefNotNowNote",
     "productTierTitle", "productTierBody", "productTierUpgrade",
-    "themeOnboardingTitle", "themeOnboardingBody", "themeOnboardingBrand", "themeOnboardingProduct",
+    "themeOnboardingTitle", "themeOnboardingBody", "themeOnboardingStepsTitle",
+    "themeOnboardingStep1", "themeOnboardingStep2", "themeOnboardingStep3", "themeOnboardingStep4",
+    "themeOnboardingStep5", "themeOnboardingStep6", "themeOnboardingStep7", "themeOnboardingAfterSteps",
+    "themeOnboardingBrand", "themeOnboardingProduct",
     "themeOnboardingLlms", "themeOnboardingCta",
     "benchmarkTitle", "benchmarkAhead", "benchmarkBehind", "benchmarkOnPar",
     "applyImpactTitle", "impactScore", "impactProducts",
@@ -99,7 +132,10 @@ export async function loadAuditData(request) {
     "deliveryTitle", "deliveryIntro", "deliveryReady", "deliveryNotReady", "deliveryScore",
     "deliveryThemeBrand", "deliveryThemeProduct", "deliveryShopSchema", "deliveryProductSchema",
     "deliveryLlmsLive", "deliveryLiveProductLd", "deliveryLiveOrgLd", "deliveryLlmsMetafield",
-    "deliveryOpenTheme", "deliveryRecheck",
+    "deliveryOpenTheme", "deliveryRecheck", "deliveryRecheckNow",
+    "deliveryVerifySection", "deliveryRichResultsTest", "deliveryViewLivePage",
+    "scoreIsPreparationNote", "catalogLargeNote",
+    "postApplyAlmostTitle", "postApplyThemeRequired",
     "step1ScoreHeadline", "step1WhyBrief", "step1TimelineBrief", "step1PlanIncludes", "step1AfterApplyNote",
     "validationExplainProducts", "optimizingStore", "optimizingStoreSubtext",
     "marketsChangedBanner",
@@ -226,18 +262,21 @@ export async function loadAuditData(request) {
     : { connected: false, configured: false };
 
   const { getDeliveryStatus, runStorefrontDeliveryCheck } = await import("./storefront-delivery.server.js");
+  const storeUrl = data.shop?.primaryDomain?.url ?? `https://${session.shop}`;
+  const forceDelivery = new URL(request.url).searchParams.get("recheckDelivery") === "1";
   let deliveryStatus = await getDeliveryStatus(session.shop);
   const sampleForDelivery = priorityProducts[0];
-  if (!deliveryStatus?.checkedAt && sampleForDelivery) {
+  if (sampleForDelivery && (forceDelivery || !deliveryStatus?.checkedAt)) {
     deliveryStatus = await withTimeout(
       runStorefrontDeliveryCheck(admin, session.shop, {
+        force: forceDelivery,
         sampleProduct: {
           id: sampleForDelivery.id,
           handle: sampleForDelivery.handle,
-          storeUrl: data.shop?.primaryDomain?.url ?? `https://${session.shop}`,
+          storeUrl,
         },
       }),
-      12000,
+      DELIVERY_CHECK_TIMEOUT_MS,
       deliveryStatus,
     );
   }
@@ -252,14 +291,7 @@ export async function loadAuditData(request) {
   let backupBatchCount = 0;
   let backupSummary = null;
   try {
-    const { ensureShopBaseline, getBackupSummary, captureBaselineFromCatalog } = await import(
-      "./shop-baseline.server.js"
-    );
-    const { hasRecordedSetupApply } = await import("./apply-quota.server.js");
-    const alreadyApplied = await hasRecordedSetupApply(session.shop);
-    if (!alreadyApplied) {
-      await captureBaselineFromCatalog(admin, session.shop, priorityProducts, data.shop?.id);
-    }
+    const { getBackupSummary } = await import("./shop-baseline.server.js");
     backupSummary = await getBackupSummary(session.shop);
     hasBackup = backupSummary.hasActiveBackup || backupSummary.hasBaseline;
     backupBatchCount = backupSummary.applyBatchCount;
@@ -292,32 +324,18 @@ export async function loadAuditData(request) {
             plans: [SETUP_PLAN],
             isTest: isBillingTest(),
           });
-          await syncBillingFromShopify(session.shop, setupCheck);
           const setupPaid = setupCheck.hasActivePayment;
-          let maintenanceActive = false;
-          let maintenanceNeedsApproval = false;
-          let maintenanceConfirmationUrl = null;
-          if (setupPaid) {
-            const { ensureDeferredMaintenanceSubscription, getMaintenanceSubscriptionStatus } =
-              await import("./billing-maintenance.server.js");
-            const maintenanceStatus = await getMaintenanceSubscriptionStatus(admin);
-            maintenanceActive = maintenanceStatus.active;
-            if (!maintenanceActive) {
-              const maintenanceResult = await ensureDeferredMaintenanceSubscription(admin, session.shop, {
-                isTest: isBillingTest(),
-              });
-              maintenanceActive = Boolean(maintenanceResult.active);
-              maintenanceConfirmationUrl = maintenanceResult.confirmationUrl ?? null;
-              maintenanceNeedsApproval = Boolean(maintenanceConfirmationUrl);
-            }
-          }
+          const { getMaintenanceSubscriptionStatus } = await import("./billing-maintenance.server.js");
+          const maintenanceStatus = await getMaintenanceSubscriptionStatus(admin);
+          const maintenanceActive = maintenanceStatus.active;
+          await syncBillingFromShopify(session.shop, setupCheck, { maintenanceActive });
           const base = {
             canApply: setupPaid,
             setupPaid,
             subscriptionActive: maintenanceActive || setupPaid,
             maintenanceActive,
-            maintenanceNeedsApproval,
-            maintenanceConfirmationUrl,
+            maintenanceNeedsApproval: false,
+            maintenanceConfirmationUrl: null,
             pilotMode: false,
           };
           const { getApplyQuotaStatus } = await import("./apply-quota.server.js");

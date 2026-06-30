@@ -1,0 +1,57 @@
+# PredictaCore CORAZON — Custom distribution (corazon-de-algodon, no App Store review)
+#
+# 1. Partners → PredictaCore-Corazon → Distribution → Custom → corazon-de-algodon.myshopify.com
+# 2. Railway service PredictaSEO-Corazon (duplicate Pam-Pilot, new env vars)
+# 3. npm run deploy:corazon
+# 4. Partners → Generate install link → install on corazon-de-algodon
+
+client_id = "9d6e62456e5d6d134cf3a1180cb6a078"
+name = "PredictaCore-Corazon"
+application_url = "https://predictaseo-corazon-production.up.railway.app"
+embedded = true
+handle = "predictacore-corazon"
+
+[build]
+automatically_update_urls_on_dev = true
+
+[webhooks]
+api_version = "2026-07"
+
+  [[webhooks.subscriptions]]
+  topics = ["app/uninstalled"]
+  uri = "/webhooks/app/uninstalled"
+
+  [[webhooks.subscriptions]]
+  topics = ["app/scopes_update"]
+  uri = "/webhooks/app/scopes_update"
+
+  [[webhooks.subscriptions]]
+  topics = ["shop/update"]
+  uri = "/webhooks/shop/update"
+
+  [[webhooks.subscriptions]]
+  topics = ["app_subscriptions/update"]
+  uri = "/webhooks/app/subscriptions_update"
+
+  [[webhooks.subscriptions]]
+  topics = ["products/delete"]
+  uri = "/webhooks/products/delete"
+
+  [[webhooks.subscriptions]]
+  compliance_topics = ["customers/data_request", "customers/redact", "shop/redact"]
+  uri = "/webhooks/compliance"
+
+[access_scopes]
+scopes = "read_products,write_products,read_content,write_content,read_locales,write_translations,read_markets,read_themes,write_themes,read_locations,read_metaobject_definitions,write_metaobject_definitions,read_metaobjects,write_metaobjects,read_reports"
+
+[app_proxy]
+url = "https://predictaseo-corazon-production.up.railway.app/proxy"
+subpath = "predictacore"
+prefix = "apps"
+
+[auth]
+redirect_urls = [
+  "https://predictaseo-corazon-production.up.railway.app/auth/callback",
+  "https://predictaseo-corazon-production.up.railway.app/auth/shopify/callback",
+  "https://predictaseo-corazon-production.up.railway.app/api/auth/callback"
+]

@@ -2,7 +2,7 @@ import { json } from "@remix-run/node";
 import { Form, useFetcher, useLoaderData, useRouteError, isRouteErrorResponse } from "@remix-run/react";
 import { useEffect, useRef, useState } from "react";
 import { LoadingShell } from "../components/AppShell.jsx";
-import { AppErrorShell, routeErrorHint, routeErrorMessage } from "../components/AppErrorShell.jsx";
+import { AppErrorShell, auditErrorCopy, routeErrorHint, routeErrorMessage } from "../components/AppErrorShell.jsx";
 import { formatStepLabel } from "../lib/locale.js";
 import { copyText, getPreviewChangeStats, fillCopy } from "../lib/preview.js";
 import {
@@ -37,7 +37,8 @@ export async function loader({ request }) {
   const introKeys = [
     "title", "subtitle", "introTitle", "introBody", "introBullet1", "introBullet2", "introBullet3",
     "introNoChanges", "pricingTitle", "pricingFree", "pricingSetup", "pricingScope", "pricingExtra", "pricingRecurringNote",
-    "startAuditButton", "loading", "loadingAuditSubtext", "optimizingStore", "optimizingStoreSubtext",
+    "startAuditButton", "loading", "loadingAuditSubtext", "auditLoadTimeout", "auditLoadTimeoutHint",
+    "optimizingStore", "optimizingStoreSubtext",
   ];
   const introCopy = Object.fromEntries(
     introKeys.map((key) => [key, fillCopy(t(locale, key), limitVars)]),
@@ -119,6 +120,7 @@ export async function action({ request }) {
     }
     const { runBillingSetupFlow } = await import("../lib/billing-flow.server.js");
     return runBillingSetupFlow({
+      admin,
       billing,
       session,
       isTest: isBillingTest(),
@@ -843,22 +845,6 @@ function BillingDisclosureCard({ copy }) {
   );
 }
 
-function MaintenanceSubscriptionGate({ copy }) {
-  return (
-    <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.45)", background: "rgba(99,102,241,0.1)" }}>
-      <h2 style={{ ...theme.h2, color: "#a5b4fc" }}>
-        {copyText(copy, "billingMaintenanceApproveTitle", "Approve $15/month maintenance")}
-      </h2>
-      <p style={{ ...theme.body, marginBottom: "14px", color: "#e8e8ef", lineHeight: 1.55 }}>
-        {copyText(copy, "billingMaintenanceApproveBody", copyText(copy, "billingBundleStep2", ""))}
-      </p>
-      <a href="/app/billing/maintenance" target="_top" rel="noopener noreferrer" style={{ ...theme.btnPrimary, display: "block", textAlign: "center", textDecoration: "none" }}>
-        {copyText(copy, "subscribeMaintenance", "Approve $15/month in Shopify")}
-      </a>
-    </div>
-  );
-}
-
 function PaymentGateCard({ copy }) {
   return (
     <>
@@ -987,16 +973,41 @@ function PostApplyMerchantPanel({
   backupAvailable,
   showUndoLast,
   onViewDashboard,
+  deliveryStatus,
+  shop,
+  onRecheckDelivery,
+  recheckingDelivery = false,
 }) {
+  const ready = deliveryStatus?.crawlerReady;
   return (
-    <div style={{ ...theme.card, borderColor: "rgba(163,230,53,0.35)", background: "rgba(163,230,53,0.06)" }}>
-      <h2 style={{ ...theme.h2, color: "#a3e635" }}>{copyText(copy, "postApplyTitle", "Optimization complete")}</h2>
-      <p style={{ ...theme.body, marginBottom: "14px", color: "#e8e8ef", lineHeight: 1.55 }}>
-        {copyText(copy, "postApplyBody", "")}
-      </p>
-      <button type="button" style={{ ...theme.btnPrimary, width: "100%", marginBottom: "10px" }} onClick={onViewDashboard}>
-        {copyText(copy, "viewDashboard", copy.viewScoreDashboard)}
-      </button>
+    <>
+      {!ready && (
+        <>
+          <ThemeOnboardingPanel copy={copy} shop={shop} deliveryStatus={deliveryStatus} />
+          <DeliveryChecklistPanel
+            copy={copy}
+            deliveryStatus={deliveryStatus}
+            shop={shop}
+            onRecheck={onRecheckDelivery}
+            rechecking={recheckingDelivery}
+          />
+        </>
+      )}
+      <div style={{ ...theme.card, borderColor: ready ? "rgba(163,230,53,0.35)" : "rgba(251,191,36,0.45)", background: ready ? "rgba(163,230,53,0.06)" : "rgba(251,191,36,0.08)" }}>
+        <h2 style={{ ...theme.h2, color: ready ? "#a3e635" : "#fbbf24" }}>
+          {copyText(copy, ready ? "postApplyTitle" : "postApplyAlmostTitle", "Optimization complete")}
+        </h2>
+        <p style={{ ...theme.body, marginBottom: "14px", color: "#e8e8ef", lineHeight: 1.55 }}>
+          {copyText(copy, ready ? "postApplyBody" : "postApplyThemeRequired", "")}
+        </p>
+        <button
+          type="button"
+          style={ready ? { ...theme.btnPrimary, width: "100%", marginBottom: "10px" } : { ...theme.btnDisabled, width: "100%", marginBottom: "10px" }}
+          disabled={!ready}
+          onClick={onViewDashboard}
+        >
+          {copyText(copy, "viewDashboard", copy.viewScoreDashboard)}
+        </button>
       {backupAvailable && (
         <>
           <RestoreAllButton
@@ -1030,6 +1041,7 @@ function PostApplyMerchantPanel({
         </p>
       )}
     </div>
+    </>
   );
 }
 
@@ -1226,15 +1238,17 @@ export default function Index() {
   const [confirmed, setConfirmed] = useState(false);
   const [summaryInvalidated, setSummaryInvalidated] = useState(false);
   const totalSteps = 3;
+  const auditDataUrl = (recheckDelivery = false) =>
+    recheckDelivery ? "/app/audit-data?recheckDelivery=1" : "/app/audit-data";
 
   const startAudit = () => {
     setAuditStarted(true);
-    auditFetcher.load("/app/audit-data");
+    auditFetcher.load(auditDataUrl());
   };
 
   useEffect(() => {
     if (auditStarted && !auditFetcher.data && auditFetcher.state === "idle") {
-      auditFetcher.load("/app/audit-data");
+      auditFetcher.load(auditDataUrl());
     }
   }, [auditStarted, auditFetcher.data, auditFetcher.state]);
 
@@ -1323,7 +1337,7 @@ export default function Index() {
       setAuditStarted(true);
       setBillingJustReturned(true);
       setStep(3);
-      auditFetcher.load("/app/audit-data");
+      auditFetcher.load(auditDataUrl());
       params.delete("billing");
       params.delete("charge_id");
       const qs = params.toString();
@@ -1335,7 +1349,7 @@ export default function Index() {
       setAuditStarted(true);
       setBillingJustReturned(false);
       setStep(2);
-      auditFetcher.load("/app/audit-data");
+      auditFetcher.load(auditDataUrl());
       params.delete("billing");
       const qs = params.toString();
       window.history.replaceState({}, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
@@ -1344,7 +1358,7 @@ export default function Index() {
 
   useEffect(() => {
     if (applyFetcher.data?.intent === "confirm-markets" && applyFetcher.data?.marketConfirmed) {
-      auditFetcher.load("/app/audit-data");
+      auditFetcher.load(auditDataUrl());
     }
   }, [applyFetcher.data?.intent, applyFetcher.data?.marketConfirmed]);
 
@@ -1354,7 +1368,7 @@ export default function Index() {
       setSummaryInvalidated(true);
       setConfirmed(false);
       setStep(3);
-      auditFetcher.load("/app/audit-data");
+      auditFetcher.load(auditDataUrl());
     }
   }, [applyFetcher.data]);
 
@@ -1367,7 +1381,7 @@ export default function Index() {
       summarySubmitStarted.current = false;
       setSummaryTimedOut(false);
       setStep(1);
-      auditFetcher.load("/app/audit-data");
+      auditFetcher.load(auditDataUrl());
     }
   }, [restoreResult]);
 
@@ -1376,7 +1390,7 @@ export default function Index() {
       setSummaryInvalidated(true);
       setConfirmed(false);
       setStep(1);
-      auditFetcher.load("/app/audit-data");
+      auditFetcher.load(auditDataUrl());
     }
   }, [resetTestResult]);
 
@@ -1433,11 +1447,12 @@ export default function Index() {
   }
 
   if (error || !copy || !executive || !snapshot || !report || !preview) {
+    const auditErr = auditErrorCopy(error, copy, introCopy);
     return (
       <AppErrorShell
-        message={error || copy?.error || "Unable to load store data"}
-        hint={shop ? `Store: ${shop}` : undefined}
-        onRetry={() => auditFetcher.load("/app/audit-data")}
+        message={auditErr?.message || error || copy?.error || "Unable to load store data"}
+        hint={auditErr?.hint || (shop ? `Store: ${shop}` : undefined)}
+        onRetry={() => auditFetcher.load(auditDataUrl())}
       />
     );
   }
@@ -2073,8 +2088,6 @@ function IndexWizard({
   });
   const previewStats = getPreviewChangeStats(preview);
   const setupPaid = billing?.setupPaid ?? false;
-  const maintenanceActive = billing?.maintenanceActive ?? false;
-  const maintenanceNeedsApproval = billing?.maintenanceNeedsApproval ?? false;
   const applyQuota = billing?.applyQuota;
   const firstApplyDone = Boolean(applyQuota?.setupDone);
   const hasPendingWork = preview.total > 0;
@@ -2094,14 +2107,6 @@ function IndexWizard({
     firstApplyDone;
   const showPaymentSuccess =
     billingJustReturned && step === 3 && hasPendingWork && !applyResult && setupPaid && !pilotMode;
-  const showMaintenanceGate =
-    !pilotMode &&
-    setupPaid &&
-    !maintenanceActive &&
-    (maintenanceNeedsApproval || step >= 2) &&
-    !applyResult &&
-    hasPendingWork &&
-    (step === 2 || step === 3);
   const showExpectationsPreview = step === 2 && !applyResult && hasPendingWork;
   const showPayStepActions =
     step === 2 &&
@@ -2111,6 +2116,9 @@ function IndexWizard({
   const showApplyStepActions = step === 3 && (showApplyGate || showApplyBlocked || showPaymentGate);
   const showBillingAlreadyApproved =
     step === 2 && setupPaid && !pilotMode && hasPendingWork && !firstApplyDone && !showPaymentGate;
+  const activeDeliveryStatus = applyResult?.deliveryStatus ?? deliveryStatus;
+  const catalogOverLimit =
+    (snapSummary?.catalogTotal ?? 0) > (productTier?.effectiveLimit ?? 500);
   const displaySummaryError =
     summaryError || (summaryTimedOut ? copyText(copy, "aiTimeout", "Our AI did not respond in time.") : null);
   const productsUpdatedCount =
@@ -2211,6 +2219,17 @@ function IndexWizard({
             <p style={{ ...theme.body, marginTop: "14px", marginBottom: 0, fontSize: "0.82rem", color: "#a5b4fc" }}>
               {scopeLabel}
             </p>
+            {catalogOverLimit && (
+              <p style={{ ...theme.body, marginTop: "10px", marginBottom: 0, fontSize: "0.82rem", color: "#fbbf24", lineHeight: 1.55 }}>
+                {fillCopy(copyText(copy, "catalogLargeNote"), {
+                  total: String(snapSummary?.catalogTotal ?? 0),
+                  limit: String(productTier?.effectiveLimit ?? 500),
+                })}
+              </p>
+            )}
+            <p style={{ ...theme.body, marginTop: "10px", marginBottom: 0, fontSize: "0.78rem", color: "#8b8b9a", lineHeight: 1.55 }}>
+              {copyText(copy, "scoreIsPreparationNote", "")}
+            </p>
           </div>
 
           <div style={theme.card}>
@@ -2263,15 +2282,17 @@ function IndexWizard({
 
           {(firstApplyDone || setupComplete) && (
             <>
+              {!deliveryStatus?.crawlerReady && (
+                <ThemeOnboardingPanel copy={copy} shop={shop} deliveryStatus={deliveryStatus} />
+              )}
               <DeliveryChecklistPanel
                 copy={copy}
                 deliveryStatus={deliveryStatus}
                 shop={shop}
-                onRecheck={() => auditFetcher.load("/app/audit-data")}
+                onRecheck={() => auditFetcher.load(auditDataUrl(true))}
                 rechecking={auditFetcher.state === "loading"}
               />
               <ApplyImpactPanel copy={copy} applyImpact={applyImpact} />
-              <ThemeOnboardingPanel copy={copy} shop={shop} />
               <SearchConsolePanel copy={copy} searchConsole={searchConsole} />
               <BenchmarkPanel copy={copy} benchmark={benchmark} />
               <ProductTierPanel copy={copy} productTier={productTier} shop={shop} showUpgrade />
@@ -2427,7 +2448,6 @@ function IndexWizard({
             </div>
           )}
 
-          {showMaintenanceGate && step === 2 && <MaintenanceSubscriptionGate copy={copy} />}
 
           {!hasPendingWork && !applyResult && (
             <div style={{ ...theme.card, borderColor: "rgba(251,191,36,0.35)", background: "rgba(251,191,36,0.06)", marginBottom: "14px" }}>
@@ -2512,8 +2532,6 @@ function IndexWizard({
 
           {showPaymentSuccess && <PaymentSuccessBanner copy={copy} />}
 
-          {showMaintenanceGate && step === 3 && <MaintenanceSubscriptionGate copy={copy} />}
-
           {!applyResult && hasPendingWork && (
             <PreviewChangesPanel
               copy={copy}
@@ -2561,7 +2579,17 @@ function IndexWizard({
           )}
 
           {applyResult && (
-            <ApplyResultsCard
+            <>
+              {activeDeliveryStatus?.checks?.length > 0 && (
+                <DeliveryChecklistPanel
+                  copy={copy}
+                  deliveryStatus={activeDeliveryStatus}
+                  shop={shop}
+                  onRecheck={() => auditFetcher.load(auditDataUrl(true))}
+                  rechecking={auditFetcher.state === "loading"}
+                />
+              )}
+              <ApplyResultsCard
               copy={copy}
               applyResult={applyResult}
               executive={executive}
@@ -2573,6 +2601,7 @@ function IndexWizard({
               priorityCount={snapSummary.priorityCount}
               marketRegion={marketContext?.regionLabel ?? applyResult?.marketRegion}
             />
+            </>
           )}
 
           {applyResult && (
@@ -2634,6 +2663,10 @@ function IndexWizard({
                   backupAvailable={restoreAvailable}
                   showUndoLast={backupBatchCount >= 1}
                   onViewDashboard={() => setStep(1)}
+                  deliveryStatus={activeDeliveryStatus}
+                  shop={shop}
+                  onRecheckDelivery={() => auditFetcher.load(auditDataUrl(true))}
+                  recheckingDelivery={auditFetcher.state === "loading"}
                 />
               ) : (
                 <>

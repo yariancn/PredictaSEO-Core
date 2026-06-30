@@ -58,14 +58,8 @@ export async function getMaintenanceSubscriptionStatus(admin) {
   return { active: hasActiveMaintenanceSubscription(subs), subs };
 }
 
-/**
- * After $35 setup, register $15/mo with a 30-day deferral (month 1 covered by setup).
- * Best-effort — never blocks the merchant wizard.
- */
-export async function ensureDeferredMaintenanceSubscription(admin, shop, { isTest = false } = {}) {
-  const billing = await prisma.shopBilling.findUnique({ where: { shop } });
-  if (!billing?.setupPaid) return { shop, skipped: true, reason: "setup_unpaid" };
-
+/** Create $15/mo subscription (30-day trial — month 1 covered by $35 setup). */
+export async function createMaintenanceSubscription(admin, shop, { isTest = false } = {}) {
   try {
     const status = await getMaintenanceSubscriptionStatus(admin);
     if (status.active) {
@@ -107,7 +101,14 @@ export async function ensureDeferredMaintenanceSubscription(admin, shop, { isTes
       status: payload?.appSubscription?.status ?? null,
     };
   } catch (err) {
-    console.warn("[PredictaCore] ensureDeferredMaintenanceSubscription:", err.message ?? err);
+    console.warn("[PredictaCore] createMaintenanceSubscription:", err.message ?? err);
     return { shop, skipped: true, reason: "exception" };
   }
+}
+
+/** @deprecated Use createMaintenanceSubscription via unified billing chain. */
+export async function ensureDeferredMaintenanceSubscription(admin, shop, opts = {}) {
+  const billing = await prisma.shopBilling.findUnique({ where: { shop } });
+  if (!billing?.setupPaid) return { shop, skipped: true, reason: "setup_unpaid" };
+  return createMaintenanceSubscription(admin, shop, opts);
 }

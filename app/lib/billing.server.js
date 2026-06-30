@@ -30,8 +30,10 @@ export function isBillingTest() {
  * After $35 setup is paid, the store is entitled to monthly updates.
  * Shopify recurring ($15/mo from month 2) is synced via webhook / background job.
  */
-export async function syncBillingFromShopify(shop, setupCheck) {
+export async function syncBillingFromShopify(shop, setupCheck, { maintenanceActive = null } = {}) {
   const setupPaid = setupCheck?.hasActivePayment ?? false;
+  const subscriptionActive =
+    maintenanceActive != null ? maintenanceActive || setupPaid : setupPaid ? true : undefined;
 
   return prisma.shopBilling.upsert({
     where: { shop },
@@ -39,12 +41,12 @@ export async function syncBillingFromShopify(shop, setupCheck) {
       shop,
       setupPaid,
       setupPaidAt: setupPaid ? new Date() : null,
-      subscriptionActive: setupPaid,
+      subscriptionActive: maintenanceActive != null ? maintenanceActive || setupPaid : setupPaid,
     },
     update: {
       setupPaid,
       setupPaidAt: setupPaid ? new Date() : null,
-      subscriptionActive: setupPaid ? true : undefined,
+      ...(subscriptionActive !== undefined ? { subscriptionActive } : {}),
     },
   });
 }

@@ -59,19 +59,46 @@ export function ProductTierPanel({ copy, productTier, shop, showUpgrade = true }
   );
 }
 
-export function ThemeOnboardingPanel({ copy, shop }) {
+export function ThemeOnboardingPanel({ copy, shop, deliveryStatus }) {
   const storeHandle = (shop ?? "").replace(".myshopify.com", "");
-  const adminThemes = `https://admin.shopify.com/store/${storeHandle}/themes/current/editor`;
+  const adminThemes = `https://admin.shopify.com/store/${storeHandle}/themes/current/editor?context=apps`;
+  const storeUrl =
+    deliveryStatus?.storeUrl ??
+    (shop ? `https://${shop.replace(".myshopify.com", "")}.com` : "");
+  const llmsUrl = storeUrl ? `${storeUrl.replace(/\/$/, "")}/apps/predictacore/llms.txt` : "/apps/predictacore/llms.txt";
+  const stepKeys = [
+    "themeOnboardingStep1",
+    "themeOnboardingStep2",
+    "themeOnboardingStep3",
+    "themeOnboardingStep4",
+    "themeOnboardingStep5",
+    "themeOnboardingStep6",
+    "themeOnboardingStep7",
+  ];
+
   return (
     <div style={{ ...card, borderColor: "rgba(163,230,53,0.35)", background: "rgba(163,230,53,0.06)" }}>
       <h2 style={{ ...h2, color: "#a3e635" }}>{copyText(copy, "themeOnboardingTitle", "Activate storefront blocks")}</h2>
       <p style={{ ...body, marginBottom: "12px" }}>{copyText(copy, "themeOnboardingBody", "")}</p>
-      <ul style={{ ...body, fontSize: "0.88rem", paddingLeft: "1.2rem", marginBottom: "12px" }}>
-        <li>{copyText(copy, "themeOnboardingBrand", "PredictaCore Brand — head")}</li>
-        <li>{copyText(copy, "themeOnboardingProduct", "PredictaCore Product — product template")}</li>
+      <p style={{ ...body, fontSize: "0.82rem", fontWeight: 600, color: "#a3e635", marginBottom: "8px" }}>
+        {copyText(copy, "themeOnboardingStepsTitle", "Step-by-step")}
+      </p>
+      <ol style={{ ...body, fontSize: "0.88rem", paddingLeft: "1.35rem", marginBottom: "12px" }}>
+        {stepKeys.map((key) => (
+          <li key={key} style={{ marginBottom: "8px" }}>
+            {copyText(copy, key, key).replace("{{llmsUrl}}", llmsUrl)}
+          </li>
+        ))}
+      </ol>
+      <ul style={{ ...body, fontSize: "0.85rem", paddingLeft: "1.2rem", marginBottom: "12px", color: "#8b8b9a" }}>
+        <li>{copyText(copy, "themeOnboardingBrand", "PredictaCore Brand")}</li>
+        <li>{copyText(copy, "themeOnboardingProduct", "PredictaCore Product")}</li>
       </ul>
       <p style={{ ...body, fontSize: "0.82rem", color: "#8b8b9a", marginBottom: "12px" }}>
         {copyText(copy, "themeOnboardingLlms", "")}
+      </p>
+      <p style={{ ...body, fontSize: "0.82rem", color: "#a3e635", marginBottom: "12px" }}>
+        {copyText(copy, "themeOnboardingAfterSteps", "")}
       </p>
       <a
         href={adminThemes}
@@ -86,10 +113,30 @@ export function ThemeOnboardingPanel({ copy, shop }) {
           textDecoration: "none",
           fontWeight: 600,
           fontSize: "0.9rem",
+          marginRight: "8px",
         }}
       >
         {copyText(copy, "themeOnboardingCta", "Open theme editor")}
       </a>
+      {llmsUrl.startsWith("http") && (
+        <a
+          href={llmsUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: "inline-block",
+            padding: "12px 16px",
+            border: "1px solid rgba(99,102,241,0.45)",
+            color: "#a5b4fc",
+            borderRadius: "10px",
+            textDecoration: "none",
+            fontWeight: 600,
+            fontSize: "0.9rem",
+          }}
+        >
+          llms.txt
+        </a>
+      )}
     </div>
   );
 }
@@ -150,14 +197,21 @@ export function ApplyImpactPanel({ copy, applyImpact }) {
   );
 }
 
-export function DeliveryChecklistPanel({ copy, deliveryStatus, shop }) {
+export function DeliveryChecklistPanel({ copy, deliveryStatus, shop, onRecheck, rechecking = false }) {
   if (!deliveryStatus?.checks?.length) return null;
 
   const storeHandle = (shop ?? "").replace(".myshopify.com", "");
-  const themeUrl = deliveryStatus.themeEditorUrl ?? `https://admin.shopify.com/store/${storeHandle}/themes/current/editor`;
+  const themeUrl =
+    deliveryStatus.themeEditorUrl ??
+    `https://admin.shopify.com/store/${storeHandle}/themes/current/editor?context=apps`;
   const ready = deliveryStatus.crawlerReady;
   const border = ready ? "rgba(163,230,53,0.45)" : "rgba(251,191,36,0.5)";
   const bg = ready ? "rgba(163,230,53,0.08)" : "rgba(251,191,36,0.08)";
+  const liveProductCheck = deliveryStatus.checks.find((c) => c.id === "live_product_jsonld");
+  const liveProductUrl = liveProductCheck?.url ?? null;
+  const richResultsUrl = liveProductUrl
+    ? `https://search.google.com/test/rich-results?url=${encodeURIComponent(liveProductUrl)}`
+    : null;
 
   return (
     <div style={{ ...card, borderColor: border, background: bg }}>
@@ -185,6 +239,54 @@ export function DeliveryChecklistPanel({ copy, deliveryStatus, shop }) {
           </li>
         ))}
       </ul>
+      {(richResultsUrl || liveProductUrl) && (
+        <div style={{ marginBottom: "12px" }}>
+          <p style={{ ...body, fontSize: "0.82rem", fontWeight: 600, color: "#a5b4fc", marginBottom: "8px" }}>
+            {copyText(copy, "deliveryVerifySection", "Instant verification")}
+          </p>
+          {richResultsUrl && (
+            <a
+              href={richResultsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: "inline-block",
+                marginRight: "8px",
+                marginBottom: "6px",
+                padding: "8px 12px",
+                border: "1px solid rgba(99,102,241,0.45)",
+                color: "#a5b4fc",
+                borderRadius: "8px",
+                textDecoration: "none",
+                fontWeight: 600,
+                fontSize: "0.82rem",
+              }}
+            >
+              {copyText(copy, "deliveryRichResultsTest", "Rich Results Test")}
+            </a>
+          )}
+          {liveProductUrl && (
+            <a
+              href={liveProductUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: "inline-block",
+                marginBottom: "6px",
+                padding: "8px 12px",
+                border: "1px solid rgba(99,102,241,0.35)",
+                color: "#c8c8d0",
+                borderRadius: "8px",
+                textDecoration: "none",
+                fontWeight: 600,
+                fontSize: "0.82rem",
+              }}
+            >
+              {copyText(copy, "deliveryViewLivePage", "Live product page")}
+            </a>
+          )}
+        </div>
+      )}
       {!ready && (
         <a
           href={themeUrl}
@@ -199,10 +301,31 @@ export function DeliveryChecklistPanel({ copy, deliveryStatus, shop }) {
             textDecoration: "none",
             fontWeight: 600,
             fontSize: "0.88rem",
+            marginRight: "8px",
           }}
         >
           {copyText(copy, "deliveryOpenTheme", "Fix in theme editor")}
         </a>
+      )}
+      {onRecheck && (
+        <button
+          type="button"
+          disabled={rechecking}
+          onClick={onRecheck}
+          style={{
+            display: "inline-block",
+            padding: "10px 14px",
+            border: "1px solid rgba(99,102,241,0.5)",
+            color: "#a5b4fc",
+            borderRadius: "10px",
+            background: "transparent",
+            fontWeight: 600,
+            fontSize: "0.88rem",
+            cursor: rechecking ? "wait" : "pointer",
+          }}
+        >
+          {rechecking ? copyText(copy, "loading", "…") : copyText(copy, "deliveryRecheckNow", "Recheck delivery now")}
+        </button>
       )}
       <p style={{ ...body, fontSize: "0.78rem", color: "#8b8b9a", marginTop: "10px", marginBottom: 0 }}>
         {copyText(copy, "deliveryRecheck", "")}

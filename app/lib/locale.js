@@ -38,7 +38,7 @@ const MESSAGES = {
       "We scan up to {{scanLimit}} products from your catalog for free and show what's missing — preview every change before you pay.",
     step1ScoreHeadline: "Your AI visibility score",
     step1WhyBrief:
-      "AI tools (ChatGPT, Perplexity, Google AI) recommend stores that have complete product info and a clear brand. A low score usually means missing titles, descriptions, or brand data — not that your products are bad.",
+      "This score measures AI readiness (titles, descriptions, brand data) — not live crawler visibility. A low score means gaps to fix before Apply; instant impact on ChatGPT/Perplexity requires the delivery checklist below after Apply.",
     step1TimelineBrief:
       "After you apply changes: crawlers typically re-read your store in 2–4 weeks. Organic traffic shifts often show in 4–8 weeks.",
     step1PlanIncludes:
@@ -60,6 +60,9 @@ const MESSAGES = {
     pricingExtra:
       "Need more than {{aiLimit}} fully optimized? +${{packPrice}} one-time per additional {{packSize}} products",
     loadingAuditSubtext: "Read-only scan — nothing on your store is modified yet.",
+    auditLoadTimeout: "The store scan took too long. Your Shopify data is safe — try again.",
+    auditLoadTimeoutHint:
+      "Large catalogs may need a second attempt. Reload from Shopify Admin → Apps → PredictaCore.",
     optimizingStore: "We are optimizing your store and products",
     optimizingStoreSubtext: "Updating titles, descriptions, and brand data for AI search — usually 1–2 minutes.",
     startAuditButton: "Start free audit — I agree",
@@ -116,7 +119,12 @@ const MESSAGES = {
       "Do not confuse this with wiping your store. We never empty your SEO on restore.",
     scoreBreakdownTitle: "Your products",
     foundationBreakdownTitle: "Your brand",
-    scoreAfterApply: "Your score should increase considerably — typically {{low}}–{{high}} after optimization",
+    scoreAfterApply:
+      "After Apply, your readiness score typically rises to {{low}}–{{high}} — that reflects saved SEO and schema in Shopify. Crawlers see changes only when delivery checks (theme blocks + live JSON-LD) turn green.",
+    scoreIsPreparationNote:
+      "Score = preparation inside Shopify. Green delivery checklist = impact visible to AI crawlers on your live storefront.",
+    catalogLargeNote:
+      "Your catalog has {{total}} products — we analyze your top {{limit}} by sales (ShopifyQL 90-day ranking). The rest stay out of scope unless you add a product pack.",
     scoreGainGeneric: "Your score should increase considerably after optimization",
     scoreAlmostComplete:
       "{{count}} products still need fixes — continue to pay and Apply to reach ~{{score}}/100",
@@ -149,14 +157,14 @@ const MESSAGES = {
     pricingSetup:
       "$35 — first month + full optimization (Apply unlock). $15/month after for automatic catalog updates.",
     pricingRecurringNote:
-      "Shopify billing has two steps: (1) $35 one-time charge today. (2) $15/month subscription — Shopify asks for a second approval (first charge on day 31; month 1 included in setup).",
+      "One button in PredictaCore: Shopify may show up to two approval screens in a row ($35 setup, then $15/mo from day 31). We redirect you automatically — no need to return to the app between screens.",
     pricingMaintenance: "",
     billingPaymentDisclosureTitle: "What Shopify will ask you to approve",
-    billingPaymentStep1: "Step 1 — Today: $35 one-time setup (includes your first month of service)",
+    billingPaymentStep1: "Today: $35 one-time setup (includes your first month)",
     billingPaymentStep2:
-      "Step 2 — Next: $15/month subscription (Shopify shows a second approval screen; billing starts on day 31 — cancel anytime in Shopify Admin)",
+      "Next screen (automatic): $15/month maintenance from day 31 — cancel anytime in Shopify Admin. Month 1 is already included in the $35 setup.",
     billingShopifyEmailNote:
-      "Shopify’s email only lists the charge you approved in that moment. The $15/month plan is a separate subscription approval — not missing from your account.",
+      "Shopify’s email lists only the charge you just approved. The $15/mo plan is the next screen in the same flow — we redirect you there after $35.",
     billingMaintenanceApproveTitle: "One more step — approve $15/month maintenance",
     billingMaintenanceApproveBody:
       "Your $35 setup is active. Approve the $15/month subscription in Shopify so automatic catalog updates continue after day 31. Month 1 is already included in your setup fee — no double charge today.",
@@ -181,7 +189,8 @@ const MESSAGES = {
       "This store already has a completed Apply on record. Use Restore all below to undo changes and run the full flow again (including payment if needed).",
     step4FlowTitle: "Apply to your store",
     step4PaymentBodyFirst: "Continue to complete payment in Shopify and unlock Apply.",
-    step4PaymentSuccess: "Payment successful — $35 setup complete. Next: approve the $15/month maintenance plan in Shopify (billing starts day 31).",
+    step4PaymentSuccess:
+      "Payment successful — $35 setup complete. Redirecting to approve $15/mo maintenance (billing starts day 31).",
     step4FlowIntro: "Complete payment in Shopify to unlock Apply on your store.",
     expectationsPreviewTitle: "What to expect after you apply",
     expectationsPreviewMeans1:
@@ -224,12 +233,23 @@ const MESSAGES = {
     productTierUpgrade: "Add {{size}} more products — ${{price}} one-time",
     themeOnboardingTitle: "Activate storefront blocks (required for AI crawlers)",
     themeOnboardingBody:
-      "After Apply, enable these theme app embeds so JSON-LD and llms.txt reach ChatGPT, Perplexity, and Google AI:",
+      "Apply saved your product SEO and schema inside Shopify. To deliver that data to ChatGPT, Perplexity, and Google AI on your live storefront, enable these theme app embeds:",
+    themeOnboardingStepsTitle: "Step-by-step (about 5 minutes)",
+    themeOnboardingStep1: "Shopify Admin → Online Store → Themes → Customize (open your live theme).",
+    themeOnboardingStep2: "In the theme editor, click App embeds in the left sidebar (puzzle-piece icon).",
+    themeOnboardingStep3: "Find PredictaCore → turn ON PredictaCore Brand (Organization + Website JSON-LD in <head>).",
+    themeOnboardingStep4: "Turn ON PredictaCore Product (Product JSON-LD on product pages).",
+    themeOnboardingStep5: "Click Save (top right), return to PredictaCore, and tap Recheck delivery now below.",
+    themeOnboardingStep6: "Verify llms.txt loads: open {{llmsUrl}} in a new tab — you should see plain text about your store.",
+    themeOnboardingStep7:
+      "Optional: Online Store → Navigation → URL Redirects — redirect /llms.txt → /apps/predictacore/llms.txt (standard path for AI crawlers).",
+    themeOnboardingAfterSteps:
+      "When all delivery checks turn green (8/8), crawlers can read your schema on the live storefront. Crawler re-crawl usually takes 2–4 weeks.",
     themeOnboardingBrand: "PredictaCore Brand — injects organization + website schema in <head>",
     themeOnboardingProduct: "PredictaCore Product — product JSON-LD on product pages",
     themeOnboardingLlms:
-      "Optional: add a redirect from yourstore.com/llms.txt to /apps/predictacore/llms.txt (app proxy).",
-    themeOnboardingCta: "Open theme editor",
+      "llms.txt is served at /apps/predictacore/llms.txt once the app is installed — no extra block needed.",
+    themeOnboardingCta: "Open theme editor (App embeds)",
     benchmarkTitle: "Category readiness benchmark",
     benchmarkAhead: "Your score {{your}} is ahead of typical stores ({{typical}}) — strong GEO foundation.",
     benchmarkBehind: "Your score {{your}} is below typical ({{typical}}) — Apply closes the biggest gaps.",
@@ -260,7 +280,7 @@ const MESSAGES = {
     deliveryIntro:
       "Verifies that AI crawlers can actually see your schema — theme blocks, live JSON-LD, and llms.txt. Green = visible on your storefront.",
     deliveryReady: "Crawler-ready — {{passed}}/{{total}} checks passed.",
-    deliveryNotReady: "Action needed — {{passed}}/{{total}} checks passed. Enable theme blocks to deliver results.",
+    deliveryNotReady: "Action needed — {{passed}}/{{total}} checks passed. Follow the theme steps below to deliver results.",
     deliveryScore: "{{pct}}% delivery score",
     deliveryThemeBrand: "PredictaCore Brand block enabled in theme",
     deliveryThemeProduct: "PredictaCore Product block enabled in theme",
@@ -272,6 +292,10 @@ const MESSAGES = {
     deliveryLlmsMetafield: "llms.txt content saved (shop metafield)",
     deliveryOpenTheme: "Fix in theme editor",
     deliveryRecheck: "Results update automatically after Apply and every 6 hours.",
+    deliveryRecheckNow: "Recheck delivery now",
+    deliveryVerifySection: "Instant verification (external tools)",
+    deliveryRichResultsTest: "Test in Google Rich Results",
+    deliveryViewLivePage: "Open live product page",
     marketsChangedBanner:
       "Your Shopify Markets changed since the last scan — run Restore or re-confirm markets, then Apply again to realign SEO.",
     refreshingStore: "Updating your store…",
@@ -289,7 +313,10 @@ const MESSAGES = {
     rollbackNote:
       "Before uninstalling in Shopify Admin, choose below whether to restore your original store or keep optimized data.",
     postApplyTitle: "Optimization complete",
+    postApplyAlmostTitle: "Almost done — activate theme blocks",
     postApplyBody: "Your store is updated. View your score anytime by reopening PredictaCore.",
+    postApplyThemeRequired:
+      "Products and schema are saved in Shopify. Enable PredictaCore Brand + Product blocks in your theme so crawlers see JSON-LD on your live storefront — then open the dashboard.",
     viewDashboard: "View score dashboard",
     exitApp: "Close",
     products: "Products",
@@ -378,6 +405,13 @@ const MESSAGES = {
     marketsDetected: "Detected markets: {{region}}",
     marketsCountries: "Countries: {{countries}}",
     marketsConfirmButton: "Confirm target markets",
+    marketsSelectHint:
+      "Shopify may list every country you could ship to. Check only the countries where you actually sell — SEO and schema will target those.",
+    marketsPresetNorthAmerica: "US, Canada & Mexico only",
+    marketsAddMexicoHint:
+      "Mexico is not in your Shopify Markets yet. Add it in Shopify Admin → Settings → Markets, then reload this app.",
+    marketsChangeButton: "Change target markets",
+    marketsSelectRequired: "Select at least one country before confirming.",
     marketsConfirmed: "Target markets confirmed — optimizations will focus on {{region}}.",
     marketsNotConfigured:
       "No Shopify Markets detected. Set up Markets in Shopify Admin → Settings → Markets, then reload this app.",
@@ -516,7 +550,7 @@ const MESSAGES = {
       "Analizamos gratis hasta {{scanLimit}} productos de tu catálogo. Descubre qué impide que la IA te recomiende — vista previa de cada cambio antes de pagar.",
     step1ScoreHeadline: "Tu score de visibilidad AI",
     step1WhyBrief:
-      "Las herramientas de IA (ChatGPT, Perplexity, Google AI) recomiendan tiendas con info completa de productos y marca clara. Un score bajo suele significar títulos, descripciones o datos de marca faltantes — no que tus productos sean malos.",
+      "Este score mide preparación para IA (títulos, descripciones, marca) — no visibilidad en vivo en crawlers. Un score bajo indica gaps antes del Apply; el impacto instantáneo en ChatGPT/Perplexity requiere el checklist de entrega verde después del Apply.",
     step1TimelineBrief:
       "Después de aplicar cambios: los crawlers suelen re-leer tu tienda en 2–4 semanas. Cambios en tráfico orgánico suelen verse en 4–8 semanas.",
     step1PlanIncludes:
@@ -559,7 +593,12 @@ const MESSAGES = {
       "No confundas esto con vaciar tu tienda. En restaurar nunca borramos tu SEO.",
     scoreBreakdownTitle: "Cobertura del catálogo",
     foundationBreakdownTitle: "Base de tienda (GEO)",
-    scoreAfterApply: "Tu score debería subir considerablemente — típicamente {{low}}–{{high}} tras optimizar",
+    scoreAfterApply:
+      "Tras el Apply, tu score de preparación suele subir a {{low}}–{{high}} — refleja SEO y schema guardados en Shopify. Los crawlers ven cambios solo cuando el checklist de entrega (bloques + JSON-LD en vivo) esté verde.",
+    scoreIsPreparationNote:
+      "Score = preparación en Shopify. Checklist de entrega verde = impacto visible para crawlers de IA en tu tienda en vivo.",
+    catalogLargeNote:
+      "Tu catálogo tiene {{total}} productos — analizamos tus {{limit}} principales por ventas (ranking ShopifyQL 90 días). El resto queda fuera de alcance hasta que agregues un pack de productos.",
     scoreGainGeneric: "Tu score debería subir considerablemente tras optimizar",
     scoreAlmostComplete:
       "Quedan {{count}} productos por corregir — ve al paso 4 y aplica para llegar a ~{{score}}/100",
@@ -596,14 +635,14 @@ const MESSAGES = {
     pricingSetup:
       "$35 — primer mes + optimización completa (desbloquea Apply). $15/mes después para actualizaciones automáticas.",
     pricingRecurringNote:
-      "Shopify factura en dos pasos: (1) cargo único de $35 hoy — ese es el correo que recibiste. (2) suscripción de $15/mes — Shopify te pedirá aprobarla después (primer cobro al día 31; el mes 1 ya está incluido en el setup de $35).",
+      "Un solo botón en PredictaCore: Shopify puede mostrar hasta dos pantallas seguidas ($35 setup, luego $15/mes desde el día 31). Te redirigimos automáticamente — no necesitas volver a la app entre pantallas.",
     pricingMaintenance: "",
     billingPaymentDisclosureTitle: "Qué te pedirá aprobar Shopify",
-    billingPaymentStep1: "Paso 1 — Hoy: setup único de $35 (incluye tu primer mes de servicio)",
+    billingPaymentStep1: "Hoy: setup único de $35 (incluye tu primer mes)",
     billingPaymentStep2:
-      "Paso 2 — Después: suscripción de $15/mes (Shopify muestra una segunda pantalla de aprobación; el cobro empieza al día 31 — cancela cuando quieras en Shopify Admin)",
+      "Siguiente pantalla (automática): mantenimiento de $15/mes desde el día 31 — cancela cuando quieras en Shopify Admin. El mes 1 ya está incluido en el setup de $35.",
     billingShopifyEmailNote:
-      "El correo de Shopify solo lista el cargo que aprobaste en ese momento. El plan de $15/mes es una aprobación de suscripción aparte — no falta en tu cuenta.",
+      "El correo de Shopify solo lista el cargo que acabas de aprobar. El plan de $15/mes es la siguiente pantalla del mismo flujo — te redirigimos ahí después del $35.",
     billingMaintenanceApproveTitle: "Un paso más — aprueba el mantenimiento de $15/mes",
     billingMaintenanceApproveBody:
       "Tu setup de $35 ya está activo. Aprueba la suscripción de $15/mes en Shopify para que las actualizaciones automáticas del catálogo continúen después del día 31. El mes 1 ya está incluido en el setup — no hay doble cobro hoy.",
@@ -627,7 +666,8 @@ const MESSAGES = {
       "Esta tienda ya tiene un Apply completado registrado. Usa Restaurar todo abajo para deshacer cambios y volver a correr el flujo completo.",
     step4FlowTitle: "Aplicar en tu tienda",
     step4PaymentBodyFirst: "Continúa para completar el pago en Shopify y desbloquear Apply.",
-    step4PaymentSuccess: "Pago exitoso — setup de $35 completado. Siguiente: aprueba el plan de $15/mes en Shopify (el cobro empieza al día 31).",
+    step4PaymentSuccess:
+      "Pago exitoso — setup de $35 completado. Redirigiendo para aprobar mantenimiento de $15/mes (cobro desde el día 31).",
     step4FlowIntro: "Completa el pago en Shopify para desbloquear Apply.",
     expectationsPreviewTitle: "Qué esperar después de aplicar",
     expectationsPreviewMeans1:
@@ -660,6 +700,9 @@ const MESSAGES = {
     pricingExtra:
       "¿Necesitas más de {{aiLimit}} con IA completa? +${{packPrice}} pago único por cada {{packSize}} productos adicionales",
     loadingAuditSubtext: "Escaneo solo lectura — aún no modificamos nada en tu tienda.",
+    auditLoadTimeout: "El escaneo tardó demasiado. Tus datos en Shopify están seguros — inténtalo de nuevo.",
+    auditLoadTimeoutHint:
+      "Catálogos grandes pueden necesitar un segundo intento. Recarga desde Admin de Shopify → Apps → PredictaCore.",
     optimizingStore: "Estamos optimizando tu tienda y tus productos",
     optimizingStoreSubtext:
       "Actualizando títulos, descripciones e identidad de marca para búsqueda con IA — suele tardar 1–2 minutos.",
@@ -686,6 +729,25 @@ const MESSAGES = {
     alreadyOptimizedTitle: "Ya optimizado",
     alreadyOptimizedBody:
       "No hay cambios pendientes — tu tienda se optimizó en una sesión anterior. Usa Restore abajo para repetir el wizard.",
+    themeOnboardingTitle: "Activa los bloques del tema (requerido para crawlers de IA)",
+    themeOnboardingBody:
+      "Apply guardó tu SEO y schema dentro de Shopify. Para entregar esos datos a ChatGPT, Perplexity y Google AI en tu tienda en vivo, activa estos app embeds del tema:",
+    themeOnboardingStepsTitle: "Pasos (unos 5 minutos)",
+    themeOnboardingStep1: "Admin de Shopify → Tienda online → Temas → Personalizar (tema publicado).",
+    themeOnboardingStep2: "En el editor, abre App embeds en la barra lateral (icono de piezas).",
+    themeOnboardingStep3: "Busca PredictaCore → activa PredictaCore Brand (JSON-LD Organization + Website en <head>).",
+    themeOnboardingStep4: "Activa PredictaCore Product (JSON-LD de producto en páginas de producto).",
+    themeOnboardingStep5: "Pulsa Guardar (arriba a la derecha), vuelve a PredictaCore y toca Reverificar entrega abajo.",
+    themeOnboardingStep6: "Verifica llms.txt: abre {{llmsUrl}} en una pestaña nueva — debe verse texto plano sobre tu tienda.",
+    themeOnboardingStep7:
+      "Opcional: Tienda online → Navegación → Redirecciones URL — de /llms.txt a /apps/predictacore/llms.txt (ruta estándar para crawlers de IA).",
+    themeOnboardingAfterSteps:
+      "Cuando todas las verificaciones estén en verde (8/8), los crawlers pueden leer tu schema en la tienda en vivo. Re-rastreo suele tardar 2–4 semanas.",
+    themeOnboardingBrand: "PredictaCore Brand — schema de organización + sitio web en <head>",
+    themeOnboardingProduct: "PredictaCore Product — JSON-LD de producto en páginas de producto",
+    themeOnboardingLlms:
+      "llms.txt se sirve en /apps/predictacore/llms.txt con la app instalada — no hace falta otro bloque.",
+    themeOnboardingCta: "Abrir editor de temas (App embeds)",
     refreshingStore: "Actualizando tu tienda…",
     confirmingPayment: "Confirmando pago…",
     restoreWarning:
@@ -720,7 +782,7 @@ const MESSAGES = {
     deliveryIntro:
       "Verifica que los crawlers de IA vean tu schema — bloques del tema, JSON-LD en vivo y llms.txt. Verde = visible en tu tienda.",
     deliveryReady: "Listo para crawlers — {{passed}}/{{total}} verificaciones aprobadas.",
-    deliveryNotReady: "Acción requerida — {{passed}}/{{total}} verificaciones. Activa los bloques del tema para entregar resultados.",
+    deliveryNotReady: "Acción requerida — {{passed}}/{{total}} verificaciones. Sigue los pasos del tema abajo para entregar resultados.",
     deliveryScore: "{{pct}}% entrega verificada",
     deliveryThemeBrand: "Bloque PredictaCore Brand activo en el tema",
     deliveryThemeProduct: "Bloque PredictaCore Product activo en el tema",
@@ -732,6 +794,16 @@ const MESSAGES = {
     deliveryLlmsMetafield: "Contenido de llms.txt guardado (metafield de la tienda)",
     deliveryOpenTheme: "Arreglar en el editor de temas",
     deliveryRecheck: "Se actualiza automáticamente después del Apply y cada 6 horas.",
+    deliveryRecheckNow: "Reverificar entrega ahora",
+    deliveryVerifySection: "Verificación instantánea (herramientas externas)",
+    deliveryRichResultsTest: "Probar en Google Rich Results",
+    deliveryViewLivePage: "Abrir página del producto en vivo",
+    postApplyTitle: "Optimización completada",
+    postApplyAlmostTitle: "Casi listo — activa los bloques del tema",
+    postApplyBody: "Tu tienda está actualizada. Reabre PredictaCore para ver tu score cuando quieras.",
+    postApplyThemeRequired:
+      "Productos y schema guardados en Shopify. Activa los bloques PredictaCore Brand + Product en tu tema para que los crawlers vean JSON-LD en tu tienda en vivo — luego abre el dashboard.",
+    viewDashboard: "Ver dashboard de score",
     uninstallPrefTitle: "Si desinstalas PredictaCore",
     uninstallPrefIntro:
       "Elige qué pasa con tu SEO e identidad de marca cuando quites la app en Shopify Admin. Puedes cambiarlo antes de desinstalar.",

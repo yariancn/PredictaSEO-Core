@@ -21,7 +21,7 @@ export async function hasShopBaseline(shop) {
 
 async function writeBaselineRows(shop, products, schemaOriginal, websiteOriginal, shopId) {
   const appliedAt = new Date();
-  let rows = 0;
+  const rows = [];
 
   for (const product of products) {
     const seoTitle = product.seo?.title?.trim() ?? "";
@@ -33,25 +33,22 @@ async function writeBaselineRows(shop, products, schemaOriginal, websiteOriginal
       ["seo.description", seoDescription],
       ["descriptionHtml", descriptionHtml],
     ]) {
-      await prisma.optimizationSnapshot.create({
-        data: {
-          batchId: BASELINE_BATCH,
-          shop,
-          resourceType: "product",
-          resourceId: product.id,
-          field,
-          originalValue,
-          optimizedValue: null,
-          appliedAt,
-        },
+      rows.push({
+        batchId: BASELINE_BATCH,
+        shop,
+        resourceType: "product",
+        resourceId: product.id,
+        field,
+        originalValue,
+        optimizedValue: null,
+        appliedAt,
       });
-      rows += 1;
     }
   }
 
   if (shopId) {
-    await prisma.optimizationSnapshot.create({
-      data: {
+    rows.push(
+      {
         batchId: BASELINE_BATCH,
         shop,
         resourceType: "shop",
@@ -61,9 +58,7 @@ async function writeBaselineRows(shop, products, schemaOriginal, websiteOriginal
         optimizedValue: null,
         appliedAt,
       },
-    });
-    await prisma.optimizationSnapshot.create({
-      data: {
+      {
         batchId: BASELINE_BATCH,
         shop,
         resourceType: "shop",
@@ -73,11 +68,15 @@ async function writeBaselineRows(shop, products, schemaOriginal, websiteOriginal
         optimizedValue: null,
         appliedAt,
       },
-    });
-    rows += 2;
+    );
   }
 
-  return { count: rows, productCount: products.length };
+  const CHUNK = 100;
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    await prisma.optimizationSnapshot.createMany({ data: rows.slice(i, i + CHUNK) });
+  }
+
+  return { count: rows.length, productCount: products.length };
 }
 
 /**
