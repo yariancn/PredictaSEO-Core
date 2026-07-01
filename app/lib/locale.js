@@ -60,6 +60,8 @@ const MESSAGES = {
     pricingExtra:
       "Need more than {{aiLimit}} fully optimized? +${{packPrice}} one-time per additional {{packSize}} products",
     loadingAuditSubtext: "Read-only scan — nothing on your store is modified yet.",
+    loadingAiSummary: "Writing your personalized AI summary…",
+    loadingAiSummarySubtext: "Usually 10–20 seconds. Your score and action plan appear when this finishes.",
     auditLoadTimeout: "The store scan took too long. Your Shopify data is safe — try again.",
     auditLoadTimeoutHint:
       "Large catalogs may need a second attempt. Reload from Shopify Admin → Apps → PredictaCore.",
@@ -212,6 +214,7 @@ const MESSAGES = {
     billingBundleStep2:
       "$35 setup is active on this store. Continue to approve the required $15/month subscription.",
     step4PaidIntro: "Payment complete — confirm below to publish changes to your store.",
+    step2ConfirmIntro: "Payment complete — confirm you understand backup/restore, then continue to Apply.",
     billingStatusTitle: "Billing status (this store)",
     billingStatusNone:
       "Not paid yet — Shopify will ask you to approve $35, then $15/month. Charges appear on your Shopify invoice.",
@@ -313,6 +316,10 @@ const MESSAGES = {
     rollbackNote:
       "Before uninstalling in Shopify Admin, choose below whether to restore your original store or keep optimized data.",
     postApplyTitle: "Optimization complete",
+    postApplyManualTitle: "Recommended — improve live crawler visibility",
+    postApplyManualBody:
+      "PredictaCore already saved SEO and schema in Shopify. These manual steps help AI crawlers read them on your live storefront (separate from your score above).",
+    deliveryOptionalNote: "Optional merchant setup — not part of the paid Apply.",
     postApplyAlmostTitle: "Almost done — activate theme blocks",
     postApplyBody: "Your store is updated. View your score anytime by reopening PredictaCore.",
     postApplyThemeRequired:
@@ -402,6 +409,9 @@ const MESSAGES = {
     marketsPanelTitle: "Where you sell",
     marketsPanelBody:
       "We read your Shopify Markets so product copy and structured data target the countries where you actually sell — not random regions.",
+    marketsChangeWarning:
+      "Changing countries only affects future SEO copy and schema (titles, descriptions, region labels). It does not change Shopify shipping zones. Pick countries where you actually sell.",
+    marketsAvailableList: "{{count}} countries available from your Shopify Markets — select where you sell:",
     marketsDetected: "Detected markets: {{region}}",
     marketsCountries: "Countries: {{countries}}",
     marketsConfirmButton: "Confirm target markets",
@@ -687,6 +697,7 @@ const MESSAGES = {
     expectationsPreviewMaintenance2: "Actualizaciones cuando productos nuevos o gaps bajan tu score",
     expectationsPreviewMaintenance3: "Pulido de productos nuevos conforme crece tu catálogo",
     step4PaidIntro: "Pago completado — confirma abajo para publicar los cambios en tu tienda.",
+    step2ConfirmIntro: "Pago completado — confirma que entiendes backup/restore y continúa al Apply.",
     introTitle: "Analizaremos cómo la IA ve tu tienda",
     introBody:
       "Antes de cualquier pago o cambio, escaneamos hasta {{scanLimit}} productos de tu catálogo (ordenados por ventas) y te mostramos un score de preparación para IA y un plan claro.",
@@ -700,6 +711,8 @@ const MESSAGES = {
     pricingExtra:
       "¿Necesitas más de {{aiLimit}} con IA completa? +${{packPrice}} pago único por cada {{packSize}} productos adicionales",
     loadingAuditSubtext: "Escaneo solo lectura — aún no modificamos nada en tu tienda.",
+    loadingAiSummary: "Generando tu resumen personalizado con IA…",
+    loadingAiSummarySubtext: "Suele tardar 10–20 segundos. Tu score y plan aparecen al terminar.",
     auditLoadTimeout: "El escaneo tardó demasiado. Tus datos en Shopify están seguros — inténtalo de nuevo.",
     auditLoadTimeoutHint:
       "Catálogos grandes pueden necesitar un segundo intento. Recarga desde Admin de Shopify → Apps → PredictaCore.",
@@ -799,6 +812,10 @@ const MESSAGES = {
     deliveryRichResultsTest: "Probar en Google Rich Results",
     deliveryViewLivePage: "Abrir página del producto en vivo",
     postApplyTitle: "Optimización completada",
+    postApplyManualTitle: "Recomendado — mejorar visibilidad en crawlers en vivo",
+    postApplyManualBody:
+      "PredictaCore ya guardó SEO y schema en Shopify. Estos pasos manuales ayudan a que los crawlers de IA los lean en tu tienda en vivo (aparte de tu score arriba).",
+    deliveryOptionalNote: "Configuración manual opcional — no forma parte del Apply pagado.",
     postApplyAlmostTitle: "Casi listo — activa los bloques del tema",
     postApplyBody: "Tu tienda está actualizada. Reabre PredictaCore para ver tu score cuando quieras.",
     postApplyThemeRequired:

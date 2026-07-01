@@ -37,7 +37,8 @@ export async function loader({ request }) {
   const introKeys = [
     "title", "subtitle", "introTitle", "introBody", "introBullet1", "introBullet2", "introBullet3",
     "introNoChanges", "pricingTitle", "pricingFree", "pricingSetup", "pricingScope", "pricingExtra", "pricingRecurringNote",
-    "startAuditButton", "loading", "loadingAuditSubtext", "auditLoadTimeout", "auditLoadTimeoutHint",
+    "startAuditButton", "loading", "loadingAuditSubtext", "loadingAiSummary", "loadingAiSummarySubtext",
+    "auditLoadTimeout", "auditLoadTimeoutHint",
     "optimizingStore", "optimizingStoreSubtext",
   ];
   const introCopy = Object.fromEntries(
@@ -726,11 +727,6 @@ function ApplyResultsCard({
 
       <AppliedProductsList items={displayAppliedItems} copy={copy} />
 
-      {schemaWasApplied && (
-        <p style={{ ...theme.body, fontSize: "0.82rem", color: "#8b8b9a", marginTop: "10px" }}>
-          {copy.schemaEmbedNote}
-        </p>
-      )}
       {applyResult?.schemaError && (
         <p style={{ ...theme.body, color: "#fbbf24", fontSize: "0.82rem", marginTop: "10px" }}>
           {applyResult.schemaError}
@@ -905,9 +901,23 @@ function Step4Actions({
     return (
       <div style={{ ...theme.card, borderColor: "rgba(163,230,53,0.35)", background: "rgba(163,230,53,0.06)" }}>
         <p style={{ ...theme.body, marginBottom: "14px", color: "#a3e635", fontWeight: 600, lineHeight: 1.55 }}>
-          {copy.step4PaidIntro}
+          {copyText(copy, "step2ConfirmIntro", copy.step4PaidIntro)}
         </p>
-        <button type="button" style={{ ...theme.btnPrimary, width: "100%" }} onClick={onContinueToApply}>
+        <label style={{ display: "flex", gap: "10px", alignItems: "flex-start", marginBottom: "14px", cursor: "pointer" }}>
+          <input
+            type="checkbox"
+            checked={confirmed}
+            onChange={(e) => setConfirmed(e.target.checked)}
+            style={{ marginTop: "4px" }}
+          />
+          <span style={{ ...theme.body, fontSize: "0.82rem", color: "#8b8b9a" }}>{copy.confirmLabel}</span>
+        </label>
+        <button
+          type="button"
+          style={confirmed ? theme.btnPrimary : theme.btnDisabled}
+          disabled={!confirmed}
+          onClick={onContinueToApply}
+        >
           {copy.continue}
         </button>
       </div>
@@ -920,15 +930,17 @@ function Step4Actions({
         <p style={{ ...theme.body, marginBottom: "14px", color: "#a3e635", fontWeight: 600 }}>
           {copy.step4PaidIntro}
         </p>
-        <label style={{ display: "flex", gap: "10px", alignItems: "flex-start", marginBottom: "12px", cursor: "pointer" }}>
-          <input
-            type="checkbox"
-            checked={confirmed}
-            onChange={(e) => setConfirmed(e.target.checked)}
-            style={{ marginTop: "4px" }}
-          />
-          <span style={{ ...theme.body, fontSize: "0.82rem", color: "#8b8b9a" }}>{copy.confirmLabel}</span>
-        </label>
+        {!confirmed && (
+          <label style={{ display: "flex", gap: "10px", alignItems: "flex-start", marginBottom: "12px", cursor: "pointer" }}>
+            <input
+              type="checkbox"
+              checked={confirmed}
+              onChange={(e) => setConfirmed(e.target.checked)}
+              style={{ marginTop: "4px" }}
+            />
+            <span style={{ ...theme.body, fontSize: "0.82rem", color: "#8b8b9a" }}>{copy.confirmLabel}</span>
+          </label>
+        )}
         <button
           type="button"
           style={confirmed && !applyLoading ? theme.btnPrimary : theme.btnDisabled}
@@ -982,7 +994,16 @@ function PostApplyMerchantPanel({
   return (
     <>
       {!ready && (
-        <>
+        <div style={{ ...theme.card, borderColor: "rgba(251,191,36,0.45)", background: "rgba(251,191,36,0.06)" }}>
+          <p style={{ ...theme.body, fontSize: "0.78rem", color: "#fbbf24", margin: "0 0 8px 0", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+            {copyText(copy, "deliveryOptionalNote", "Optional merchant setup")}
+          </p>
+          <h2 style={{ ...theme.h2, color: "#fbbf24", marginBottom: "8px" }}>
+            {copyText(copy, "postApplyManualTitle", "Recommended — improve live crawler visibility")}
+          </h2>
+          <p style={{ ...theme.body, marginBottom: "14px", fontSize: "0.88rem", color: "#c8c8d0", lineHeight: 1.55 }}>
+            {copyText(copy, "postApplyManualBody", "")}
+          </p>
           <ThemeOnboardingPanel copy={copy} shop={shop} deliveryStatus={deliveryStatus} />
           <DeliveryChecklistPanel
             copy={copy}
@@ -991,7 +1012,7 @@ function PostApplyMerchantPanel({
             onRecheck={onRecheckDelivery}
             rechecking={recheckingDelivery}
           />
-        </>
+        </div>
       )}
       <div style={{ ...theme.card, borderColor: ready ? "rgba(163,230,53,0.35)" : "rgba(251,191,36,0.45)", background: ready ? "rgba(163,230,53,0.06)" : "rgba(251,191,36,0.08)" }}>
         <h2 style={{ ...theme.h2, color: ready ? "#a3e635" : "#fbbf24" }}>
@@ -1129,6 +1150,7 @@ function ExpectationsPanel({
   showMaintenance = true,
   variant = "post",
   maintenanceLimit = 500,
+  skipAppliedSection = false,
 }) {
   const count = String(priorityCount);
   const limit = String(maintenanceLimit);
@@ -1168,7 +1190,7 @@ function ExpectationsPanel({
       <p style={theme.bullet("#fbbf24")}>{not1}</p>
       <p style={theme.bullet("#fbbf24")}>{not2}</p>
 
-      {!isPreview && (
+      {!isPreview && !skipAppliedSection && (
         <>
           <p style={{ ...theme.h2, marginTop: "16px" }}>{copy.expectationsDoneTitle}</p>
           <p style={theme.bullet("#a5b4fc")}>
@@ -1290,6 +1312,12 @@ export default function Index() {
     ? aiFetcher.data.summaryError
     : null;
   const summaryLoading = aiFetcher.state !== "idle" && aiFetcher.formData?.get("intent") === "summary";
+  const awaitingSummary =
+    aiSummaryAvailable &&
+    !summaryInvalidated &&
+    !summary &&
+    !summaryError &&
+    !summaryTimedOut;
 
   const applyResult = applyFetcher.data?.intent === "apply" ? applyFetcher.data.applyResult : null;
   const applyError = applyFetcher.data?.intent === "apply" ? applyFetcher.data.applyError : null;
@@ -1434,13 +1462,23 @@ export default function Index() {
     );
   }
 
-  if (auditPending) {
+  if (auditPending || awaitingSummary) {
     return (
       <LoadingShell
         title={introCopy?.title ?? "PredictaCore"}
         eyebrow={introCopy?.subtitle ?? "AI visibility audit"}
-        message={introCopy?.loading ?? "Analyzing your store…"}
-        subtext={introCopy?.loadingAuditSubtext ?? "Read-only scan — nothing on your store is modified yet."}
+        message={
+          auditPending
+            ? introCopy?.loading ?? "Analyzing your store…"
+            : copy?.loadingAiSummary ?? introCopy?.loadingAiSummary ?? "Writing your personalized AI summary…"
+        }
+        subtext={
+          auditPending
+            ? introCopy?.loadingAuditSubtext ?? "Read-only scan — nothing on your store is modified yet."
+            : copy?.loadingAiSummarySubtext ??
+              introCopy?.loadingAiSummarySubtext ??
+              "Usually 10–20 seconds. Your score and action plan appear when this finishes."
+        }
         mode="audit"
       />
     );
@@ -1555,6 +1593,7 @@ export default function Index() {
         searchConsole={searchConsole}
         deliveryStatus={deliveryStatus}
         auditFetcher={auditFetcher}
+        auditDataUrl={auditDataUrl}
       />
     </>
   );
@@ -1830,6 +1869,11 @@ function MarketsPanel({ copy, marketContext, applyFetcher }) {
       <p style={{ ...theme.body, marginBottom: "10px" }}>
         {copyText(copy, "marketsPanelBody", "")}
       </p>
+      {showPicker && (
+        <p style={{ ...theme.body, fontSize: "0.82rem", color: "#fbbf24", marginBottom: "10px", lineHeight: 1.55 }}>
+          {copyText(copy, "marketsChangeWarning", "")}
+        </p>
+      )}
       {marketContext?.configured ? (
         <>
           {showPicker && (
@@ -1859,11 +1903,13 @@ function MarketsPanel({ copy, marketContext, applyFetcher }) {
                 </button>
               </div>
               <p style={{ ...theme.body, fontSize: "0.78rem", color: "#8b8b9a", marginBottom: "8px" }}>
-                Shopify lists {available.length} countries — check only where you sell:
+                {fillCopy(copyText(copy, "marketsAvailableList", "Shopify lists {{count}} countries — check only where you sell:"), {
+                  count: String(available.length),
+                })}
               </p>
               <div
                 style={{
-                  maxHeight: "200px",
+                  maxHeight: "280px",
                   overflowY: "auto",
                   marginBottom: "12px",
                   padding: "8px",
@@ -2035,6 +2081,7 @@ function IndexWizard({
   searchConsole,
   deliveryStatus,
   auditFetcher,
+  auditDataUrl,
 }) {
   const pilotMode = Boolean(billing?.pilotMode);
   const { matrix, summary: snapSummary } = snapshot;
@@ -2186,6 +2233,18 @@ function IndexWizard({
                   .replace("{{before}}", String(scoreImprovement.before))
                   .replace("{{after}}", String(scoreImprovement.after))}
               </p>
+            </div>
+          )}
+
+          {(summary || displaySummaryError) && (
+            <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.45)", background: "rgba(99,102,241,0.1)" }}>
+              <h2 style={{ ...theme.h2, color: "#a5b4fc" }}>{copyText(copy, "step3AiTitle", "AI summary")}</h2>
+              {summary && (
+                <p style={{ ...theme.body, whiteSpace: "pre-wrap", color: "#e8e8ef", margin: 0 }}>{summary}</p>
+              )}
+              {displaySummaryError && (
+                <p style={{ ...theme.body, color: "#f87171", margin: summary ? "10px 0 0 0" : 0 }}>{displaySummaryError}</p>
+              )}
             </div>
           )}
 
@@ -2352,40 +2411,6 @@ function IndexWizard({
               </button>
             </div>
             </>
-          )}
-
-          {(summaryLoading || summary || displaySummaryError) && (
-            <div
-              style={{
-                ...theme.card,
-                borderColor: summaryLoading ? "rgba(99,102,241,0.55)" : "rgba(255,255,255,0.08)",
-                background: summaryLoading ? "rgba(99,102,241,0.12)" : undefined,
-              }}
-            >
-              <h2 style={theme.h2}>{copyText(copy, "step3AiTitle", "AI summary")}</h2>
-              {summaryLoading && (
-                <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "10px" }}>
-                  <div
-                    style={{
-                      width: "18px",
-                      height: "18px",
-                      borderRadius: "50%",
-                      border: "2px solid rgba(165,180,252,0.35)",
-                      borderTopColor: "#a5b4fc",
-                      animation: "pc-spin 0.8s linear infinite",
-                      flexShrink: 0,
-                    }}
-                  />
-                  <p style={{ ...theme.body, color: "#e8e8ff", fontWeight: 600, margin: 0 }}>{copy.loading}</p>
-                </div>
-              )}
-              {summary && !summaryLoading && (
-                <p style={{ ...theme.body, whiteSpace: "pre-wrap", color: "#e8e8ef", margin: 0 }}>{summary}</p>
-              )}
-              {displaySummaryError && (
-                <p style={{ ...theme.body, color: "#f87171", margin: 0 }}>{displaySummaryError}</p>
-              )}
-            </div>
           )}
 
           {hasPendingWork && (
@@ -2580,15 +2605,6 @@ function IndexWizard({
 
           {applyResult && (
             <>
-              {activeDeliveryStatus?.checks?.length > 0 && (
-                <DeliveryChecklistPanel
-                  copy={copy}
-                  deliveryStatus={activeDeliveryStatus}
-                  shop={shop}
-                  onRecheck={() => auditFetcher.load(auditDataUrl(true))}
-                  rechecking={auditFetcher.state === "loading"}
-                />
-              )}
               <ApplyResultsCard
               copy={copy}
               applyResult={applyResult}
@@ -2612,6 +2628,7 @@ function IndexWizard({
               schemaOnlyOutcome={schemaOnlyOutcome}
               schemaWasApplied={schemaWasApplied}
               showMaintenance={true}
+              skipAppliedSection={true}
               maintenanceLimit={productTier?.effectiveLimit ?? 500}
             />
           )}
