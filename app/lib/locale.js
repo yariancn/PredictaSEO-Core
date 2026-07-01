@@ -78,9 +78,12 @@ const MESSAGES = {
       "$35 today covers your first month and unlocks Apply. Then $15/month until you cancel in Shopify — no refunds; cancellation applies to the next billing period.",
     generateAiPlan: "Generate personalized AI plan",
     skipAiPlan: "Skip AI summary and continue",
-    step3AiTitle: "AI summary",
+    step1AiTitle: "Optional AI summary",
+    step1AiIntro:
+      "Generate a short narrative of your gaps — or skip and continue with your score and action plan below.",
+    step3AiTitle: "Optional AI summary",
     step3AiIntro:
-      "Generate a short AI narrative of your store's gaps. When it finishes, Continue unlocks for step 4.",
+      "Generate a short narrative of your gaps — or skip and continue with your score and action plan below.",
     step3ContinueWait: "Generate the AI summary above to continue.",
     step3ContinueReady: "Summary ready — continue to preview.",
     generateAiPlanBody:
@@ -188,18 +191,22 @@ const MESSAGES = {
     billingAlreadyApproved:
       "$35 setup is active on this store. $15/month maintenance starts on day 31 (month 1 included in setup). Apply below.",
     step2NoPendingWork:
-      "No pending product changes detected. If you already applied optimizations, use Restore all to test the full flow again.",
+      "No pending product changes right now. Your store was optimized in a previous session — open the dashboard or restore from step 1 if you need to undo.",
     billingBundleContinue: "Continue — approve $15/month plan (required)",
     billingRequired: "Complete the $35 setup payment to unlock Apply.",
     applyAlreadyDone:
       "Your initial optimization is already applied. Monthly updates run automatically — no extra action needed.",
     step4RestoreToContinue:
-      "This store already has a completed Apply on record. Use Restore all below to undo changes and run the full flow again (including payment if needed).",
-    step4FlowTitle: "Apply to your store",
+      "Your initial optimization is already applied. Monthly updates run automatically — view your dashboard or restore only if you need to undo.",
+    step4FlowTitle: "Pay & apply",
+    step2MarketsBeforePay:
+      "Confirm your target markets on step 1 before paying — Apply uses those regions for SEO.",
     step4PaymentBodyFirst:
       "Pay $35 setup in Shopify (includes month 1). Then approve $15/month maintenance — billing starts day 31. Apply unlocks when you return here.",
     step4PaymentSuccess:
       "$35 setup charged successfully. $15/month maintenance begins on day 31 (month 1 included in your setup). Apply below when ready.",
+    step4PaymentSuccessWithMaintenance:
+      "$35 setup charged and $15/month maintenance approved. Billing starts day 31 (month 1 included). Apply below when ready.",
     step4FlowIntro: "Complete payment in Shopify to unlock Apply on your store.",
     expectationsPreviewTitle: "What to expect after you apply",
     expectationsPreviewMeans1:
@@ -241,7 +248,7 @@ const MESSAGES = {
     productTierBody:
       "Included: up to {{base}} top sellers (currently {{limit}} in scope). Top {{ai}} get full AI-written SEO; the rest get market-aware templates for your regions.",
     productTierUpgrade: "Add {{size}} more products — ${{price}} one-time",
-    themeOnboardingTitle: "Activate storefront blocks (required for AI crawlers)",
+    themeOnboardingTitle: "Activate storefront blocks (recommended for live crawlers)",
     themeOnboardingBody:
       "Apply saved your product SEO and schema inside Shopify. To deliver that data to ChatGPT, Perplexity, and Google AI on your live storefront, enable these theme app embeds:",
     themeOnboardingStepsTitle: "Step-by-step (about 5 minutes)",
@@ -294,8 +301,11 @@ const MESSAGES = {
       "Shopify does not allow apps to turn on theme blocks for you (merchant must approve in the theme editor). These optional steps help AI crawlers read your schema on the live storefront.",
     deliveryWhyManualTheme:
       "Why we can't do this for you: Shopify requires the store owner to enable app embeds in Online Store → Themes. PredictaCore already saved the data — you only flip two switches (about 2 minutes).",
-    deliveryReady: "Live delivery ready — automated setup complete.",
+    deliveryReady: "Automated setup complete — catalog data saved in Shopify.",
+    deliveryReadyLive: "Storefront delivery complete — crawlers can read your live schema.",
     deliveryNotReady: "{{done}} automated steps complete · {{pending}} optional recommendations below",
+    deliveryImpactReady: "Automated delivery: {{done}}/{{total}} complete",
+    deliveryImpactNotReady: "Automated delivery: {{done}}/{{total}} complete · see checklist below",
     deliveryScore: "{{pct}}% automated",
     deliveryThemeBrand: "PredictaCore Brand block enabled in theme",
     deliveryThemeProduct: "PredictaCore Product block enabled in theme",
@@ -308,8 +318,9 @@ const MESSAGES = {
     deliveryOpenTheme: "Fix in theme editor",
     deliveryRecheck: "Results update automatically after Apply and every 6 hours.",
     deliveryRecheckNow: "Recheck now",
+    deliveryRechecking: "Rechecking…",
     deliveryVerifySection: "Verify your results — included with PredictaCore",
-    deliveryVerifyBody: "One-click checks that competitors don't offer: confirm Google sees your product schema and open your live page.",
+    deliveryVerifyBody: "Confirm Google sees your product schema and open your live page — included with PredictaCore.",
     deliveryRichResultsTest: "Google Rich Results Test",
     deliveryViewLivePage: "Your live product page",
     marketsChangedBanner:
@@ -372,8 +383,8 @@ const MESSAGES = {
     product: "Product",
     score: "Priority",
     targetScore: "Target",
-    loading: "Analyzing your store with AI…",
-    loadingHint: "This usually takes 10–20 seconds. Please wait before continuing.",
+    loadingInline: "…",
+    loadingHint: "This may take a moment. Please wait before continuing.",
     error: "Something went wrong",
     impactIntro:
       "AI search uses your product titles and descriptions when surfacing stores. Missing info makes you harder to find and recommend.",
@@ -484,14 +495,14 @@ const MESSAGES = {
       "Nothing to restore — no PredictaCore backup found for this store. If you used Restore before, apply backups were cleared. Use Restore all when a first-scan baseline exists.",
     baselineMissingTitle: "Original backup missing (legacy session)",
     baselineMissingBody:
-      "This store was optimized before we saved the immutable first-scan baseline. Restore all cannot return to the true pre-PredictaCore state. For your test store: create a fresh development store or use Undo all (pilot). New installs are protected automatically.",
+      "This store was optimized before we saved the immutable first-scan baseline. Restore all may not return to the exact pre-PredictaCore state. New installs are protected automatically.",
     restoreBaselineSuccess:
       "Restored {{products}} products and brand settings to the original first-scan baseline — as if PredictaCore had never run.",
     backupStatusTitle: "Backup status",
     backupStatusApply:
       "Apply backup: {{products}} products in {{batches}} batch(es){{schema}}. Restore all reverts to the immutable first-scan baseline.",
     backupStatusBaseline:
-      "Original baseline: {{products}} products locked on first scan (Railway). Restore all always returns to this — never deleted.",
+      "Original baseline: {{products}} products locked on first scan. Restore all returns to this snapshot.",
     backupStatusNone:
       "Original baseline will be saved on your first scan before any Apply. Required for safe Restore.",
     backupStatusSchema: " + brand identity",
@@ -500,9 +511,9 @@ const MESSAGES = {
     resetTestSuccessStripped:
       "Demo reset complete — cleared SEO on {{count}} priority products (no baseline existed). Reload step 1 to see gaps again.",
     resetTestNoSchema: "schema cleared",
-    resetTestTitle: "Undo all PredictaCore changes (pilot)",
+    resetTestTitle: "Reset store for testing",
     resetTestBody:
-      "Same as Restore everything, plus restores the first-scan baseline from Railway (or clears product SEO if no baseline). Resets Apply quota so you can run the full wizard again.",
+      "Developer only: same as Restore everything plus resets Apply quota so you can run the wizard again.",
     resetTestConfirm:
       "Undo all PredictaCore changes on this store? Products and brand identity will return to the pre-Apply backup.",
     resetTestSuccess:
@@ -689,11 +700,13 @@ const MESSAGES = {
       "Tu optimización inicial ya está aplicada. Las actualizaciones mensuales son automáticas — no necesitas hacer nada más.",
     step4RestoreToContinue:
       "Esta tienda ya tiene un Apply completado registrado. Usa Restaurar todo abajo para deshacer cambios y volver a correr el flujo completo.",
-    step4FlowTitle: "Aplicar en tu tienda",
+    step4FlowTitle: "Pagar y aplicar",
+    step2MarketsBeforePay:
+      "Confirma tus mercados objetivo en el paso 1 antes de pagar — Apply usa esas regiones para el SEO.",
     step4PaymentBodyFirst:
       "Paga $35 setup en Shopify (incluye mes 1). Luego aprueba $15/mes de mantenimiento — cobro desde el día 31. Apply se desbloquea al volver aquí.",
-    step4PaymentSuccess:
-      "Setup de $35 cobrado correctamente. Mantenimiento de $15/mes empieza el día 31 (mes 1 incluido en el setup). Apply abajo cuando quieras.",
+    step4PaymentSuccessWithMaintenance:
+      "Setup de $35 cobrado y mantenimiento de $15/mes aprobado. Cobro desde el día 31 (mes 1 incluido). Apply abajo cuando quieras.",
     step4FlowIntro: "Completa el pago en Shopify para desbloquear Apply.",
     expectationsPreviewTitle: "Qué esperar después de aplicar",
     expectationsPreviewMeans1:
@@ -820,7 +833,8 @@ const MESSAGES = {
       "Shopify no permite que las apps activen bloques del tema por ti (el comerciante debe aprobarlo en el editor). Estos pasos opcionales ayudan a que los crawlers de IA lean tu schema en la tienda en vivo.",
     deliveryWhyManualTheme:
       "Por qué no podemos hacerlo por ti: Shopify exige que el dueño de la tienda active los app embeds en Tienda online → Temas. PredictaCore ya guardó los datos — solo activas dos interruptores (unos 2 minutos).",
-    deliveryReady: "Entrega en vivo lista — configuración automática completa.",
+    deliveryReady: "Configuración automática completa — datos guardados en Shopify.",
+    deliveryReadyLive: "Entrega en vivo completa — los crawlers pueden leer tu schema en la tienda.",
     deliveryNotReady: "{{done}} pasos automáticos completos · {{pending}} recomendaciones opcionales abajo",
     deliveryScore: "{{pct}}% automatizado",
     deliveryThemeBrand: "Bloque PredictaCore Brand activo en el tema",

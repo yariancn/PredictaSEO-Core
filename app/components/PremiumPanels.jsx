@@ -185,13 +185,12 @@ export function ApplyImpactPanel({ copy, applyImpact }) {
       )}
       {applyImpact.deliveryTotal != null && (
         <p style={{ ...body, fontSize: "0.88rem", color: applyImpact.deliveryReady ? "#a3e635" : "#fbbf24" }}>
-          {applyImpact.deliveryReady
-            ? copyText(copy, "deliveryReady", "")
-                .replace("{{passed}}", String(applyImpact.deliveryPassed))
-                .replace("{{total}}", String(applyImpact.deliveryTotal))
-            : copyText(copy, "deliveryNotReady", "")
-                .replace("{{passed}}", String(applyImpact.deliveryPassed))
-                .replace("{{total}}", String(applyImpact.deliveryTotal))}
+          {(applyImpact.deliveryReady
+            ? copyText(copy, "deliveryImpactReady", "")
+            : copyText(copy, "deliveryImpactNotReady", "")
+          )
+            .replace("{{done}}", String(applyImpact.deliveryPassed ?? 0))
+            .replace("{{total}}", String(applyImpact.deliveryTotal))}
         </p>
       )}
     </div>
@@ -211,8 +210,9 @@ export function DeliveryChecklistPanel({ copy, deliveryStatus, shop, onRecheck, 
   const recPending = recommended.filter((c) => !c.ok).length;
   const autoPct = automatedDeliveryPct(deliveryStatus.checks);
   const allAutomatedDone = autoTotal > 0 && autoPassed === autoTotal;
-  const border = allAutomatedDone ? "rgba(163,230,53,0.45)" : "rgba(99,102,241,0.35)";
-  const bg = allAutomatedDone ? "rgba(163,230,53,0.08)" : "rgba(99,102,241,0.08)";
+  const crawlerReady = Boolean(deliveryStatus.crawlerReady);
+  const border = crawlerReady ? "rgba(163,230,53,0.45)" : allAutomatedDone ? "rgba(163,230,53,0.45)" : "rgba(99,102,241,0.35)";
+  const bg = crawlerReady ? "rgba(163,230,53,0.08)" : allAutomatedDone ? "rgba(163,230,53,0.08)" : "rgba(99,102,241,0.08)";
   const liveProductCheck = deliveryStatus.checks.find((c) => c.id === "live_product_jsonld");
   const liveProductUrl = liveProductCheck?.url ?? null;
   const richResultsUrl = liveProductUrl
@@ -222,18 +222,20 @@ export function DeliveryChecklistPanel({ copy, deliveryStatus, shop, onRecheck, 
 
   return (
     <div style={{ ...card, borderColor: border, background: bg }}>
-      <h2 style={{ ...h2, color: allAutomatedDone ? "#a3e635" : "#a5b4fc" }}>
+      <h2 style={{ ...h2, color: crawlerReady || allAutomatedDone ? "#a3e635" : "#a5b4fc" }}>
         {copyText(copy, "deliveryTitle", "What PredictaCore completed")}
       </h2>
       <p style={{ ...body, fontSize: "0.88rem", marginBottom: "12px" }}>
         {copyText(copy, "deliveryIntro", "")}
       </p>
-      <p style={{ ...body, fontWeight: 600, color: allAutomatedDone ? "#a3e635" : "#a5b4fc", marginBottom: "12px" }}>
-        {allAutomatedDone
-          ? copyText(copy, "deliveryReady", "")
-          : copyText(copy, "deliveryNotReady", "")
-              .replace("{{done}}", String(autoPassed))
-              .replace("{{pending}}", String(recPending))}
+      <p style={{ ...body, fontWeight: 600, color: crawlerReady || allAutomatedDone ? "#a3e635" : "#a5b4fc", marginBottom: "12px" }}>
+        {crawlerReady
+          ? copyText(copy, "deliveryReadyLive", "")
+          : allAutomatedDone
+            ? copyText(copy, "deliveryReady", "")
+            : copyText(copy, "deliveryNotReady", "")
+                .replace("{{done}}", String(autoPassed))
+                .replace("{{pending}}", String(recPending))}
         {autoTotal > 0 && (
           <>
             {" · "}
@@ -358,7 +360,7 @@ export function DeliveryChecklistPanel({ copy, deliveryStatus, shop, onRecheck, 
             cursor: rechecking ? "wait" : "pointer",
           }}
         >
-          {rechecking ? copyText(copy, "loading", "…") : copyText(copy, "deliveryRecheckNow", "Recheck now")}
+          {rechecking ? copyText(copy, "deliveryRechecking", "Rechecking…") : copyText(copy, "deliveryRecheckNow", "Recheck now")}
         </button>
       )}
       <p style={{ ...body, fontSize: "0.78rem", color: "#8b8b9a", marginTop: "10px", marginBottom: 0 }}>

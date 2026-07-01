@@ -882,12 +882,62 @@ function PaymentGateCard({ copy, confirmed, setConfirmed }) {
   );
 }
 
-function PaymentSuccessBanner({ copy }) {
+function PaymentSuccessBanner({ copy, maintenanceActive = false }) {
   return (
-    <div style={{ ...theme.card, borderColor: "rgba(163,230,53,0.35)", background: "rgba(163,230,53,0.08)" }}>
+    <div style={{ ...theme.card, borderColor: "rgba(163,230,53,0.35)", background: "rgba(163,230,53,0.08)", marginBottom: "14px" }}>
       <p style={{ ...theme.body, color: "#a3e635", margin: 0, fontWeight: 600, lineHeight: 1.55 }}>
-        {copyText(copy, "step4PaymentSuccess", "Payment successful — $35 setup complete.")}
+        {copyText(
+          copy,
+          maintenanceActive ? "step4PaymentSuccessWithMaintenance" : "step4PaymentSuccess",
+          "Payment successful — $35 setup complete.",
+        )}
       </p>
+    </div>
+  );
+}
+
+function AiSummaryOptionalPanel({
+  copy,
+  aiSummaryAvailable,
+  summary,
+  summaryError,
+  summaryLoading,
+  summaryTimedOut,
+  onGenerate,
+  onSkip,
+  onRetry,
+}) {
+  if (!aiSummaryAvailable || summary) return null;
+
+  return (
+    <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.35)", background: "rgba(99,102,241,0.06)", marginBottom: "14px" }}>
+      <h2 style={{ ...theme.h2, color: "#a5b4fc" }}>{copyText(copy, "step1AiTitle", copyText(copy, "step3AiTitle", "Optional AI summary"))}</h2>
+      <p style={{ ...theme.body, marginBottom: "14px", fontSize: "0.88rem", color: "#c8c8d0", lineHeight: 1.55 }}>
+        {copyText(copy, "step1AiIntro", copyText(copy, "step3AiIntro", ""))}
+      </p>
+      {summaryError && (
+        <p style={{ ...theme.body, color: "#f87171", marginBottom: "12px" }}>{summaryError}</p>
+      )}
+      {summaryTimedOut && !summaryError && (
+        <p style={{ ...theme.body, color: "#fbbf24", marginBottom: "12px" }}>{copyText(copy, "aiTimeout", "")}</p>
+      )}
+      {summaryLoading ? (
+        <p style={{ ...theme.body, color: "#a5b4fc", margin: 0 }}>{copyText(copy, "loadingAiSummary", "Generating summary…")}</p>
+      ) : (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
+          <button type="button" style={theme.btnPrimary} onClick={onGenerate}>
+            {copyText(copy, "generateAiPlan", "Generate AI summary")}
+          </button>
+          <button type="button" style={theme.btnGhost} onClick={onSkip}>
+            {copyText(copy, "skipAiPlan", "Skip and continue")}
+          </button>
+          {(summaryError || summaryTimedOut) && (
+            <button type="button" style={theme.btnGhost} onClick={onRetry}>
+              {copyText(copy, "retryAiPlan", "Try again")}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -1227,6 +1277,7 @@ export default function Index() {
   const [auditStarted, setAuditStarted] = useState(billingReturn.auditStarted);
   const [billingJustReturned, setBillingJustReturned] = useState(billingReturn.billingJustReturned);
   const [aiRequested, setAiRequested] = useState(false);
+  const [aiSummarySkipped, setAiSummarySkipped] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [summaryInvalidated, setSummaryInvalidated] = useState(false);
   const totalSteps = 3;
@@ -1282,12 +1333,6 @@ export default function Index() {
     ? aiFetcher.data.summaryError
     : null;
   const summaryLoading = aiFetcher.state !== "idle" && aiFetcher.formData?.get("intent") === "summary";
-  const awaitingSummary =
-    aiSummaryAvailable &&
-    !summaryInvalidated &&
-    !summary &&
-    !summaryError &&
-    !summaryTimedOut;
 
   const applyResult = applyFetcher.data?.intent === "apply" ? applyFetcher.data.applyResult : null;
   const applyError = applyFetcher.data?.intent === "apply" ? applyFetcher.data.applyError : null;
@@ -1387,20 +1432,22 @@ export default function Index() {
     if (resetTestResult) {
       setSummaryInvalidated(true);
       setConfirmed(false);
+      setAiSummarySkipped(false);
+      setAiRequested(false);
       setStep(1);
       auditFetcher.load(auditDataUrl());
     }
   }, [resetTestResult]);
 
   useEffect(() => {
-    if (auditPending || !aiSummaryAvailable || summaryInvalidated) return;
+    if (!aiRequested || !aiSummaryAvailable || summaryInvalidated) return;
     if (summary || summaryError) return;
     if (summarySubmitStarted.current) return;
     if (aiFetcher.state !== "idle") return;
     summarySubmitStarted.current = true;
     setSummaryTimedOut(false);
     aiFetcher.submit({ intent: "summary" }, { method: "post" });
-  }, [auditPending, aiSummaryAvailable, summaryInvalidated, summary, summaryError, aiFetcher.state]);
+  }, [aiRequested, aiSummaryAvailable, summaryInvalidated, summary, summaryError, aiFetcher.state]);
 
   useEffect(() => {
     if (!summaryLoading) return;
@@ -1420,6 +1467,12 @@ export default function Index() {
     setAiRequested(true);
   };
 
+  const skipAiSummary = () => {
+    setAiSummarySkipped(true);
+    setAiRequested(false);
+    summarySubmitStarted.current = false;
+  };
+
   if (!auditStarted) {
     return (
       <IntroScreen
@@ -1432,22 +1485,14 @@ export default function Index() {
     );
   }
 
-  if (auditPending || awaitingSummary) {
+  if (auditPending) {
     return (
       <LoadingShell
         title={introCopy?.title ?? "PredictaCore"}
         eyebrow={introCopy?.subtitle ?? "AI visibility audit"}
-        message={
-          auditPending
-            ? introCopy?.loading ?? "Analyzing your store…"
-            : copy?.loadingAiSummary ?? introCopy?.loadingAiSummary ?? "Writing your personalized AI summary…"
-        }
+        message={introCopy?.loading ?? "Analyzing your store…"}
         subtext={
-          auditPending
-            ? introCopy?.loadingAuditSubtext ?? "Read-only scan — nothing on your store is modified yet."
-            : copy?.loadingAiSummarySubtext ??
-              introCopy?.loadingAiSummarySubtext ??
-              "Usually 10–20 seconds. Your score and action plan appear when this finishes."
+          introCopy?.loadingAuditSubtext ?? "Read-only scan — nothing on your store is modified yet."
         }
         mode="audit"
       />
@@ -1534,6 +1579,8 @@ export default function Index() {
         applyFetcher={applyFetcher}
         aiRequested={aiRequested}
         aiSummaryAvailable={aiSummaryAvailable}
+        aiSummarySkipped={aiSummarySkipped}
+        onSkipAiSummary={skipAiSummary}
         onRequestAiSummary={requestAiSummary}
         summary={summary}
         summaryError={summaryError}
@@ -1613,7 +1660,7 @@ function OptimizedDashboardActions({
         >
           {restoreLoading
             ? copyText(copy, "resetTestLoading", "Resetting…")
-            : copyText(copy, "resetTestTitle", "Reset demo store")}
+            : copyText(copy, "resetTestTitle", "Reset store for testing")}
         </button>
       )}
       {restoreResult && (
@@ -1958,7 +2005,7 @@ function MarketsPanel({ copy, marketContext, applyFetcher }) {
           disabled={confirming || !marketContext?.configured || selected.length === 0}
           onClick={submitConfirm}
         >
-          {confirming ? copyText(copy, "loading", "…") : copyText(copy, "marketsConfirmButton", "Confirm")}
+          {confirming ? copyText(copy, "confirmingPayment", "…") : copyText(copy, "marketsConfirmButton", "Confirm")}
         </button>
       )}
     </div>
@@ -2021,8 +2068,10 @@ function IndexWizard({
   aiFetcher,
   applyFetcher,
   aiRequested,
+  aiSummarySkipped,
   aiSummaryAvailable,
   onRequestAiSummary,
+  onSkipAiSummary,
   summary,
   summaryError,
   summaryTimedOut,
@@ -2112,7 +2161,10 @@ function IndexWizard({
   const showStep1AlreadyDone = !applyResult && !hasPendingWork && (firstApplyDone || (backupAvailable && allComplete));
   const showOptimizedDashboardActions = step === 1 && !applyResult && (firstApplyDone || setupComplete);
   const canRestoreNow = firstApplyDone || setupComplete || restoreAvailable;
-  const showPaymentGate = step === 2 && hasPendingWork && !applyResult && !setupPaid && !pilotMode;
+  const showPaymentGate =
+    step === 2 && hasPendingWork && !applyResult && !setupPaid && !pilotMode && marketsReady;
+  const showMarketsRequiredBeforePay =
+    step === 2 && hasPendingWork && !applyResult && !setupPaid && !pilotMode && !marketsReady;
   const showApplyGate =
     (step === 2 || step === 3) &&
     hasPendingWork &&
@@ -2217,7 +2269,7 @@ function IndexWizard({
 
           {(summary || displaySummaryError) && (
             <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.45)", background: "rgba(99,102,241,0.1)" }}>
-              <h2 style={{ ...theme.h2, color: "#a5b4fc" }}>{copyText(copy, "step3AiTitle", "AI summary")}</h2>
+              <h2 style={{ ...theme.h2, color: "#a5b4fc" }}>{copyText(copy, "step1AiTitle", copyText(copy, "step3AiTitle", "Optional AI summary"))}</h2>
               {summary && (
                 <p style={{ ...theme.body, whiteSpace: "pre-wrap", color: "#e8e8ef", margin: 0 }}>{summary}</p>
               )}
@@ -2226,6 +2278,18 @@ function IndexWizard({
               )}
             </div>
           )}
+
+          <AiSummaryOptionalPanel
+            copy={copy}
+            aiSummaryAvailable={aiSummaryAvailable && !aiSummarySkipped}
+            summary={summary}
+            summaryError={displaySummaryError}
+            summaryLoading={summaryLoading}
+            summaryTimedOut={summaryTimedOut}
+            onGenerate={onRequestAiSummary}
+            onSkip={onSkipAiSummary}
+            onRetry={onRetryAiSummary}
+          />
 
           <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.45)", background: "rgba(99,102,241,0.1)" }}>
             <h2 style={{ ...theme.h2, color: "#a5b4fc", marginBottom: "14px" }}>
@@ -2339,7 +2403,11 @@ function IndexWizard({
             </>
           )}
 
-          {(pilotMode || backupSummary?.baselineMissing) && (
+          {backupSummary?.baselineMissing && !canPilotReset && (
+            <BackupStatusPanel copy={copy} backupSummary={backupSummary} />
+          )}
+
+          {canPilotReset && (pilotMode || backupSummary?.baselineMissing) && (
             <>
               <BackupStatusPanel copy={copy} backupSummary={backupSummary} />
             <div style={{ ...theme.card, borderColor: "rgba(251,191,36,0.45)", background: "rgba(251,191,36,0.08)" }}>
@@ -2431,7 +2499,7 @@ function IndexWizard({
               applyFetcher={applyFetcher}
               restoreLoading={restoreLoading}
               backupBatchCount={backupBatchCount}
-              canPilotReset={canPilotReset || pilotMode}
+              canPilotReset={canPilotReset}
               restoreResult={restoreResult}
               restoreError={restoreError}
               applyFetcherIntent={applyFetcher.data?.intent}
@@ -2481,7 +2549,23 @@ function IndexWizard({
             />
           )}
 
-          {showPaymentSuccess && <PaymentSuccessBanner copy={copy} />}
+          {showPaymentSuccess && (
+            <PaymentSuccessBanner
+              copy={copy}
+              maintenanceActive={Boolean(billing?.subscriptionActive)}
+            />
+          )}
+
+          {showMarketsRequiredBeforePay && (
+            <div style={{ ...theme.card, borderColor: "rgba(251,191,36,0.4)", background: "rgba(251,191,36,0.08)", marginBottom: "14px" }}>
+              <p style={{ ...theme.body, color: "#fbbf24", margin: "0 0 10px 0", lineHeight: 1.55 }}>
+                {copyText(copy, "step2MarketsBeforePay", "")}
+              </p>
+              <button type="button" style={theme.btnGhost} onClick={() => setStep(1)}>
+                {copyText(copy, "marketsPanelTitle", "Confirm markets")}
+              </button>
+            </div>
+          )}
 
           {showBillingAlreadyApproved && (
             <div style={{ ...theme.card, borderColor: "rgba(163,230,53,0.35)", background: "rgba(163,230,53,0.06)", marginBottom: "14px" }}>
@@ -2672,7 +2756,7 @@ function IndexWizard({
             </>
           )}
 
-          {(pilotMode || backupSummary?.baselineMissing) && (
+          {canPilotReset && (pilotMode || backupSummary?.baselineMissing) && (
             <button
               type="button"
               style={{ ...theme.btnGhost, width: "100%", marginTop: "10px", borderColor: "rgba(251,191,36,0.5)", color: "#fbbf24" }}
