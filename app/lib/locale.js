@@ -705,6 +705,8 @@ const MESSAGES = {
       "Confirma tus mercados objetivo en el paso 1 antes de pagar — Apply usa esas regiones para el SEO.",
     step4PaymentBodyFirst:
       "Paga $35 setup en Shopify (incluye mes 1). Luego aprueba $15/mes de mantenimiento — cobro desde el día 31. Apply se desbloquea al volver aquí.",
+    step4PaymentSuccess:
+      "Setup de $35 cobrado correctamente. Mantenimiento de $15/mes empieza el día 31 (mes 1 incluido en el setup). Apply abajo cuando quieras.",
     step4PaymentSuccessWithMaintenance:
       "Setup de $35 cobrado y mantenimiento de $15/mes aprobado. Cobro desde el día 31 (mes 1 incluido). Apply abajo cuando quieras.",
     step4FlowIntro: "Completa el pago en Shopify para desbloquear Apply.",
