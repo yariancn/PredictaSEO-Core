@@ -1,4 +1,5 @@
 import { copyText } from "../lib/preview.js";
+import { automatedDeliveryPct, splitDeliveryChecks } from "../lib/delivery-checks.js";
 
 const card = {
   background: "rgba(255,255,255,0.04)",
@@ -204,45 +205,98 @@ export function DeliveryChecklistPanel({ copy, deliveryStatus, shop, onRecheck, 
   const themeUrl =
     deliveryStatus.themeEditorUrl ??
     `https://admin.shopify.com/store/${storeHandle}/themes/current/editor?context=apps`;
-  const ready = deliveryStatus.crawlerReady;
-  const border = ready ? "rgba(163,230,53,0.45)" : "rgba(251,191,36,0.5)";
-  const bg = ready ? "rgba(163,230,53,0.08)" : "rgba(251,191,36,0.08)";
+  const { automated, recommended } = splitDeliveryChecks(deliveryStatus.checks);
+  const autoPassed = automated.filter((c) => c.ok).length;
+  const autoTotal = automated.length;
+  const recPending = recommended.filter((c) => !c.ok).length;
+  const autoPct = automatedDeliveryPct(deliveryStatus.checks);
+  const allAutomatedDone = autoTotal > 0 && autoPassed === autoTotal;
+  const border = allAutomatedDone ? "rgba(163,230,53,0.45)" : "rgba(99,102,241,0.35)";
+  const bg = allAutomatedDone ? "rgba(163,230,53,0.08)" : "rgba(99,102,241,0.08)";
   const liveProductCheck = deliveryStatus.checks.find((c) => c.id === "live_product_jsonld");
   const liveProductUrl = liveProductCheck?.url ?? null;
   const richResultsUrl = liveProductUrl
     ? `https://search.google.com/test/rich-results?url=${encodeURIComponent(liveProductUrl)}`
     : null;
+  const showVerify = allAutomatedDone && (richResultsUrl || liveProductUrl);
 
   return (
     <div style={{ ...card, borderColor: border, background: bg }}>
-      <h2 style={{ ...h2, color: ready ? "#a3e635" : "#fbbf24" }}>
-        {copyText(copy, "deliveryTitle", "Crawler delivery checklist")}
+      <h2 style={{ ...h2, color: allAutomatedDone ? "#a3e635" : "#a5b4fc" }}>
+        {copyText(copy, "deliveryTitle", "What PredictaCore completed")}
       </h2>
       <p style={{ ...body, fontSize: "0.88rem", marginBottom: "12px" }}>
         {copyText(copy, "deliveryIntro", "")}
       </p>
-      <p style={{ ...body, fontWeight: 600, color: ready ? "#a3e635" : "#fbbf24", marginBottom: "12px" }}>
-        {ready
+      <p style={{ ...body, fontWeight: 600, color: allAutomatedDone ? "#a3e635" : "#a5b4fc", marginBottom: "12px" }}>
+        {allAutomatedDone
           ? copyText(copy, "deliveryReady", "")
-              .replace("{{passed}}", String(deliveryStatus.passed))
-              .replace("{{total}}", String(deliveryStatus.total))
           : copyText(copy, "deliveryNotReady", "")
-              .replace("{{passed}}", String(deliveryStatus.passed))
-              .replace("{{total}}", String(deliveryStatus.total))}
-        {" · "}
-        {copyText(copy, "deliveryScore", "").replace("{{pct}}", String(deliveryStatus.readyPct ?? 0))}
+              .replace("{{done}}", String(autoPassed))
+              .replace("{{pending}}", String(recPending))}
+        {autoTotal > 0 && (
+          <>
+            {" · "}
+            {copyText(copy, "deliveryScore", "").replace("{{pct}}", String(autoPct))}
+          </>
+        )}
       </p>
-      <ul style={{ ...body, fontSize: "0.85rem", paddingLeft: "1.2rem", marginBottom: "12px" }}>
-        {deliveryStatus.checks.map((check) => (
-          <li key={check.id} style={{ color: check.ok ? "#a3e635" : "#fbbf24", marginBottom: "6px" }}>
-            {check.ok ? "✓" : "○"} {copyText(copy, check.labelKey, check.id)}
-          </li>
-        ))}
-      </ul>
-      {(richResultsUrl || liveProductUrl) && (
-        <div style={{ marginBottom: "12px" }}>
-          <p style={{ ...body, fontSize: "0.82rem", fontWeight: 600, color: "#a5b4fc", marginBottom: "8px" }}>
-            {copyText(copy, "deliveryVerifySection", "Instant verification")}
+      {automated.length > 0 && (
+        <ul style={{ ...body, fontSize: "0.85rem", paddingLeft: "1.2rem", marginBottom: "14px" }}>
+          {automated.map((check) => (
+            <li key={check.id} style={{ color: check.ok ? "#a3e635" : "#fbbf24", marginBottom: "6px" }}>
+              {check.ok ? "✓" : "○"} {copyText(copy, check.labelKey, check.id)}
+            </li>
+          ))}
+        </ul>
+      )}
+      {recommended.length > 0 && (
+        <>
+          <h3 style={{ ...h2, color: "#fbbf24", marginTop: "4px" }}>
+            {copyText(copy, "deliveryRecommendTitle", "Recommended — further improve AI visibility")}
+          </h3>
+          <p style={{ ...body, fontSize: "0.85rem", marginBottom: "8px", lineHeight: 1.55 }}>
+            {copyText(copy, "deliveryRecommendIntro", "")}
+          </p>
+          <p style={{ ...body, fontSize: "0.82rem", color: "#8b8b9a", marginBottom: "10px", lineHeight: 1.55 }}>
+            {copyText(copy, "deliveryWhyManualTheme", "")}
+          </p>
+          <ul style={{ ...body, fontSize: "0.85rem", paddingLeft: "1.2rem", marginBottom: "12px" }}>
+            {recommended.map((check) => (
+              <li key={check.id} style={{ color: check.ok ? "#a3e635" : "#c8c8d0", marginBottom: "6px" }}>
+                {check.ok ? "✓" : "→"} {copyText(copy, check.labelKey, check.id)}
+              </li>
+            ))}
+          </ul>
+          {recPending > 0 && (
+            <a
+              href={themeUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: "inline-block",
+                padding: "10px 14px",
+                border: "1px solid rgba(251,191,36,0.5)",
+                color: "#fbbf24",
+                borderRadius: "10px",
+                textDecoration: "none",
+                fontWeight: 600,
+                fontSize: "0.88rem",
+                marginRight: "8px",
+              }}
+            >
+              {copyText(copy, "deliveryOpenTheme", "Open theme editor")}
+            </a>
+          )}
+        </>
+      )}
+      {showVerify && (
+        <div style={{ marginBottom: "12px", marginTop: "8px" }}>
+          <p style={{ ...body, fontSize: "0.82rem", fontWeight: 600, color: "#a5b4fc", marginBottom: "4px" }}>
+            {copyText(copy, "deliveryVerifySection", "")}
+          </p>
+          <p style={{ ...body, fontSize: "0.78rem", color: "#8b8b9a", marginBottom: "8px" }}>
+            {copyText(copy, "deliveryVerifyBody", "")}
           </p>
           {richResultsUrl && (
             <a
@@ -262,7 +316,7 @@ export function DeliveryChecklistPanel({ copy, deliveryStatus, shop, onRecheck, 
                 fontSize: "0.82rem",
               }}
             >
-              {copyText(copy, "deliveryRichResultsTest", "Rich Results Test")}
+              {copyText(copy, "deliveryRichResultsTest", "Google Rich Results Test")}
             </a>
           )}
           {liveProductUrl && (
@@ -282,30 +336,10 @@ export function DeliveryChecklistPanel({ copy, deliveryStatus, shop, onRecheck, 
                 fontSize: "0.82rem",
               }}
             >
-              {copyText(copy, "deliveryViewLivePage", "Live product page")}
+              {copyText(copy, "deliveryViewLivePage", "Your live product page")}
             </a>
           )}
         </div>
-      )}
-      {!ready && (
-        <a
-          href={themeUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            display: "inline-block",
-            padding: "10px 14px",
-            border: "1px solid rgba(251,191,36,0.5)",
-            color: "#fbbf24",
-            borderRadius: "10px",
-            textDecoration: "none",
-            fontWeight: 600,
-            fontSize: "0.88rem",
-            marginRight: "8px",
-          }}
-        >
-          {copyText(copy, "deliveryOpenTheme", "Fix in theme editor")}
-        </a>
       )}
       {onRecheck && (
         <button
@@ -324,7 +358,7 @@ export function DeliveryChecklistPanel({ copy, deliveryStatus, shop, onRecheck, 
             cursor: rechecking ? "wait" : "pointer",
           }}
         >
-          {rechecking ? copyText(copy, "loading", "…") : copyText(copy, "deliveryRecheckNow", "Recheck delivery now")}
+          {rechecking ? copyText(copy, "loading", "…") : copyText(copy, "deliveryRecheckNow", "Recheck now")}
         </button>
       )}
       <p style={{ ...body, fontSize: "0.78rem", color: "#8b8b9a", marginTop: "10px", marginBottom: 0 }}>

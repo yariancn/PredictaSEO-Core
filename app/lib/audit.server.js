@@ -60,7 +60,7 @@ async function loadAuditDataInner(request) {
   const prisma = (await import("../db.server.js")).default;
 
   const COPY_KEYS = [
-    "title", "subtitle", "heroTitle", "heroBody", "introTitle", "introBody", "introBullet1", "introBullet2", "introBullet3",
+    "title", "subtitle", "heroTitle", "heroBody", "introTitle", "introBenefitTitle", "introBenefitLead", "introBody", "introBullet1", "introBullet2", "introBullet3",
     "introNoChanges", "startAuditButton", "monthlyBeforePayTitle", "monthlyBeforePayBody",
     "pricingScope", "pricingExtra", "loadingAuditSubtext", "loadingAiSummary", "loadingAiSummarySubtext",
     "optimizingStore", "optimizingStoreSubtext",
@@ -78,7 +78,7 @@ async function loadAuditDataInner(request) {
     "pricingTitle", "pricingFree", "pricingSetup", "pricingMaintenance", "billingFootnote", "pricingMaintenanceIncluded",
     "billingPaymentDisclosureTitle", "billingPaymentStep1", "billingPaymentStep2", "billingShopifyEmailNote",
     "billingMaintenanceApproveTitle", "billingMaintenanceApproveBody", "subscribeMaintenance", "billingMaintenanceApproved",
-    "step4FlowTitle", "step4FlowIntro", "step2PayIntro", "step2NoPendingWork", "step2ConfirmIntro", "billingAlreadyApproved", "step4PaymentBodyFirst", "step4PaymentSuccess", "step4PaidIntro", "step4RestoreToContinue", "applyAlreadyDone", "unlockApply", "alreadyOptimizedTitle", "alreadyOptimizedBody",
+    "step4FlowTitle", "step4FlowIntro", "step2PayIntro", "step2NoPendingWork", "step2ConfirmIntro", "step2ConfirmBeforePay", "billingAlreadyApproved", "step4PaymentBodyFirst", "step4PaymentSuccess", "step4PaidIntro", "step4RestoreToContinue", "applyAlreadyDone", "unlockApply", "alreadyOptimizedTitle", "alreadyOptimizedBody",
     "refreshingStore", "confirmingPayment",
     "unlockApply", "subscribeMaintenance", "billingRequired", "restoreWarning", "restoreLastConfirm", "restoreLastHint",
     "products", "markets", "continue", "back",
@@ -132,10 +132,11 @@ async function loadAuditDataInner(request) {
     "gscTitle", "gscWhyShopify", "gscWhyGoogle", "gscNotConfigured", "gscConnectHint", "gscSkipOk", "gscConnect", "gscConnected", "gscSummary",
     "gscBeforeAfterTitle", "gscBaseline", "gscLatest", "gscDeltaImpressions", "gscDeltaClicks", "gscAwaitingBaseline",
     "deliveryTitle", "deliveryIntro", "deliveryReady", "deliveryNotReady", "deliveryScore",
+    "deliveryRecommendTitle", "deliveryRecommendIntro", "deliveryWhyManualTheme",
     "deliveryThemeBrand", "deliveryThemeProduct", "deliveryShopSchema", "deliveryProductSchema",
     "deliveryLlmsLive", "deliveryLiveProductLd", "deliveryLiveOrgLd", "deliveryLlmsMetafield",
     "deliveryOpenTheme", "deliveryRecheck", "deliveryRecheckNow",
-    "deliveryVerifySection", "deliveryRichResultsTest", "deliveryViewLivePage",
+    "deliveryVerifySection", "deliveryVerifyBody", "deliveryRichResultsTest", "deliveryViewLivePage",
     "scoreIsPreparationNote", "catalogLargeNote",
     "postApplyAlmostTitle", "postApplyThemeRequired", "postApplyManualTitle", "postApplyManualBody", "deliveryOptionalNote",
     "step1ScoreHeadline", "step1WhyBrief", "step1TimelineBrief", "step1PlanIncludes", "step1AfterApplyNote",

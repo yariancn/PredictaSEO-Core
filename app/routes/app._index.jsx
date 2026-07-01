@@ -35,7 +35,8 @@ export async function loader({ request }) {
     packPrice: EXTRA_PRODUCT_PACK_PRICE,
   };
   const introKeys = [
-    "title", "subtitle", "introTitle", "introBody", "introBullet1", "introBullet2", "introBullet3",
+    "title", "subtitle", "introTitle", "introBenefitTitle", "introBenefitLead", "introBody",
+    "introBullet1", "introBullet2", "introBullet3",
     "introNoChanges", "pricingTitle", "pricingFree", "pricingSetup", "pricingScope", "pricingExtra", "pricingRecurringNote",
     "startAuditButton", "loading", "loadingAuditSubtext", "loadingAiSummary", "loadingAiSummarySubtext",
     "auditLoadTimeout", "auditLoadTimeoutHint",
@@ -841,15 +842,24 @@ function BillingDisclosureCard({ copy }) {
   );
 }
 
-function PaymentGateCard({ copy }) {
+function PaymentGateCard({ copy, confirmed, setConfirmed }) {
   return (
     <>
       <BillingDisclosureCard copy={copy} />
       <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.35)" }}>
       <h2 style={theme.h2}>{copy.step4FlowTitle}</h2>
-      <p style={{ ...theme.body, marginBottom: "16px", color: "#e8e8ef", lineHeight: 1.55 }}>
-        {copyText(copy, "step4PaymentBodyFirst", copy.step4FlowIntro)}
+      <p style={{ ...theme.body, marginBottom: "14px", color: "#e8e8ef", lineHeight: 1.55 }}>
+        {copyText(copy, "step2ConfirmBeforePay", copy.step4PaymentBodyFirst)}
       </p>
+      <label style={{ display: "flex", gap: "10px", alignItems: "flex-start", marginBottom: "14px", cursor: "pointer" }}>
+        <input
+          type="checkbox"
+          checked={confirmed}
+          onChange={(e) => setConfirmed(e.target.checked)}
+          style={{ marginTop: "4px" }}
+        />
+        <span style={{ ...theme.body, fontSize: "0.82rem", color: "#8b8b9a" }}>{copy.confirmLabel}</span>
+      </label>
       <Form
         method="post"
         style={{ margin: 0 }}
@@ -858,7 +868,7 @@ function PaymentGateCard({ copy }) {
         }}
       >
         <input type="hidden" name="intent" value="billing-setup" />
-        <button type="submit" style={{ ...theme.btnPrimary, width: "100%" }}>
+        <button type="submit" style={{ ...(confirmed ? theme.btnPrimary : theme.btnDisabled), width: "100%" }} disabled={!confirmed}>
           {copyText(copy, "unlockApply", copy.continue)}
         </button>
       </Form>
@@ -885,8 +895,6 @@ function Step4Actions({
   showPaymentGate,
   showApplyGate,
   showApplyBlocked,
-  showContinueToApply = false,
-  onContinueToApply,
   confirmed,
   setConfirmed,
   applyLoading,
@@ -894,57 +902,19 @@ function Step4Actions({
   restoreLoading,
 }) {
   if (showPaymentGate) {
-    return <PaymentGateCard copy={copy} />;
-  }
-
-  if (showContinueToApply && onContinueToApply) {
-    return (
-      <div style={{ ...theme.card, borderColor: "rgba(163,230,53,0.35)", background: "rgba(163,230,53,0.06)" }}>
-        <p style={{ ...theme.body, marginBottom: "14px", color: "#a3e635", fontWeight: 600, lineHeight: 1.55 }}>
-          {copyText(copy, "step2ConfirmIntro", copy.step4PaidIntro)}
-        </p>
-        <label style={{ display: "flex", gap: "10px", alignItems: "flex-start", marginBottom: "14px", cursor: "pointer" }}>
-          <input
-            type="checkbox"
-            checked={confirmed}
-            onChange={(e) => setConfirmed(e.target.checked)}
-            style={{ marginTop: "4px" }}
-          />
-          <span style={{ ...theme.body, fontSize: "0.82rem", color: "#8b8b9a" }}>{copy.confirmLabel}</span>
-        </label>
-        <button
-          type="button"
-          style={confirmed ? theme.btnPrimary : theme.btnDisabled}
-          disabled={!confirmed}
-          onClick={onContinueToApply}
-        >
-          {copy.continue}
-        </button>
-      </div>
-    );
+    return <PaymentGateCard copy={copy} confirmed={confirmed} setConfirmed={setConfirmed} />;
   }
 
   if (showApplyGate) {
     return (
       <div style={{ ...theme.card, borderColor: "rgba(163,230,53,0.35)", background: "rgba(163,230,53,0.06)" }}>
-        <p style={{ ...theme.body, marginBottom: "14px", color: "#a3e635", fontWeight: 600 }}>
-          {copy.step4PaidIntro}
+        <p style={{ ...theme.body, marginBottom: "14px", color: "#a3e635", fontWeight: 600, lineHeight: 1.55 }}>
+          {copyText(copy, "step4PaidIntro", copy.previewAwaitApply)}
         </p>
-        {!confirmed && (
-          <label style={{ display: "flex", gap: "10px", alignItems: "flex-start", marginBottom: "12px", cursor: "pointer" }}>
-            <input
-              type="checkbox"
-              checked={confirmed}
-              onChange={(e) => setConfirmed(e.target.checked)}
-              style={{ marginTop: "4px" }}
-            />
-            <span style={{ ...theme.body, fontSize: "0.82rem", color: "#8b8b9a" }}>{copy.confirmLabel}</span>
-          </label>
-        )}
         <button
           type="button"
-          style={confirmed && !applyLoading ? theme.btnPrimary : theme.btnDisabled}
-          disabled={!confirmed || applyLoading}
+          style={{ ...(applyLoading ? theme.btnDisabled : theme.btnPrimary), width: "100%" }}
+          disabled={applyLoading}
           onClick={() => applyFetcher.submit({ intent: "apply", confirmed: "1" }, { method: "post" })}
         >
           {applyLoading ? copy.applying : copy.apply}
@@ -1023,8 +993,7 @@ function PostApplyMerchantPanel({
         </p>
         <button
           type="button"
-          style={ready ? { ...theme.btnPrimary, width: "100%", marginBottom: "10px" } : { ...theme.btnDisabled, width: "100%", marginBottom: "10px" }}
-          disabled={!ready}
+          style={{ ...theme.btnPrimary, width: "100%", marginBottom: "10px" }}
           onClick={onViewDashboard}
         >
           {copyText(copy, "viewDashboard", copy.viewScoreDashboard)}
@@ -1112,7 +1081,13 @@ function IntroScreen({ copy, shopName, onStart, showGrowthHub, locale }) {
 
       <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.35)", background: "rgba(99,102,241,0.08)" }}>
         <h2 style={{ ...theme.h2, color: "#a5b4fc" }}>{copy.introTitle}</h2>
-        <p style={{ ...theme.body, marginBottom: "14px", color: "#e8e8ef", lineHeight: 1.6 }}>{copy.introBody}</p>
+        <p style={{ ...theme.body, marginBottom: "10px", color: "#a3e635", fontWeight: 600, lineHeight: 1.55 }}>
+          {copyText(copy, "introBenefitTitle", "What you gain")}
+        </p>
+        <p style={{ ...theme.body, marginBottom: "14px", color: "#e8e8ef", lineHeight: 1.6 }}>
+          {copyText(copy, "introBenefitLead", "")}
+        </p>
+        <p style={{ ...theme.body, marginBottom: "14px", color: "#c8c8d0", lineHeight: 1.6 }}>{copy.introBody}</p>
         <p style={theme.bullet("#a5b4fc")}>{copy.introBullet1}</p>
         <p style={theme.bullet("#a5b4fc")}>{copy.introBullet2}</p>
         <p style={theme.bullet("#a5b4fc")}>{copy.introBullet3}</p>
@@ -1364,7 +1339,7 @@ export default function Index() {
     if (billingParam === "ready") {
       setAuditStarted(true);
       setBillingJustReturned(true);
-      setStep(3);
+      setStep(2);
       auditFetcher.load(auditDataUrl());
       params.delete("billing");
       params.delete("charge_id");
@@ -2144,7 +2119,12 @@ function IndexWizard({
   const canRestoreNow = firstApplyDone || setupComplete || restoreAvailable;
   const showPaymentGate = step === 2 && hasPendingWork && !applyResult && !setupPaid && !pilotMode;
   const showApplyGate =
-    step === 3 && hasPendingWork && !applyResult && !firstApplyDone && (pilotMode || setupPaid) && marketsReady;
+    (step === 2 || step === 3) &&
+    hasPendingWork &&
+    !applyResult &&
+    !firstApplyDone &&
+    (pilotMode || setupPaid) &&
+    marketsReady;
   const showApplyBlocked =
     (step === 2 || step === 3) &&
     hasPendingWork &&
@@ -2153,14 +2133,12 @@ function IndexWizard({
     setupPaid &&
     firstApplyDone;
   const showPaymentSuccess =
-    billingJustReturned && step === 3 && hasPendingWork && !applyResult && setupPaid && !pilotMode;
+    billingJustReturned && step === 2 && hasPendingWork && !applyResult && setupPaid && !pilotMode;
   const showExpectationsPreview = step === 2 && !applyResult && hasPendingWork;
   const showPayStepActions =
     step === 2 &&
-    (showPaymentGate ||
-      showApplyBlocked ||
-      (setupPaid && !firstApplyDone && !showApplyBlocked && hasPendingWork));
-  const showApplyStepActions = step === 3 && (showApplyGate || showApplyBlocked || showPaymentGate);
+    (showPaymentGate || showApplyBlocked || showApplyGate);
+  const showApplyStepActions = step === 3 && showApplyBlocked;
   const showBillingAlreadyApproved =
     step === 2 && setupPaid && !pilotMode && hasPendingWork && !firstApplyDone && !showPaymentGate;
   const activeDeliveryStatus = applyResult?.deliveryStatus ?? deliveryStatus;
@@ -2509,14 +2487,30 @@ function IndexWizard({
             />
           )}
 
+          {showPaymentSuccess && <PaymentSuccessBanner copy={copy} />}
+
+          {showBillingAlreadyApproved && (
+            <div style={{ ...theme.card, borderColor: "rgba(163,230,53,0.35)", background: "rgba(163,230,53,0.06)", marginBottom: "14px" }}>
+              <p style={{ ...theme.body, color: "#a3e635", margin: 0, lineHeight: 1.55 }}>
+                {copyText(copy, "billingAlreadyApproved", "")}
+              </p>
+            </div>
+          )}
+
+          {!marketsReady && hasPendingWork && (
+            <div style={{ ...theme.card, borderColor: "rgba(251,191,36,0.4)", background: "rgba(251,191,36,0.08)", marginBottom: "14px" }}>
+              <p style={{ ...theme.body, color: "#fbbf24", margin: 0 }}>
+                {copyText(copy, "marketsConfirmRequired", "")}
+              </p>
+            </div>
+          )}
+
           {showPayStepActions && (
             <Step4Actions
               copy={copy}
               showPaymentGate={showPaymentGate}
-              showApplyGate={false}
+              showApplyGate={showApplyGate}
               showApplyBlocked={showApplyBlocked}
-              showContinueToApply={setupPaid && !firstApplyDone && !showApplyBlocked}
-              onContinueToApply={() => setStep(3)}
               confirmed={confirmed}
               setConfirmed={setConfirmed}
               applyLoading={applyLoading}
@@ -2555,34 +2549,11 @@ function IndexWizard({
             </div>
           )}
 
-          {showPaymentSuccess && <PaymentSuccessBanner copy={copy} />}
-
-          {!applyResult && hasPendingWork && (
-            <PreviewChangesPanel
-              copy={copy}
-              preview={preview}
-              previewStats={previewStats}
-              schemaOnlyPreview={schemaOnlyPreview}
-              shopName={shopName}
-              shop={shop}
-              region={marketContext?.regionLabel}
-              setupPaid={setupPaid || pilotMode}
-            />
-          )}
-
-          {!marketsReady && hasPendingWork && step >= 2 && (
-            <div style={{ ...theme.card, borderColor: "rgba(251,191,36,0.4)", background: "rgba(251,191,36,0.08)" }}>
-              <p style={{ ...theme.body, color: "#fbbf24", margin: 0 }}>
-                {copyText(copy, "marketsConfirmRequired", "")}
-              </p>
-            </div>
-          )}
-
           {showApplyStepActions && (
             <Step4Actions
               copy={copy}
               showPaymentGate={false}
-              showApplyGate={showApplyGate}
+              showApplyGate={false}
               showApplyBlocked={showApplyBlocked}
               confirmed={confirmed}
               setConfirmed={setConfirmed}
