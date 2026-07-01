@@ -183,10 +183,10 @@ const MESSAGES = {
       "Included: $15/month updates start automatically after your first month. Cancel anytime in Shopify Admin — takes effect next billing period.",
     unlockApply: "Pay $35 — unlock Apply",
     step2PayIntro:
-      "Review the preview below, check the box to confirm backup/restore, then pay in Shopify. Apply unlocks on this same screen — no duplicate preview.",
+      "Review the preview below, check the box, then pay in Shopify: $35 setup today (includes month 1) and $15/month maintenance from day 31. Apply unlocks on this screen.",
     step2ConfirmBeforePay: "Check this box before paying — backup is saved and you can restore before uninstalling",
     billingAlreadyApproved:
-      "This store already approved the $35 charge in Shopify — you will not see the payment screen again. Use Restore all below to undo changes and run Apply again.",
+      "$35 setup is active on this store. $15/month maintenance starts on day 31 (month 1 included in setup). Apply below.",
     step2NoPendingWork:
       "No pending product changes detected. If you already applied optimizations, use Restore all to test the full flow again.",
     billingBundleContinue: "Continue — approve $15/month plan (required)",
@@ -196,9 +196,10 @@ const MESSAGES = {
     step4RestoreToContinue:
       "This store already has a completed Apply on record. Use Restore all below to undo changes and run the full flow again (including payment if needed).",
     step4FlowTitle: "Apply to your store",
-    step4PaymentBodyFirst: "Continue to complete payment in Shopify and unlock Apply.",
+    step4PaymentBodyFirst:
+      "Pay $35 setup in Shopify (includes month 1). Then approve $15/month maintenance — billing starts day 31. Apply unlocks when you return here.",
     step4PaymentSuccess:
-      "Payment successful — $35 setup complete. Redirecting to approve $15/mo maintenance (billing starts day 31).",
+      "$35 setup charged successfully. $15/month maintenance begins on day 31 (month 1 included in your setup). Apply below when ready.",
     step4FlowIntro: "Complete payment in Shopify to unlock Apply on your store.",
     expectationsPreviewTitle: "What to expect after you apply",
     expectationsPreviewMeans1:
@@ -331,7 +332,7 @@ const MESSAGES = {
     postApplyManualTitle: "Recommended — improve live crawler visibility",
     postApplyManualBody:
       "PredictaCore already saved SEO and schema in Shopify. These manual steps help AI crawlers read them on your live storefront (separate from your score above).",
-    deliveryOptionalNote: "Optional merchant setup — not part of the paid Apply.",
+    deliveryOptionalNote: "Recommended — optional merchant setup (not part of the paid Apply).",
     postApplyAlmostTitle: "Optional — finish live delivery (2 min)",
     postApplyBody: "Your store is updated. View your score anytime by reopening PredictaCore.",
     postApplyThemeRequired:
@@ -676,10 +677,10 @@ const MESSAGES = {
       "Incluido: actualizaciones de $15/mes empiezan automáticamente después del primer mes. Cancela en Shopify Admin cuando quieras.",
     unlockApply: "Pagar $35 — desbloquear Apply",
     step2PayIntro:
-      "Revisa la vista previa abajo, marca la casilla para confirmar backup/restore y paga en Shopify. Apply se desbloquea en esta misma pantalla — sin vista previa duplicada.",
+      "Revisa la vista previa abajo, marca la casilla y paga en Shopify: $35 setup hoy (incluye mes 1) y $15/mes de mantenimiento desde el día 31. Apply se desbloquea en esta pantalla.",
     step2ConfirmBeforePay: "Marca esta casilla antes de pagar — guardamos backup y puedes restaurar antes de desinstalar",
     billingAlreadyApproved:
-      "Esta tienda ya aprobó el cargo de $35 en Shopify — no verás la pantalla de pago otra vez. Usa Restaurar todo abajo para deshacer cambios y volver a probar el flujo.",
+      "Setup de $35 activo en esta tienda. Mantenimiento de $15/mes empieza el día 31 (mes 1 incluido en el setup). Apply abajo.",
     step2NoPendingWork:
       "No hay cambios pendientes en productos. Si ya aplicaste optimizaciones, usa Restaurar todo para probar el flujo completo otra vez.",
     billingBundleContinue: "Continuar — aprobar plan $15/mes (obligatorio)",
@@ -689,9 +690,10 @@ const MESSAGES = {
     step4RestoreToContinue:
       "Esta tienda ya tiene un Apply completado registrado. Usa Restaurar todo abajo para deshacer cambios y volver a correr el flujo completo.",
     step4FlowTitle: "Aplicar en tu tienda",
-    step4PaymentBodyFirst: "Continúa para completar el pago en Shopify y desbloquear Apply.",
+    step4PaymentBodyFirst:
+      "Paga $35 setup en Shopify (incluye mes 1). Luego aprueba $15/mes de mantenimiento — cobro desde el día 31. Apply se desbloquea al volver aquí.",
     step4PaymentSuccess:
-      "Pago exitoso — setup de $35 completado. Redirigiendo para aprobar mantenimiento de $15/mes (cobro desde el día 31).",
+      "Setup de $35 cobrado correctamente. Mantenimiento de $15/mes empieza el día 31 (mes 1 incluido en el setup). Apply abajo cuando quieras.",
     step4FlowIntro: "Completa el pago en Shopify para desbloquear Apply.",
     expectationsPreviewTitle: "Qué esperar después de aplicar",
     expectationsPreviewMeans1:
@@ -841,7 +843,7 @@ const MESSAGES = {
     postApplyManualTitle: "Recomendado — mejorar visibilidad en crawlers en vivo",
     postApplyManualBody:
       "PredictaCore ya guardó SEO y schema en Shopify. Estos pasos manuales ayudan a que los crawlers de IA los lean en tu tienda en vivo (aparte de tu score arriba).",
-    deliveryOptionalNote: "Configuración manual opcional — no forma parte del Apply pagado.",
+    deliveryOptionalNote: "Recomendado — configuración opcional del comerciante (no forma parte del Apply pagado).",
     postApplyAlmostTitle: "Opcional — termina la entrega en vivo (2 min)",
     postApplyBody: "Tu tienda está actualizada. Reabre PredictaCore para ver tu score cuando quieras.",
     postApplyThemeRequired:
@@ -1112,9 +1114,10 @@ const MESSAGES = {
     pricingMaintenanceIncluded:
       "Inclus : mises à jour à $15/mois automatiques après le premier mois. Annulez dans Shopify Admin quand vous voulez.",
     unlockApply: "Payer $35 — débloquer Apply",
-    step2PayIntro: "Consultez l'aperçu ci-dessous, puis payez $35 dans Shopify pour débloquer Apply.",
+    step2PayIntro:
+      "Consultez l'aperçu ci-dessous, cochez la case, puis payez dans Shopify : $35 setup aujourd'hui (mois 1 inclus) et $15/mois à partir du jour 31. Apply se débloque sur cet écran.",
     billingAlreadyApproved:
-      "Cette boutique a déjà approuvé les $35 dans Shopify — l'écran de paiement ne réapparaîtra pas. Utilisez Restaurer tout ci-dessous pour annuler et retester le flux.",
+      "Setup $35 actif sur cette boutique. Maintenance $15/mois à partir du jour 31 (mois 1 inclus). Apply ci-dessous.",
     step2NoPendingWork:
       "Aucun changement produit en attente. Si vous avez déjà appliqué les optimisations, utilisez Restaurer tout pour retester le flux complet.",
     billingBundleContinue: "Continuer — approuver le plan $15/mois (obligatoire)",
@@ -1124,8 +1127,10 @@ const MESSAGES = {
     step4RestoreToContinue:
       "Cette boutique a déjà un Apply enregistré. Utilisez Restaurer tout ci-dessous pour annuler et relancer le flux complet.",
     step4FlowTitle: "Appliquer sur votre boutique",
-    step4PaymentBodyFirst: "Continuer pour finaliser le paiement dans Shopify et débloquer Apply.",
-    step4PaymentSuccess: "Paiement réussi — vous pouvez maintenant appliquer les changements.",
+    step4PaymentBodyFirst:
+      "Payez $35 setup dans Shopify (mois 1 inclus). Puis approuvez $15/mois — facturation à partir du jour 31. Apply se débloque au retour ici.",
+    step4PaymentSuccess:
+      "Setup $35 facturé avec succès. Maintenance $15/mois à partir du jour 31 (mois 1 inclus). Apply ci-dessous quand vous voulez.",
     step4FlowIntro: "Finalisez le paiement dans Shopify pour débloquer Apply.",
     expectationsPreviewTitle: "À quoi s'attendre après Apply",
     step4PaidIntro: "Paiement effectué — confirmez ci-dessous pour publier les changements.",

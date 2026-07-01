@@ -12,7 +12,6 @@ import {
   MarketsChangedBanner,
   ProductTierPanel,
   SearchConsolePanel,
-  ThemeOnboardingPanel,
 } from "../components/PremiumPanels.jsx";
 import { formatProjectedScoreRange } from "../lib/score.js";
 
@@ -848,8 +847,11 @@ function PaymentGateCard({ copy, confirmed, setConfirmed }) {
       <BillingDisclosureCard copy={copy} />
       <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.35)" }}>
       <h2 style={theme.h2}>{copy.step4FlowTitle}</h2>
-      <p style={{ ...theme.body, marginBottom: "14px", color: "#e8e8ef", lineHeight: 1.55 }}>
-        {copyText(copy, "step2ConfirmBeforePay", copy.step4PaymentBodyFirst)}
+      <p style={{ ...theme.body, marginBottom: "10px", color: "#e8e8ef", lineHeight: 1.55 }}>
+        {copyText(copy, "step4PaymentBodyFirst", copy.step4FlowIntro)}
+      </p>
+      <p style={{ ...theme.body, marginBottom: "14px", fontSize: "0.82rem", color: "#8b8b9a", lineHeight: 1.55 }}>
+        {copyText(copy, "step2ConfirmBeforePay", copy.confirmLabel)}
       </p>
       <label style={{ display: "flex", gap: "10px", alignItems: "flex-start", marginBottom: "14px", cursor: "pointer" }}>
         <input
@@ -965,16 +967,9 @@ function PostApplyMerchantPanel({
     <>
       {!ready && (
         <div style={{ ...theme.card, borderColor: "rgba(251,191,36,0.45)", background: "rgba(251,191,36,0.06)" }}>
-          <p style={{ ...theme.body, fontSize: "0.78rem", color: "#fbbf24", margin: "0 0 8px 0", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" }}>
-            {copyText(copy, "deliveryOptionalNote", "Optional merchant setup")}
+          <p style={{ ...theme.body, fontSize: "0.88rem", color: "#fbbf24", margin: "0 0 14px 0", fontWeight: 600, lineHeight: 1.55 }}>
+            {copyText(copy, "deliveryOptionalNote", "Recommended — optional merchant setup (not part of the paid Apply).")}
           </p>
-          <h2 style={{ ...theme.h2, color: "#fbbf24", marginBottom: "8px" }}>
-            {copyText(copy, "postApplyManualTitle", "Recommended — improve live crawler visibility")}
-          </h2>
-          <p style={{ ...theme.body, marginBottom: "14px", fontSize: "0.88rem", color: "#c8c8d0", lineHeight: 1.55 }}>
-            {copyText(copy, "postApplyManualBody", "")}
-          </p>
-          <ThemeOnboardingPanel copy={copy} shop={shop} deliveryStatus={deliveryStatus} />
           <DeliveryChecklistPanel
             copy={copy}
             deliveryStatus={deliveryStatus}
@@ -2140,7 +2135,13 @@ function IndexWizard({
     (showPaymentGate || showApplyBlocked || showApplyGate);
   const showApplyStepActions = step === 3 && showApplyBlocked;
   const showBillingAlreadyApproved =
-    step === 2 && setupPaid && !pilotMode && hasPendingWork && !firstApplyDone && !showPaymentGate;
+    step === 2 &&
+    setupPaid &&
+    !pilotMode &&
+    hasPendingWork &&
+    !firstApplyDone &&
+    !showPaymentGate &&
+    !billingJustReturned;
   const activeDeliveryStatus = applyResult?.deliveryStatus ?? deliveryStatus;
   const catalogOverLimit =
     (snapSummary?.catalogTotal ?? 0) > (productTier?.effectiveLimit ?? 500);
@@ -2320,7 +2321,9 @@ function IndexWizard({
           {(firstApplyDone || setupComplete) && (
             <>
               {!deliveryStatus?.crawlerReady && (
-                <ThemeOnboardingPanel copy={copy} shop={shop} deliveryStatus={deliveryStatus} />
+                <p style={{ ...theme.body, fontSize: "0.88rem", color: "#fbbf24", fontWeight: 600, margin: "0 0 14px 0", lineHeight: 1.55 }}>
+                  {copyText(copy, "deliveryOptionalNote", "")}
+                </p>
               )}
               <DeliveryChecklistPanel
                 copy={copy}
@@ -2442,15 +2445,6 @@ function IndexWizard({
           <p style={{ ...theme.body, marginBottom: "14px", fontSize: "0.88rem", color: "#a5b4fc", lineHeight: 1.55 }}>
             {copyText(copy, "step2PayIntro", copy.step4FlowIntro)}
           </p>
-
-          {showBillingAlreadyApproved && (
-            <div style={{ ...theme.card, borderColor: "rgba(251,191,36,0.4)", background: "rgba(251,191,36,0.08)", marginBottom: "14px" }}>
-              <p style={{ ...theme.body, color: "#fbbf24", margin: 0, lineHeight: 1.55 }}>
-                {copyText(copy, "billingAlreadyApproved", "")}
-              </p>
-            </div>
-          )}
-
 
           {!hasPendingWork && !applyResult && (
             <div style={{ ...theme.card, borderColor: "rgba(251,191,36,0.35)", background: "rgba(251,191,36,0.06)", marginBottom: "14px" }}>
