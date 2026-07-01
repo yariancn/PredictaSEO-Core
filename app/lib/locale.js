@@ -78,12 +78,12 @@ const MESSAGES = {
       "$35 today covers your first month and unlocks Apply. Then $15/month until you cancel in Shopify — no refunds; cancellation applies to the next billing period.",
     generateAiPlan: "Generate personalized AI plan",
     skipAiPlan: "Skip AI summary and continue",
-    step1AiTitle: "Optional AI summary",
+    step1AiTitle: "AI summary",
     step1AiIntro:
-      "Generate a short narrative of your gaps — or skip and continue with your score and action plan below.",
-    step3AiTitle: "Optional AI summary",
+      "A short narrative of your store's gaps and priorities — generated automatically from your audit.",
+    step3AiTitle: "AI summary",
     step3AiIntro:
-      "Generate a short narrative of your gaps — or skip and continue with your score and action plan below.",
+      "A short narrative of your store's gaps and priorities — generated automatically from your audit.",
     step3ContinueWait: "Generate the AI summary above to continue.",
     step3ContinueReady: "Summary ready — continue to preview.",
     generateAiPlanBody:

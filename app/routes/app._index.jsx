@@ -896,52 +896,6 @@ function PaymentSuccessBanner({ copy, maintenanceActive = false }) {
   );
 }
 
-function AiSummaryOptionalPanel({
-  copy,
-  aiSummaryAvailable,
-  summary,
-  summaryError,
-  summaryLoading,
-  summaryTimedOut,
-  onGenerate,
-  onSkip,
-  onRetry,
-}) {
-  if (!aiSummaryAvailable || summary) return null;
-
-  return (
-    <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.35)", background: "rgba(99,102,241,0.06)", marginBottom: "14px" }}>
-      <h2 style={{ ...theme.h2, color: "#a5b4fc" }}>{copyText(copy, "step1AiTitle", copyText(copy, "step3AiTitle", "Optional AI summary"))}</h2>
-      <p style={{ ...theme.body, marginBottom: "14px", fontSize: "0.88rem", color: "#c8c8d0", lineHeight: 1.55 }}>
-        {copyText(copy, "step1AiIntro", copyText(copy, "step3AiIntro", ""))}
-      </p>
-      {summaryError && (
-        <p style={{ ...theme.body, color: "#f87171", marginBottom: "12px" }}>{summaryError}</p>
-      )}
-      {summaryTimedOut && !summaryError && (
-        <p style={{ ...theme.body, color: "#fbbf24", marginBottom: "12px" }}>{copyText(copy, "aiTimeout", "")}</p>
-      )}
-      {summaryLoading ? (
-        <p style={{ ...theme.body, color: "#a5b4fc", margin: 0 }}>{copyText(copy, "loadingAiSummary", "Generating summary…")}</p>
-      ) : (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
-          <button type="button" style={theme.btnPrimary} onClick={onGenerate}>
-            {copyText(copy, "generateAiPlan", "Generate AI summary")}
-          </button>
-          <button type="button" style={theme.btnGhost} onClick={onSkip}>
-            {copyText(copy, "skipAiPlan", "Skip and continue")}
-          </button>
-          {(summaryError || summaryTimedOut) && (
-            <button type="button" style={theme.btnGhost} onClick={onRetry}>
-              {copyText(copy, "retryAiPlan", "Try again")}
-            </button>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
 function Step4Actions({
   copy,
   showPaymentGate,
@@ -1276,8 +1230,6 @@ export default function Index() {
   const [summaryTimedOut, setSummaryTimedOut] = useState(false);
   const [auditStarted, setAuditStarted] = useState(billingReturn.auditStarted);
   const [billingJustReturned, setBillingJustReturned] = useState(billingReturn.billingJustReturned);
-  const [aiRequested, setAiRequested] = useState(false);
-  const [aiSummarySkipped, setAiSummarySkipped] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [summaryInvalidated, setSummaryInvalidated] = useState(false);
   const totalSteps = 3;
@@ -1333,6 +1285,12 @@ export default function Index() {
     ? aiFetcher.data.summaryError
     : null;
   const summaryLoading = aiFetcher.state !== "idle" && aiFetcher.formData?.get("intent") === "summary";
+  const awaitingSummary =
+    aiSummaryAvailable &&
+    !summaryInvalidated &&
+    !summary &&
+    !summaryError &&
+    !summaryTimedOut;
 
   const applyResult = applyFetcher.data?.intent === "apply" ? applyFetcher.data.applyResult : null;
   const applyError = applyFetcher.data?.intent === "apply" ? applyFetcher.data.applyError : null;
@@ -1419,7 +1377,6 @@ export default function Index() {
     if (restoreResult != null) {
       setSummaryInvalidated(true);
       setConfirmed(false);
-      setAiRequested(false);
       setBillingJustReturned(false);
       summarySubmitStarted.current = false;
       setSummaryTimedOut(false);
@@ -1432,22 +1389,22 @@ export default function Index() {
     if (resetTestResult) {
       setSummaryInvalidated(true);
       setConfirmed(false);
-      setAiSummarySkipped(false);
-      setAiRequested(false);
+      summarySubmitStarted.current = false;
+      setSummaryTimedOut(false);
       setStep(1);
       auditFetcher.load(auditDataUrl());
     }
   }, [resetTestResult]);
 
   useEffect(() => {
-    if (!aiRequested || !aiSummaryAvailable || summaryInvalidated) return;
+    if (auditPending || !aiSummaryAvailable || summaryInvalidated) return;
     if (summary || summaryError) return;
     if (summarySubmitStarted.current) return;
     if (aiFetcher.state !== "idle") return;
     summarySubmitStarted.current = true;
     setSummaryTimedOut(false);
     aiFetcher.submit({ intent: "summary" }, { method: "post" });
-  }, [aiRequested, aiSummaryAvailable, summaryInvalidated, summary, summaryError, aiFetcher.state]);
+  }, [auditPending, aiSummaryAvailable, summaryInvalidated, summary, summaryError, aiFetcher.state]);
 
   useEffect(() => {
     if (!summaryLoading) return;
@@ -1458,19 +1415,7 @@ export default function Index() {
   const retryAiSummary = () => {
     summarySubmitStarted.current = false;
     setSummaryTimedOut(false);
-    setAiRequested(true);
-  };
-
-  const requestAiSummary = () => {
-    summarySubmitStarted.current = false;
-    setSummaryTimedOut(false);
-    setAiRequested(true);
-  };
-
-  const skipAiSummary = () => {
-    setAiSummarySkipped(true);
-    setAiRequested(false);
-    summarySubmitStarted.current = false;
+    aiFetcher.submit({ intent: "summary" }, { method: "post" });
   };
 
   if (!auditStarted) {
@@ -1485,14 +1430,22 @@ export default function Index() {
     );
   }
 
-  if (auditPending) {
+  if (auditPending || awaitingSummary) {
     return (
       <LoadingShell
         title={introCopy?.title ?? "PredictaCore"}
         eyebrow={introCopy?.subtitle ?? "AI visibility audit"}
-        message={introCopy?.loading ?? "Analyzing your store…"}
+        message={
+          auditPending
+            ? introCopy?.loading ?? "Analyzing your store…"
+            : copy?.loadingAiSummary ?? introCopy?.loadingAiSummary ?? "Building your optimization plan…"
+        }
         subtext={
-          introCopy?.loadingAuditSubtext ?? "Read-only scan — nothing on your store is modified yet."
+          auditPending
+            ? introCopy?.loadingAuditSubtext ?? "Read-only scan — nothing on your store is modified yet."
+            : copy?.loadingAiSummarySubtext ??
+              introCopy?.loadingAiSummarySubtext ??
+              "We're preparing your score, gap list, and AI summary — your results appear when this finishes."
         }
         mode="audit"
       />
@@ -1577,11 +1530,7 @@ export default function Index() {
         totalSteps={totalSteps}
         aiFetcher={aiFetcher}
         applyFetcher={applyFetcher}
-        aiRequested={aiRequested}
         aiSummaryAvailable={aiSummaryAvailable}
-        aiSummarySkipped={aiSummarySkipped}
-        onSkipAiSummary={skipAiSummary}
-        onRequestAiSummary={requestAiSummary}
         summary={summary}
         summaryError={summaryError}
         summaryTimedOut={summaryTimedOut}
@@ -2067,11 +2016,7 @@ function IndexWizard({
   totalSteps,
   aiFetcher,
   applyFetcher,
-  aiRequested,
-  aiSummarySkipped,
   aiSummaryAvailable,
-  onRequestAiSummary,
-  onSkipAiSummary,
   summary,
   summaryError,
   summaryTimedOut,
@@ -2267,29 +2212,30 @@ function IndexWizard({
             </div>
           )}
 
-          {(summary || displaySummaryError) && (
+          {(summary || displaySummaryError || summaryTimedOut) && (
             <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.45)", background: "rgba(99,102,241,0.1)" }}>
-              <h2 style={{ ...theme.h2, color: "#a5b4fc" }}>{copyText(copy, "step1AiTitle", copyText(copy, "step3AiTitle", "Optional AI summary"))}</h2>
+              <h2 style={{ ...theme.h2, color: "#a5b4fc" }}>{copyText(copy, "step1AiTitle", copyText(copy, "step3AiTitle", "AI summary"))}</h2>
               {summary && (
                 <p style={{ ...theme.body, whiteSpace: "pre-wrap", color: "#e8e8ef", margin: 0 }}>{summary}</p>
               )}
               {displaySummaryError && (
                 <p style={{ ...theme.body, color: "#f87171", margin: summary ? "10px 0 0 0" : 0 }}>{displaySummaryError}</p>
               )}
+              {summaryTimedOut && !summary && !displaySummaryError && (
+                <p style={{ ...theme.body, color: "#fbbf24", margin: 0 }}>{copyText(copy, "aiTimeout", "")}</p>
+              )}
+              {(displaySummaryError || summaryTimedOut) && !summary && onRetryAiSummary && (
+                <button
+                  type="button"
+                  style={{ ...theme.btnGhost, marginTop: "12px" }}
+                  onClick={onRetryAiSummary}
+                  disabled={summaryLoading}
+                >
+                  {summaryLoading ? copyText(copy, "loadingAiSummary", "…") : copyText(copy, "retryAiPlan", "Try again")}
+                </button>
+              )}
             </div>
           )}
-
-          <AiSummaryOptionalPanel
-            copy={copy}
-            aiSummaryAvailable={aiSummaryAvailable && !aiSummarySkipped}
-            summary={summary}
-            summaryError={displaySummaryError}
-            summaryLoading={summaryLoading}
-            summaryTimedOut={summaryTimedOut}
-            onGenerate={onRequestAiSummary}
-            onSkip={onSkipAiSummary}
-            onRetry={onRetryAiSummary}
-          />
 
           <div style={{ ...theme.card, borderColor: "rgba(99,102,241,0.45)", background: "rgba(99,102,241,0.1)" }}>
             <h2 style={{ ...theme.h2, color: "#a5b4fc", marginBottom: "14px" }}>
