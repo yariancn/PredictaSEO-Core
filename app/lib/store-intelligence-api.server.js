@@ -5,6 +5,7 @@ import {
   isSearchConsoleConfigured,
 } from "./search-console.server.js";
 import { getApplyImpactReport } from "./apply-impact.server.js";
+import { fetchProductIntelligence } from "./product-intelligence.server.js";
 
 const DEFAULT_SHOP = "pamandander1.myshopify.com";
 /** shopifyqlQuery requires Admin API 2025-10+ (see Shopify changelog Oct 2025). */
@@ -218,18 +219,45 @@ async function fetchShopifyAnalytics(token, shop, days) {
   }
 }
 
+const NO_TOKEN_ERROR = "Sin token offline en Session — reinstala la app pilot en la tienda.";
+
+function emptyProductIntelligence(error) {
+  return {
+    connected: false,
+    count: 0,
+    hasFunnelData: false,
+    hasProfitData: false,
+    topSellers: [],
+    mostSellable: [],
+    opportunities: [],
+    all: [],
+    error,
+  };
+}
+
 export async function buildStoreIntelligencePayload(days = 30) {
   const shop = pilotShop();
   const token = await resolveOfflineToken(shop);
 
-  const [shopify, gscSummary, gscComparison, applyReport, entityProfile] = await Promise.all([
+  const [shopify, products, gscSummary, gscComparison, applyReport, entityProfile] = await Promise.all([
     token
       ? fetchShopifyAnalytics(token, shop, days)
       : Promise.resolve({
           connected: false,
           shop,
-          error: "Sin token offline en Session — reinstala la app pilot en la tienda.",
+          error: NO_TOKEN_ERROR,
         }),
+    token
+      ? fetchProductIntelligence(
+          (query, variables) => shopifyGraphql(token, shop, query, variables),
+          (queries) => tryShopifyQl(token, shop, queries),
+          sinceDate(days),
+        ).catch((err) =>
+          emptyProductIntelligence(
+            err instanceof Error ? err.message.slice(0, 300) : "Product intelligence failed",
+          ),
+        )
+      : Promise.resolve(emptyProductIntelligence(NO_TOKEN_ERROR)),
     fetchSearchConsoleSummary(shop).catch((err) => ({
       connected: false,
       error: err instanceof Error ? err.message.slice(0, 200) : "GSC fetch failed",
@@ -244,6 +272,7 @@ export async function buildStoreIntelligencePayload(days = 30) {
     periodDays: days,
     fetchedAt: new Date().toISOString(),
     shopify,
+    products,
     google: {
       configured: isSearchConsoleConfigured(),
       summary: gscSummary,
@@ -260,6 +289,7 @@ export async function buildStoreIntelligencePayload(days = 30) {
     },
     sources: {
       shopify: shopify.source ?? "Shopify offline token",
+      products: `Shopify Admin API ${API_VERSION} (sales + PDP funnel via ShopifyQL)`,
       google: isSearchConsoleConfigured() ? "GSC OAuth" : "GOOGLE_CLIENT_ID/SECRET en pilot",
       seo: "pilot DATABASE_URL",
     },
