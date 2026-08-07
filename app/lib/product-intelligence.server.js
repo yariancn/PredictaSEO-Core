@@ -72,6 +72,23 @@ const CATALOG_FIELDS = `
   seo { title description }
 `;
 
+/** El servicio de ads necesita saber qué dominios son de esta tienda y cuáles no. */
+async function fetchShopDomains(shopifyGraphql) {
+  try {
+    const data = await shopifyGraphql(
+      `query PredictaCoreShopDomains {
+        shop {
+          myshopifyDomain
+          primaryDomain { host }
+        }
+      }`,
+    );
+    return data?.shop ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function fetchCatalogByIds(shopifyGraphql, ids) {
   const unique = [...new Set(ids.filter(Boolean))];
   if (unique.length === 0) return new Map();
@@ -180,9 +197,10 @@ function buildScores(rows) {
  * @param shopifyGraphql (query, variables) => data — ya autenticado contra la tienda.
  */
 export async function fetchProductIntelligence(shopifyGraphql, tryShopifyQl, since) {
-  const [salesResult, funnelResult] = await Promise.all([
+  const [salesResult, funnelResult, shopDomains] = await Promise.all([
     tryShopifyQl(salesQueries(since)).catch((err) => ({ error: err })),
     tryShopifyQl(funnelQueries(since)).catch((err) => ({ error: err })),
+    fetchShopDomains(shopifyGraphql),
   ]);
 
   const salesRows = rowsFromTable(salesResult?.table);
@@ -331,6 +349,7 @@ export async function fetchProductIntelligence(shopifyGraphql, tryShopifyQl, sin
   return {
     connected: scored.length > 0,
     count: scored.length,
+    shopDomains: [shopDomains?.primaryDomain?.host, shopDomains?.myshopifyDomain].filter(Boolean),
     hasFunnelData: funnelByHandle.size > 0,
     hasProfitData: scored.some((r) => r.grossProfit > 0),
     avgConversionRatePct: round(avgConversion),
